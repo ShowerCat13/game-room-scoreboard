@@ -1,0 +1,68 @@
+game-room-scoreboard/
+│
+├── public/                          # Static assets (icons, sounds, etc.)
+│
+├── supabase/                        # Supabase schema and seed data
+│   ├── schema.sql                   # Database schema
+│   └── seed.sql                     # Sample data
+│
+├── src/                             # Source code
+│   ├── components/                  # React components
+│   │   ├── layout/                  # Layout components
+│   │   │   └── index.ts            # Export file (ready for components)
+│   │   ├── display/                 # Display components (scores, avatars)
+│   │   │   └── index.ts            # Export file (ready for components)
+│   │   ├── input/                   # Form input components
+│   │   │   └── index.ts            # Export file (ready for components)
+│   │   ├── cards/                   # Card components (game, category)
+│   │   │   └── index.ts            # Export file (ready for components)
+│   │   ├── overlays/                # Overlay components (alerts, modals)
+│   │   │   └── index.ts            # Export file (ready for components)
+│   │   └── ui/                      # Reusable UI primitives
+│   │       └── index.ts            # Export file (ready for components)
+│   │
+│   ├── pages/                       # Page components (routes)
+│   │   └── index.ts                # Export file (ready for pages)
+│   │
+│   ├── hooks/                       # Custom React hooks
+│   │   └── index.ts                # Export file (ready for hooks)
+│   │
+│   ├── lib/                         # Core utilities and clients
+│   │   ├── supabase.ts             # ✅ Supabase client setup
+│   │   ├── types.ts                # ✅ TypeScript type definitions
+│   │   └── utils.ts                # ✅ Utility functions (formatScore, etc.)
+│   │
+│   ├── stores/                      # State management
+│   │   └── kioskStore.ts           # ✅ Zustand store for UI state
+│   │
+│   ├── App.tsx                      # ✅ Root component
+│   ├── main.tsx                     # ✅ Application entry point
+│   ├── index.css                    # ✅ Global styles with Tailwind
+│   └── vite-env.d.ts               # ✅ Vite environment types
+│
+├── .vscode/                         # VS Code settings
+│   ├── extensions.json             # ✅ Recommended extensions
+│   └── settings.json               # ✅ Editor settings
+│
+├── .env.example                     # ✅ Environment variable template
+├── .gitignore                       # ✅ Git ignore rules
+├── eslint.config.js                 # ✅ ESLint configuration
+├── index.html                       # ✅ HTML entry point
+├── package.json                     # ✅ Dependencies and scripts
+├── postcss.config.js                # ✅ PostCSS configuration
+├── tailwind.config.js               # ✅ Tailwind theme configuration
+├── tsconfig.json                    # ✅ TypeScript config (root)
+├── tsconfig.app.json                # ✅ TypeScript config (app)
+├── tsconfig.node.json               # ✅ TypeScript config (node)
+├── vite.config.ts                   # ✅ Vite configuration
+│
+├── ARCHITECTURE.md                  # Architecture and technical docs
+├── UI_SPEC.md                       # UI component specifications
+├── README.md                        # ✅ Setup and deployment guide
+├── PROJECT_STATUS.md                # ✅ Current project status
+├── SETUP_COMPLETE.md                # ✅ Setup completion guide
+└── STRUCTURE.txt                    # ✅ This file
+
+Legend:
+✅ = File/setup complete
+(no mark) = Directory structure ready, components not yet built

@@ -1,0 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full w-full m-0 p-0;
+  }
+
+  body {
+    @apply bg-background-primary text-text-primary font-sans antialiased;
+    font-size: 18px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
+  /* Kiosk-specific: no text selection, no tap highlight */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  /* Allow selection in input fields */
+  input,
+  textarea {
+    user-select: text;
+  }
+
+  /* Hide scrollbars but keep functionality */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background-card;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-background-elevated rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-muted;
+  }
+}
+
+@layer components {
+  /* Card base style with depth */
+  .card {
+    @apply bg-background-card rounded-lg;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .card-interactive {
+    @apply bg-background-card rounded-lg transition-all duration-fast;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .card-interactive:active {
+    @apply scale-[0.98];
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    background-color: #1f1f1f;
+  }
+
+  /* Category-specific glow borders */
+  .category-glow-racing {
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-golf {
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-party {
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-darts {
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-pinball {
+    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-platformer {
+    box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-rpg {
+    box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .category-glow-other {
+    box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Podium row highlights */
+  .podium-gold {
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.08) 0%, transparent 100%);
+    border-left: 3px solid #ffd700;
+  }
+  .podium-silver {
+    background: linear-gradient(90deg, rgba(192, 192, 192, 0.06) 0%, transparent 100%);
+    border-left: 3px solid #c0c0c0;
+  }
+  .podium-bronze {
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.06) 0%, transparent 100%);
+    border-left: 3px solid #cd7f32;
+  }
+
+  /* Medal badge enhancements */
+  .medal-gold {
+    @apply text-medals-gold;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+  .medal-silver {
+    @apply text-medals-silver;
+    text-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
+  }
+  .medal-bronze {
+    @apply text-medals-bronze;
+    text-shadow: 0 0 8px rgba(205, 127, 50, 0.4);
+  }
+
+  /* Avatar ring for top players */
+  .avatar-ring-gold {
+    box-shadow: 0 0 0 2px #ffd700, 0 0 12px rgba(255, 215, 0, 0.4);
+  }
+  .avatar-ring-silver {
+    box-shadow: 0 0 0 2px #c0c0c0, 0 0 10px rgba(192, 192, 192, 0.3);
+  }
+  .avatar-ring-bronze {
+    box-shadow: 0 0 0 2px #cd7f32, 0 0 10px rgba(205, 127, 50, 0.3);
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply bg-background-elevated text-text-primary font-semibold rounded-lg px-md;
+    @apply transition-all duration-fast;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .btn-primary:active {
+    @apply scale-[0.98];
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    background-color: #2a2a2a;
+  }
+
+  /* Icon badge */
+  .icon-badge {
+    @apply w-12 h-12 rounded-lg flex items-center justify-center;
+    @apply text-lg font-bold text-white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@layer utilities {
+  /* Tabular numbers for scores */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Touch-friendly minimum sizes */
+  .touch-target {
+    @apply min-h-[56px] min-w-[56px];
+  }
+
+  /* Kiosk container constraint */
+  .kiosk-container {
+    width: 800px;
+    height: 480px;
+    max-width: 100vw;
+    max-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  /* Smooth transitions */
+  .transition-smooth {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Gradient text for special emphasis */
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 50%, #ffd700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Subtle inner glow for inputs */
+  .input-glow {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Stagger animation delays */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+}
