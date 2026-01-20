@@ -4,6 +4,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   CSS VARIABLES - Default Theme (Dark)
+   These are overwritten by the theme system via JavaScript
+   ============================================================================ */
+:root {
+  /* Backgrounds */
+  --color-bg-primary: #0f0f0f;
+  --color-bg-card: #1a1a1a;
+  --color-bg-elevated: #252525;
+  
+  /* Text */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1a1;
+  --color-text-muted: #6b6b6b;
+  
+  /* Accents */
+  --color-accent-primary: #3b82f6;
+  --color-accent-secondary: #60a5fa;
+  
+  /* Category Colors */
+  --color-category-racing: #ef4444;
+  --color-category-golf: #22c55e;
+  --color-category-party: #f59e0b;
+  --color-category-darts: #3b82f6;
+  --color-category-pinball: #a855f7;
+  --color-category-platformer: #ec4899;
+  --color-category-rpg: #06b6d4;
+  --color-category-other: #6b7280;
+  
+  /* Medal Colors */
+  --color-medal-gold: #ffd700;
+  --color-medal-silver: #c0c0c0;
+  --color-medal-bronze: #cd7f32;
+}
+
 @layer base {
   * {
     @apply box-border;
@@ -16,13 +51,20 @@
   }
 
   body {
-    @apply bg-background-primary text-text-primary font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
     font-size: 18px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
     overscroll-behavior: none;
+  }
+
+  /* Ensure html also has the background for full coverage */
+  html {
+    background-color: var(--color-bg-primary);
   }
 
   /* Kiosk-specific: no text selection, no tap highlight */
@@ -45,106 +87,111 @@
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-background-card;
+    background-color: var(--color-bg-card);
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-background-elevated rounded;
+    background-color: var(--color-bg-elevated);
+    @apply rounded;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-text-muted;
+    background-color: var(--color-text-muted);
   }
 }
 
 @layer components {
   /* Card base style with depth */
   .card {
-    @apply bg-background-card rounded-lg;
+    background-color: var(--color-bg-card);
+    @apply rounded-lg;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .card-interactive {
-    @apply bg-background-card rounded-lg transition-all duration-fast;
+    background-color: var(--color-bg-card);
+    @apply rounded-lg transition-all duration-fast;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .card-interactive:active {
+    background-color: var(--color-bg-elevated);
     @apply scale-[0.98];
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2);
-    background-color: #1f1f1f;
   }
 
-  /* Category-specific glow borders */
+  /* Category-specific glow borders - using CSS variables */
   .category-glow-racing {
-    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-racing) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-golf {
-    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-golf) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-party {
-    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-party) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-darts {
-    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-darts) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-pinball {
-    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-pinball) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-platformer {
-    box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-platformer) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-rpg {
-    box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-rpg) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-other {
-    box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-other) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
-  /* Podium row highlights */
+  /* Podium row highlights - using CSS variables */
   .podium-gold {
-    background: linear-gradient(90deg, rgba(255, 215, 0, 0.08) 0%, transparent 100%);
-    border-left: 3px solid #ffd700;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-medal-gold) 8%, transparent) 0%, transparent 100%);
+    border-left: 3px solid var(--color-medal-gold);
   }
   .podium-silver {
-    background: linear-gradient(90deg, rgba(192, 192, 192, 0.06) 0%, transparent 100%);
-    border-left: 3px solid #c0c0c0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-medal-silver) 6%, transparent) 0%, transparent 100%);
+    border-left: 3px solid var(--color-medal-silver);
   }
   .podium-bronze {
-    background: linear-gradient(90deg, rgba(205, 127, 50, 0.06) 0%, transparent 100%);
-    border-left: 3px solid #cd7f32;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-medal-bronze) 6%, transparent) 0%, transparent 100%);
+    border-left: 3px solid var(--color-medal-bronze);
   }
 
-  /* Medal badge enhancements */
+  /* Medal badge enhancements - using CSS variables */
   .medal-gold {
-    @apply text-medals-gold;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    color: var(--color-medal-gold);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--color-medal-gold) 50%, transparent);
   }
   .medal-silver {
-    @apply text-medals-silver;
-    text-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
+    color: var(--color-medal-silver);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-medal-silver) 40%, transparent);
   }
   .medal-bronze {
-    @apply text-medals-bronze;
-    text-shadow: 0 0 8px rgba(205, 127, 50, 0.4);
+    color: var(--color-medal-bronze);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-medal-bronze) 40%, transparent);
   }
 
-  /* Avatar ring for top players */
+  /* Avatar ring for top players - using CSS variables */
   .avatar-ring-gold {
-    box-shadow: 0 0 0 2px #ffd700, 0 0 12px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 0 2px var(--color-medal-gold), 0 0 12px color-mix(in srgb, var(--color-medal-gold) 40%, transparent);
   }
   .avatar-ring-silver {
-    box-shadow: 0 0 0 2px #c0c0c0, 0 0 10px rgba(192, 192, 192, 0.3);
+    box-shadow: 0 0 0 2px var(--color-medal-silver), 0 0 10px color-mix(in srgb, var(--color-medal-silver) 30%, transparent);
   }
   .avatar-ring-bronze {
-    box-shadow: 0 0 0 2px #cd7f32, 0 0 10px rgba(205, 127, 50, 0.3);
+    box-shadow: 0 0 0 2px var(--color-medal-bronze), 0 0 10px color-mix(in srgb, var(--color-medal-bronze) 30%, transparent);
   }
 
   /* Button styles */
   .btn-primary {
-    @apply bg-background-elevated text-text-primary font-semibold rounded-lg px-md;
+    background-color: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    @apply font-semibold rounded-lg px-md;
     @apply transition-all duration-fast;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -152,7 +199,6 @@
   .btn-primary:active {
     @apply scale-[0.98];
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2);
-    background-color: #2a2a2a;
   }
 
   /* Icon badge */
@@ -182,6 +228,7 @@
     max-height: 100vh;
     overflow: hidden;
     position: relative;
+    background-color: var(--color-bg-primary);
   }
   
   /* Smooth transitions */
@@ -189,12 +236,21 @@
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Gradient text for special emphasis */
+  /* Gradient text for special emphasis - uses medal gold */
   .text-gradient-gold {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 50%, #ffd700 100%);
+    background: linear-gradient(135deg, var(--color-medal-gold) 0%, #ffed4a 50%, var(--color-medal-gold) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Light theme: solid dark gold instead of gradient for readability */
+  [data-theme="light"] .text-gradient-gold {
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: #92400e;
+    background-clip: unset;
+    color: #92400e;
   }
 
   /* Subtle inner glow for inputs */
@@ -208,4 +264,132 @@
   .stagger-3 { animation-delay: 0.15s; }
   .stagger-4 { animation-delay: 0.2s; }
   .stagger-5 { animation-delay: 0.25s; }
+}
+
+/* ============================================================================
+   THEME EFFECTS
+   Applied via class on html element
+   ============================================================================ */
+
+/* Scanlines Effect (Retro, Fallout themes) */
+.theme-scanlines::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Glow Effect (Vibrant, Retro, Fallout, Cyberpunk themes) */
+.theme-glow .card {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.4), 
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 20px color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
+}
+
+.theme-glow .text-text-primary {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--color-text-primary) 30%, transparent);
+}
+
+/* Noise Effect (Fallout theme) */
+.theme-noise::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Theme-specific color tweaks */
+[data-theme="light"] .card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .card-interactive:active {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .btn-primary {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .input-glow {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* Light theme: darker medal glows for contrast */
+[data-theme="light"] .medal-gold {
+  color: #92400e;
+  text-shadow: none;
+}
+
+[data-theme="light"] .medal-silver {
+  color: #374151;
+  text-shadow: none;
+}
+
+[data-theme="light"] .medal-bronze {
+  color: #78350f;
+  text-shadow: none;
+}
+
+/* Light theme: darker podium gradients */
+[data-theme="light"] .podium-gold {
+  background: linear-gradient(90deg, rgba(161, 98, 7, 0.15) 0%, transparent 100%);
+  border-left: 3px solid #a16207;
+}
+
+[data-theme="light"] .podium-silver {
+  background: linear-gradient(90deg, rgba(75, 85, 99, 0.1) 0%, transparent 100%);
+  border-left: 3px solid #4b5563;
+}
+
+[data-theme="light"] .podium-bronze {
+  background: linear-gradient(90deg, rgba(146, 64, 14, 0.12) 0%, transparent 100%);
+  border-left: 3px solid #92400e;
+}
+
+/* Light theme: darker avatar rings */
+[data-theme="light"] .avatar-ring-gold {
+  box-shadow: 0 0 0 2px #a16207, 0 0 8px rgba(161, 98, 7, 0.3);
+}
+
+[data-theme="light"] .avatar-ring-silver {
+  box-shadow: 0 0 0 2px #4b5563, 0 0 6px rgba(75, 85, 99, 0.2);
+}
+
+[data-theme="light"] .avatar-ring-bronze {
+  box-shadow: 0 0 0 2px #92400e, 0 0 6px rgba(146, 64, 14, 0.2);
+}
+
+/* Fallout-specific: monochrome green glow on everything */
+[data-theme="fallout"] .medal-gold,
+[data-theme="fallout"] .medal-silver,
+[data-theme="fallout"] .medal-bronze {
+  color: var(--color-text-primary);
+  text-shadow: 0 0 10px var(--color-text-primary);
+}
+
+[data-theme="fallout"] .avatar-ring-gold,
+[data-theme="fallout"] .avatar-ring-silver,
+[data-theme="fallout"] .avatar-ring-bronze {
+  box-shadow: 0 0 0 2px var(--color-text-primary), 0 0 12px var(--color-text-primary);
 }

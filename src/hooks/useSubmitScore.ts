@@ -2,7 +2,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface SubmitScoreParams {
-  gameModeId: string
+  gameId: string
+  modeId?: string | null
+  detailId?: string | null
   playerId: string
   score: number
 }
@@ -27,23 +29,28 @@ export function useSubmitScore(): SubmitScoreResult {
     }
   }, [])
 
-  const submitScore = useCallback(async ({ gameModeId, playerId, score }: SubmitScoreParams) => {
+  const submitScore = useCallback(async ({ 
+    gameId, 
+    modeId, 
+    detailId, 
+    playerId, 
+    score 
+  }: SubmitScoreParams) => {
     try {
       if (isMountedRef.current) {
         setSubmitting(true)
         setError(null)
       }
 
-      
-	  // Supabase client type inference fails for insert operations with manual Database types.
-	  // This is a known limitation - the workaround is localized and type-safe on the result side.
-	  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // Type assertion needed because Supabase client types don't match our schema
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: insertError } = await (supabase as any)
         .from('high_scores')
         .insert({
-          game_mode_id: gameModeId,
+          game_id: gameId,
+          mode_id: modeId || null,
+          detail_id: detailId || null,
           player_id: playerId,
-          team_id: null,
           score,
           metadata: {},
           achieved_at: new Date().toISOString(),
@@ -53,8 +60,7 @@ export function useSubmitScore(): SubmitScoreResult {
 
       if (insertError) throw insertError
 
-      const result = data as { id: string }
-      return { success: true, scoreId: result.id }
+      return { success: true, scoreId: data?.id }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to submit score')
       if (isMountedRef.current) {

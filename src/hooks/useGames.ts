@@ -28,7 +28,7 @@ export function useGames(category?: string): UseGamesResult {
 
         let query = supabase
           .from('games')
-          .select('id, name, platform, category, icon_url, sort_order')
+          .select('*')
           .eq('is_active', true)
           .order('sort_order', { ascending: true })
 
@@ -42,7 +42,7 @@ export function useGames(category?: string): UseGamesResult {
         if (queryError) throw queryError
 
         if (isMounted) {
-          setGames(data || [])
+          setGames((data as Game[]) || [])
         }
       } catch (err) {
         if (isMounted) {

@@ -36,7 +36,7 @@ export function useGame(gameId: string | null): UseGameResult {
 
         const { data, error: queryError } = await supabase
           .from('games')
-          .select('id, name, platform, category, icon_url, sort_order')
+          .select('*')
           .eq('id', gameId)
           .single()
 

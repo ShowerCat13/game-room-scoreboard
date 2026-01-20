@@ -9,7 +9,11 @@ interface PersistedSettings {
   soundVolume: number
   cycleSpeedMs: number
   celebrationDurationMs: number
-  adminPin: string | null // 4-digit PIN for destructive actions
+  adminPin: string | null
+  // Theme settings
+  themeId: string
+  textPrimaryOverride: string | null
+  accentPrimaryOverride: string | null
 }
 
 // UI state for the kiosk application
@@ -70,6 +74,12 @@ interface KioskState extends PersistedSettings {
   clearAdminPin: () => void
   verifyPin: (pin: string) => boolean
   isPinSet: () => boolean
+
+  // Theme actions
+  setTheme: (themeId: string) => void
+  setTextPrimaryOverride: (color: string | null) => void
+  setAccentPrimaryOverride: (color: string | null) => void
+  resetThemeCustomizations: () => void
 }
 
 export const useKioskStore = create<KioskState>()(
@@ -81,6 +91,11 @@ export const useKioskStore = create<KioskState>()(
       cycleSpeedMs: 10000,
       celebrationDurationMs: 5000,
       adminPin: null,
+      
+      // Theme defaults
+      themeId: 'dark',
+      textPrimaryOverride: null,
+      accentPrimaryOverride: null,
 
       // Non-persisted state
       isIdleMode: true,
@@ -154,6 +169,15 @@ export const useKioskStore = create<KioskState>()(
       isPinSet: (): boolean => {
         return get().adminPin !== null
       },
+
+      // Theme actions
+      setTheme: (themeId) => set({ themeId }),
+      setTextPrimaryOverride: (color) => set({ textPrimaryOverride: color }),
+      setAccentPrimaryOverride: (color) => set({ accentPrimaryOverride: color }),
+      resetThemeCustomizations: () => set({ 
+        textPrimaryOverride: null, 
+        accentPrimaryOverride: null 
+      }),
     }),
     {
       name: 'kiosk-settings',
@@ -164,6 +188,9 @@ export const useKioskStore = create<KioskState>()(
         cycleSpeedMs: state.cycleSpeedMs,
         celebrationDurationMs: state.celebrationDurationMs,
         adminPin: state.adminPin,
+        themeId: state.themeId,
+        textPrimaryOverride: state.textPrimaryOverride,
+        accentPrimaryOverride: state.accentPrimaryOverride,
       }),
       // Sync sound manager on rehydration
       onRehydrateStorage: () => (state) => {

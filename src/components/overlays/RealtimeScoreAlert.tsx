@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap } from 'lucide-react'
-import { formatScore, getMedalEmoji } from '@/lib/utils'
+import { Zap, Medal } from 'lucide-react'
+import { formatScore } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
 import type { ScoreFormat } from '@/lib/types'
 
@@ -50,8 +50,18 @@ export function RealtimeScoreAlert({
   }, [isOpen, rank])
 
   const isFirstPlace = rank === 1
-  const medalEmoji = getMedalEmoji(rank)
+  const isPodium = rank <= 3
   const formattedScore = formatScore(score, scoreFormat, scoreUnit)
+
+  // Get medal color class
+  const getMedalColorClass = () => {
+    switch (rank) {
+      case 1: return 'text-medals-gold'
+      case 2: return 'text-medals-silver'
+      case 3: return 'text-medals-bronze'
+      default: return 'text-text-muted'
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -102,8 +112,12 @@ export function RealtimeScoreAlert({
                   <span className={`text-base font-bold ${isFirstPlace ? 'text-gradient-gold' : 'text-text-primary'}`}>
                     {isFirstPlace ? 'NEW RECORD!' : 'New Score!'}
                   </span>
-                  {medalEmoji && (
-                    <span className="text-lg">{medalEmoji}</span>
+                  {isPodium && (
+                    <Medal 
+                      className={`w-5 h-5 ${getMedalColorClass()}`} 
+                      fill="currentColor" 
+                      fillOpacity={0.2}
+                    />
                   )}
                 </div>
 

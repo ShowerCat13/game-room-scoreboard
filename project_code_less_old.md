@@ -337,55 +337,6 @@ export function CategoryButton({ category, onClick, className = '', index = 0 }:
 }
 ```
 
-## File: src/components/cards/DetailCard.tsx
-```tsx
-import { motion } from 'framer-motion'
-import { ChevronRight } from 'lucide-react'
-
-interface DetailCardProps {
-  detail: {
-    id: string
-    name: string
-  }
-  onClick: () => void
-  className?: string
-  index?: number
-}
-
-/**
- * DetailCard - Card displaying a game detail (track, course, enemy type, etc.)
- * Height: 64px, padding: 12px vertical, 16px horizontal
- * Features: Card shadow, press animation, chevron indicator
- */
-export function DetailCard({ detail, onClick, className = '', index = 0 }: DetailCardProps) {
-  return (
-    <motion.button
-      onClick={onClick}
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.2, delay: index * 0.03 }}
-      whileTap={{ scale: 0.98 }}
-      className={`
-        h-[64px] py-3 px-md
-        card-interactive
-        flex items-center justify-between
-        w-full text-left
-        ${className}
-      `}
-    >
-      <div className="flex flex-col justify-center min-w-0 flex-1">
-        <div className="text-base font-semibold text-text-primary truncate">
-          {detail.name}
-        </div>
-      </div>
-      
-      {/* Chevron indicator */}
-      <ChevronRight className="w-5 h-5 text-text-muted flex-shrink-0 ml-2" />
-    </motion.button>
-  )
-}
-```
-
 ## File: src/components/cards/GameCard.tsx
 ```tsx
 import { getInitials, getPlayerColor } from '@/lib/utils'
@@ -463,7 +414,7 @@ export function GameCard({ game, onClick, className = '' }: GameCardProps) {
 export { CategoryButton } from './CategoryButton'
 export { GameCard } from './GameCard'
 export { ModeCard } from './ModeCard'
-export { DetailCard } from './DetailCard'
+
 ```
 
 ## File: src/components/cards/ModeCard.tsx
@@ -475,6 +426,7 @@ interface ModeCardProps {
   mode: {
     id: string
     name: string
+    subtitle: string | null
   }
   onClick: () => void
   className?: string
@@ -482,7 +434,7 @@ interface ModeCardProps {
 }
 
 /**
- * ModeCard - Card displaying a game mode with name
+ * ModeCard - Card displaying a game mode with name and optional subtitle
  * Height: 64px, padding: 12px vertical, 16px horizontal
  * Features: Card shadow, press animation, chevron indicator
  */
@@ -506,6 +458,11 @@ export function ModeCard({ mode, onClick, className = '', index = 0 }: ModeCardP
         <div className="text-base font-semibold text-text-primary truncate">
           {mode.name}
         </div>
+        {mode.subtitle && (
+          <div className="text-sm text-text-secondary truncate">
+            {mode.subtitle}
+          </div>
+        )}
       </div>
       
       {/* Chevron indicator */}
@@ -1007,93 +964,46 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }
 
 ## File: src/components/input/NumericInput.tsx
 ```tsx
-import { useState, useEffect } from 'react'
-
 interface NumericInputProps {
   value: number | null
   onChange: (value: number | null) => void
   unit?: string | null
   isDecimal?: boolean
-  allowNegative?: boolean
   placeholder?: string
 }
 
 /**
  * NumericInput - Large numeric input for scores
  * For decimal_2 format, stores value × 100
- * For golf_relative format, allows negative values (under par)
  */
 export function NumericInput({
   value,
   onChange,
   unit,
   isDecimal = false,
-  allowNegative = false,
   placeholder = '0'
 }: NumericInputProps) {
-  // Track the raw input string to handle typing "-" 
-  const [inputValue, setInputValue] = useState<string>(() => {
-    if (value === null) return ''
-    return isDecimal ? (value / 100).toFixed(2) : value.toString()
-  })
-
-  // Sync inputValue when value prop changes externally
-  useEffect(() => {
-    if (value === null) {
-      setInputValue('')
-    } else {
-      const newDisplay = isDecimal ? (value / 100).toFixed(2) : value.toString()
-      // Only update if different to avoid cursor jumping
-      if (inputValue !== newDisplay && inputValue !== '-') {
-        setInputValue(newDisplay)
-      }
-    }
-  }, [value, isDecimal])
+  const displayValue = value === null
+    ? ''
+    : isDecimal
+      ? (value / 100).toFixed(2)
+      : value.toString()
 
   const handleChange = (input: string) => {
-    // Allow empty
     if (input === '') {
-      setInputValue('')
       onChange(null)
       return
     }
 
-    // Allow just a minus sign while typing (don't update value yet)
-    if (input === '-' && allowNegative) {
-      setInputValue('-')
-      return
-    }
-
     if (isDecimal) {
-      // For decimal, allow negative if permitted
-      const pattern = allowNegative ? /^-?\d*\.?\d{0,2}$/ : /^\d*\.?\d{0,2}$/
-      if (pattern.test(input)) {
-        setInputValue(input)
-        const parsed = parseFloat(input)
-        if (!isNaN(parsed)) {
-          onChange(Math.round(parsed * 100))
-        }
+      const parsed = parseFloat(input)
+      if (!isNaN(parsed)) {
+        onChange(Math.round(parsed * 100))
       }
     } else {
-      // For integers
-      if (allowNegative) {
-        // Allow: optional minus at start, followed by digits
-        const pattern = /^-?\d*$/
-        if (pattern.test(input)) {
-          setInputValue(input)
-          const parsed = parseInt(input, 10)
-          if (!isNaN(parsed)) {
-            onChange(parsed)
-          }
-        }
-      } else {
-        // Only digits
-        const cleaned = input.replace(/\D/g, '')
-        setInputValue(cleaned)
-        const parsed = parseInt(cleaned, 10)
-        if (!isNaN(parsed)) {
-          onChange(parsed)
-        }
+      const parsed = parseInt(input.replace(/\D/g, ''))
+      if (!isNaN(parsed)) {
+        onChange(parsed)
       }
     }
   }
@@ -1102,8 +1012,8 @@ export function NumericInput({
     <div className="flex items-center justify-center gap-3">
       <input
         type="text"
-        inputMode={allowNegative ? 'text' : isDecimal ? 'decimal' : 'numeric'}
-        value={inputValue}
+        inputMode={isDecimal ? 'decimal' : 'numeric'}
+        value={displayValue}
         onChange={(e) => handleChange(e.target.value)}
         placeholder={placeholder}
         className={`
@@ -1119,6 +1029,7 @@ export function NumericInput({
     </div>
   )
 }
+
 ```
 
 ## File: src/components/input/PickerModal.tsx
@@ -2267,7 +2178,6 @@ export type { RealtimeScoreData } from './useScoreDetails'
 export { useManagePlayers } from './useManagePlayers'
 export { useManageGames } from './useManageGames'
 export { useManageGameModes } from './useManageGameModes'
-export { useManageGameDetails } from './useManageGameDetails'
 export { useManageScores } from './useManageScores'
 export type { ScoreWithDetails } from './useManageScores'
 ```
@@ -2931,195 +2841,6 @@ export function useLeaderboard(
 }
 ```
 
-## File: src/hooks/useManageGameDetails.ts
-```ts
-import { useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import type { GameDetail, ScoreFormat, ScoreDirection } from '@/lib/types'
-
-// Fields that can be updated on a game detail
-interface UpdateDetailFields {
-  name?: string
-  mode_id?: string | null
-  score_format?: ScoreFormat | null
-  score_direction?: ScoreDirection | null
-  score_unit?: string | null
-  sort_order?: number
-}
-
-interface UseManageGameDetailsResult {
-  details: GameDetail[]
-  loading: boolean
-  error: Error | null
-  fetchDetails: (gameId: string, modeId?: string | null) => Promise<void>
-  createDetail: (
-    gameId: string,
-    name: string,
-    modeId?: string | null,
-    scoreFormat?: ScoreFormat | null,
-    scoreDirection?: ScoreDirection | null,
-    scoreUnit?: string | null
-  ) => Promise<GameDetail | null>
-  updateDetail: (id: string, updates: UpdateDetailFields) => Promise<boolean>
-  deleteDetail: (id: string) => Promise<boolean>
-  clearDetails: () => void
-}
-
-/**
- * useManageGameDetails - Full CRUD operations for game details
- * 
- * Details are Level 2 of the hierarchy (Game → Mode → Detail)
- * Examples: tracks, courses, fish types, enemy types
- * 
- * Details can be:
- * - Shared across all modes (mode_id = null)
- * - Specific to one mode (mode_id = UUID)
- * 
- * Uses soft delete (is_active = false) to preserve score history
- */
-export function useManageGameDetails(): UseManageGameDetailsResult {
-  const [details, setDetails] = useState<GameDetail[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-
-  const fetchDetails = useCallback(async (gameId: string, modeId?: string | null) => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      let query = supabase
-        .from('game_details')
-        .select('*')
-        .eq('game_id', gameId)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .order('name', { ascending: true })
-
-      // If modeId provided, get shared details + mode-specific details
-      // If no modeId, get only shared details
-      if (modeId) {
-        query = query.or(`mode_id.is.null,mode_id.eq.${modeId}`)
-      } else {
-        query = query.is('mode_id', null)
-      }
-
-      const { data, error: queryError } = await query
-
-      if (queryError) throw queryError
-      setDetails((data as GameDetail[]) || [])
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch game details'))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const createDetail = useCallback(async (
-    gameId: string,
-    name: string,
-    modeId?: string | null,
-    scoreFormat?: ScoreFormat | null,
-    scoreDirection?: ScoreDirection | null,
-    scoreUnit?: string | null
-  ): Promise<GameDetail | null> => {
-    try {
-      const insertData = {
-        game_id: gameId,
-        name,
-        mode_id: modeId || null,
-        score_format: scoreFormat || null,
-        score_direction: scoreDirection || null,
-        score_unit: scoreUnit || null,
-      }
-
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: insertError } = await (supabase as any)
-        .from('game_details')
-        .insert(insertData)
-        .select()
-        .single()
-
-      if (insertError) throw insertError
-      
-      const newDetail = data as GameDetail
-      
-      // Update local state
-      setDetails(prev => [...prev, newDetail].sort((a, b) => {
-        const orderDiff = a.sort_order - b.sort_order
-        return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name)
-      }))
-      return newDetail
-    } catch (err) {
-      console.error('Failed to create game detail:', err)
-      return null
-    }
-  }, [])
-
-  const updateDetail = useCallback(async (
-    id: string,
-    updates: UpdateDetailFields
-  ): Promise<boolean> => {
-    try {
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
-        .from('game_details')
-        .update(updates)
-        .eq('id', id)
-
-      if (updateError) throw updateError
-      
-      // Update local state
-      setDetails(prev => 
-        prev.map(d => d.id === id ? { ...d, ...updates } : d)
-      )
-      return true
-    } catch (err) {
-      console.error('Failed to update game detail:', err)
-      return false
-    }
-  }, [])
-
-  const deleteDetail = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      // Soft delete - keeps score history intact
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
-        .from('game_details')
-        .update({ is_active: false })
-        .eq('id', id)
-
-      if (updateError) throw updateError
-      
-      // Remove from local state
-      setDetails(prev => prev.filter(d => d.id !== id))
-      return true
-    } catch (err) {
-      console.error('Failed to delete game detail:', err)
-      return false
-    }
-  }, [])
-
-  const clearDetails = useCallback(() => {
-    setDetails([])
-    setError(null)
-  }, [])
-
-  return {
-    details,
-    loading,
-    error,
-    fetchDetails,
-    createDetail,
-    updateDetail,
-    deleteDetail,
-    clearDetails,
-  }
-}
-```
-
 ## File: src/hooks/useManageGameModes.ts
 ```ts
 import { useState, useCallback } from 'react'
@@ -3134,19 +2855,19 @@ interface UseManageGameModesResult {
   createMode: (
     gameId: string,
     name: string,
-    scoreFormat?: ScoreFormat | null,
-    scoreDirection?: ScoreDirection | null,
-    scoreUnit?: string | null,
-    detailLabelOverride?: string | null
+    scoreDirection: ScoreDirection,
+    scoreFormat: ScoreFormat,
+    subtitle?: string | null,
+    scoreUnit?: string | null
   ) => Promise<GameMode | null>
   updateMode: (
     id: string,
     updates: {
       name?: string
-      score_format?: ScoreFormat | null
-      score_direction?: ScoreDirection | null
+      subtitle?: string | null
+      score_direction?: ScoreDirection
+      score_format?: ScoreFormat
       score_unit?: string | null
-      detail_label_override?: string | null
     }
   ) => Promise<boolean>
   deleteMode: (id: string) => Promise<boolean>
@@ -3187,10 +2908,10 @@ export function useManageGameModes(): UseManageGameModesResult {
   const createMode = useCallback(async (
     gameId: string,
     name: string,
-    scoreFormat?: ScoreFormat | null,
-    scoreDirection?: ScoreDirection | null,
-    scoreUnit?: string | null,
-    detailLabelOverride?: string | null
+    scoreDirection: ScoreDirection,
+    scoreFormat: ScoreFormat,
+    subtitle?: string | null,
+    scoreUnit?: string | null
   ): Promise<GameMode | null> => {
     try {
       const { data, error: insertError } = await (supabase as any)
@@ -3198,14 +2919,14 @@ export function useManageGameModes(): UseManageGameModesResult {
         .insert({
           game_id: gameId,
           name,
-          score_format: scoreFormat || null,
-          score_direction: scoreDirection || null,
+          subtitle: subtitle || null,
+          score_direction: scoreDirection,
+          score_format: scoreFormat,
           score_unit: scoreUnit || null,
-          detail_label_override: detailLabelOverride || null,
         })
         .select()
         .single()
-  
+
       if (insertError) throw insertError
       
       // Update local state
@@ -3224,13 +2945,12 @@ export function useManageGameModes(): UseManageGameModesResult {
     id: string,
     updates: {
       name?: string
-      score_format?: ScoreFormat | null
-      score_direction?: ScoreDirection | null
+      subtitle?: string | null
+      score_direction?: ScoreDirection
+      score_format?: ScoreFormat
       score_unit?: string | null
-      detail_label_override?: string | null
     }
   ): Promise<boolean> => {
-  
     try {
       const { error: updateError } = await (supabase as any)
         .from('game_modes')
@@ -3291,35 +3011,7 @@ export function useManageGameModes(): UseManageGameModesResult {
 ```ts
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Game, GameCategory, ScoreFormat, ScoreDirection } from '@/lib/types'
-
-// Options for creating a new game
-interface CreateGameOptions {
-  platform?: string | null
-  iconUrl?: string | null
-  modeLabel?: string
-  detailLabel?: string
-  hasModes?: boolean
-  hasDetails?: boolean
-  defaultScoreFormat?: ScoreFormat
-  defaultScoreDirection?: ScoreDirection
-  defaultScoreUnit?: string | null
-}
-
-// Fields that can be updated on a game
-interface UpdateGameFields {
-  name?: string
-  category?: GameCategory
-  platform?: string | null
-  icon_url?: string | null
-  mode_label?: string
-  detail_label?: string
-  has_modes?: boolean
-  has_details?: boolean
-  default_score_format?: ScoreFormat
-  default_score_direction?: ScoreDirection
-  default_score_unit?: string | null
-}
+import type { Game, GameCategory } from '@/lib/types'
 
 interface UseManageGamesResult {
   games: Game[]
@@ -3329,20 +3021,19 @@ interface UseManageGamesResult {
   createGame: (
     name: string,
     category: GameCategory,
-    options?: CreateGameOptions
+    platform?: string | null,
+    iconUrl?: string | null
   ) => Promise<Game | null>
-  updateGame: (id: string, updates: UpdateGameFields) => Promise<boolean>
+  updateGame: (
+    id: string,
+    updates: { name?: string; category?: GameCategory; platform?: string | null; icon_url?: string | null }
+  ) => Promise<boolean>
   deleteGame: (id: string) => Promise<boolean>
 }
 
 /**
  * useManageGames - Full CRUD operations for games
  * Uses soft delete (is_active = false) to preserve score history
- * 
- * Supports the 3-level hierarchy configuration:
- * - mode_label / detail_label: UI labels for dropdowns
- * - has_modes / has_details: whether to show those selection steps
- * - default_score_*: fallback score settings when mode/detail don't override
  */
 export function useManageGames(): UseManageGamesResult {
   const [games, setGames] = useState<Game[]>([])
@@ -3362,7 +3053,7 @@ export function useManageGames(): UseManageGamesResult {
         .order('name', { ascending: true })
 
       if (queryError) throw queryError
-      setGames((data as Game[]) || [])
+      setGames(data || [])
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch games'))
     } finally {
@@ -3373,41 +3064,29 @@ export function useManageGames(): UseManageGamesResult {
   const createGame = useCallback(async (
     name: string,
     category: GameCategory,
-    options?: CreateGameOptions
+    platform?: string | null,
+    iconUrl?: string | null
   ): Promise<Game | null> => {
     try {
-      const insertData = {
-        name,
-        category,
-        platform: options?.platform || null,
-        icon_url: options?.iconUrl || null,
-        mode_label: options?.modeLabel ?? 'Mode',
-        detail_label: options?.detailLabel ?? 'Track',
-        has_modes: options?.hasModes ?? true,
-        has_details: options?.hasDetails ?? true,
-        default_score_format: options?.defaultScoreFormat ?? 'integer',
-        default_score_direction: options?.defaultScoreDirection ?? 'higher_better',
-        default_score_unit: options?.defaultScoreUnit || null,
-      }
-
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: insertError } = await (supabase as any)
         .from('games')
-        .insert(insertData)
+        .insert({
+          name,
+          category,
+          platform: platform || null,
+          icon_url: iconUrl || null,
+        })
         .select()
         .single()
 
       if (insertError) throw insertError
       
-      const newGame = data as Game
-      
       // Update local state
-      setGames(prev => [...prev, newGame].sort((a, b) => {
+      setGames(prev => [...prev, data].sort((a, b) => {
         const orderDiff = a.sort_order - b.sort_order
         return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name)
       }))
-      return newGame
+      return data
     } catch (err) {
       console.error('Failed to create game:', err)
       return null
@@ -3416,11 +3095,9 @@ export function useManageGames(): UseManageGamesResult {
 
   const updateGame = useCallback(async (
     id: string,
-    updates: UpdateGameFields
+    updates: { name?: string; category?: GameCategory; platform?: string | null; icon_url?: string | null }
   ): Promise<boolean> => {
     try {
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (supabase as any)
         .from('games')
         .update(updates)
@@ -3442,8 +3119,6 @@ export function useManageGames(): UseManageGamesResult {
   const deleteGame = useCallback(async (id: string): Promise<boolean> => {
     try {
       // Soft delete - keeps score history intact
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (supabase as any)
         .from('games')
         .update({ is_active: false })
@@ -3602,14 +3277,12 @@ export interface ScoreWithDetails {
   id: string
   score: number
   achieved_at: string
-  player_id: string | null
   player_name: string | null
-  game_id: string
+  player_id: string | null
   game_name: string
-  mode_id: string | null
-  mode_name: string | null
-  detail_id: string | null
-  detail_name: string | null
+  game_id: string
+  mode_name: string
+  mode_id: string
   score_format: ScoreFormat
   score_unit: string | null
 }
@@ -3623,24 +3296,9 @@ interface UseManageScoresResult {
   deleteScore: (id: string) => Promise<boolean>
 }
 
-// Internal type for the join query result
-interface ScoreJoinRow {
-  id: string
-  score: number
-  achieved_at: string
-  player_id: string
-  game_id: string
-  mode_id: string | null
-  detail_id: string | null
-  players: { name: string } | null
-  games: { name: string; default_score_format: ScoreFormat; default_score_unit: string | null } | null
-  game_modes: { name: string; score_format: ScoreFormat | null; score_unit: string | null } | null
-  game_details: { name: string; score_format: ScoreFormat | null; score_unit: string | null } | null
-}
-
 /**
  * useManageScores - Fetch, update, and delete scores
- * Fetches from high_scores with joins for full context
+ * Fetches from leaderboard view for full context
  */
 export function useManageScores(): UseManageScoresResult {
   const [scores, setScores] = useState<ScoreWithDetails[]>([])
@@ -3652,58 +3310,39 @@ export function useManageScores(): UseManageScoresResult {
     setError(null)
     
     try {
-      // Fetch scores with related data via joins
-      // Type assertion needed because Supabase client types don't handle complex joins
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: queryError } = await (supabase as any)
-        .from('high_scores')
+        .from('leaderboard')
         .select(`
-          id,
+          score_id,
           score,
           achieved_at,
+          player_name,
           player_id,
+          game_name,
           game_id,
-          mode_id,
-          detail_id,
-          players ( name ),
-          games ( name, default_score_format, default_score_unit ),
-          game_modes ( name, score_format, score_unit ),
-          game_details ( name, score_format, score_unit )
+          mode_name,
+          game_mode_id,
+          score_format,
+          score_unit
         `)
         .order('achieved_at', { ascending: false })
         .limit(limit)
 
       if (queryError) throw queryError
       
-      const rows = (data || []) as ScoreJoinRow[]
-      
-      const formatted: ScoreWithDetails[] = rows.map((row) => {
-        // Extract nested data
-        const player = row.players
-        const game = row.games
-        const mode = row.game_modes
-        const detail = row.game_details
-        
-        // Calculate effective format/unit using inheritance: detail → mode → game
-        const effectiveFormat = detail?.score_format ?? mode?.score_format ?? game?.default_score_format ?? 'integer'
-        const effectiveUnit = detail?.score_unit ?? mode?.score_unit ?? game?.default_score_unit ?? null
-
-        return {
-          id: row.id,
-          score: row.score,
-          achieved_at: row.achieved_at,
-          player_name: player?.name || null,
-          player_id: row.player_id,
-          game_name: game?.name || 'Unknown Game',
-          game_id: row.game_id,
-          mode_name: mode?.name || null,
-          mode_id: row.mode_id,
-          detail_name: detail?.name || null,
-          detail_id: row.detail_id,
-          score_format: effectiveFormat,
-          score_unit: effectiveUnit,
-        }
-      })
+      const formatted: ScoreWithDetails[] = (data || []).map((row: any) => ({
+        id: row.score_id,
+        score: row.score,
+        achieved_at: row.achieved_at,
+        player_name: row.player_name,
+        player_id: row.player_id,
+        game_name: row.game_name,
+        game_id: row.game_id,
+        mode_name: row.mode_name,
+        mode_id: row.game_mode_id,
+        score_format: row.score_format,
+        score_unit: row.score_unit,
+      }))
       
       setScores(formatted)
     } catch (err) {
@@ -3715,8 +3354,6 @@ export function useManageScores(): UseManageScoresResult {
 
   const updateScore = useCallback(async (id: string, newScore: number): Promise<boolean> => {
     try {
-      // Type assertion needed because Supabase client types don't match our schema
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (supabase as any)
         .from('high_scores')
         .update({ score: newScore })
@@ -3911,7 +3548,7 @@ export function useRealtimeScores(onNewScore: (score: HighScore) => void) {
 ```ts
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { ScoreFormat, ScoreDirection } from '@/lib/types'
+import type { LeaderboardEntry, ScoreFormat } from '@/lib/types'
 
 export interface RealtimeScoreData {
   scoreId: string
@@ -3920,40 +3557,13 @@ export interface RealtimeScoreData {
   scoreFormat: ScoreFormat
   scoreUnit: string | null
   gameName: string
-  modeName: string | null
-  detailName: string | null
+  modeName: string
   rank: number
-}
-
-// Internal type for the join query result
-interface ScoreJoinResult {
-  id: string
-  score: number
-  game_id: string
-  mode_id: string | null
-  detail_id: string | null
-  players: { name: string } | null
-  games: { name: string } | null
-  game_modes: { name: string } | null
-  game_details: { name: string } | null
-}
-
-// Internal type for score settings RPC result
-interface ScoreSettingsRow {
-  score_format: ScoreFormat
-  score_direction: ScoreDirection
-  score_unit: string | null
-}
-
-// Internal type for leaderboard RPC result
-interface LeaderboardRow {
-  rank: number
-  score_id: string
 }
 
 /**
  * Hook to fetch full score details for realtime alerts
- * Fetches score with related data and calculates rank using RPC
+ * Queries the leaderboard view and calculates rank
  */
 export function useScoreDetails() {
   const [loading, setLoading] = useState(false)
@@ -3963,23 +3573,11 @@ export function useScoreDetails() {
     setLoading(true)
     
     try {
-      // Fetch the score with all related data
-      // Type assertion needed because Supabase client types don't handle complex joins
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: scoreData, error: scoreError } = await (supabase as any)
-        .from('high_scores')
-        .select(`
-          id,
-          score,
-          game_id,
-          mode_id,
-          detail_id,
-          players ( name ),
-          games ( name ),
-          game_modes ( name ),
-          game_details ( name )
-        `)
-        .eq('id', scoreId)
+      // Fetch the score details from the leaderboard view
+      const { data: scoreData, error: scoreError } = await supabase
+        .from('leaderboard')
+        .select('*')
+        .eq('score_id', scoreId)
         .single()
 
       if (scoreError || !scoreData) {
@@ -3988,62 +3586,39 @@ export function useScoreDetails() {
         return null
       }
 
-      const scoreRow = scoreData as ScoreJoinResult
+      const entry = scoreData as LeaderboardEntry
 
-      // Get effective score settings using RPC
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: settings, error: settingsError } = await (supabase as any).rpc('get_score_settings', {
-        p_game_id: scoreRow.game_id,
-        p_mode_id: scoreRow.mode_id,
-        p_detail_id: scoreRow.detail_id,
-      })
-
-      if (settingsError) {
-        console.error('Error fetching score settings:', settingsError)
-        setLoading(false)
-        return null
-      }
-
-      const settingsArray = settings as ScoreSettingsRow[] | null
-      const effectiveSettings: ScoreSettingsRow = settingsArray?.[0] || {
-        score_format: 'integer',
-        score_direction: 'higher_better',
-        score_unit: null,
-      }
-
-      // Get leaderboard to calculate rank
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: leaderboard, error: leaderboardError } = await (supabase as any).rpc('get_leaderboard', {
-        p_game_id: scoreRow.game_id,
-        p_mode_id: scoreRow.mode_id,
-        p_detail_id: scoreRow.detail_id,
-        p_limit: 100,
-      })
+      // Calculate rank by counting how many scores are better
+      const { count, error: rankError } = await supabase
+        .from('high_scores')
+        .select('*', { count: 'exact', head: true })
+        .eq('game_mode_id', entry.game_mode_id)
+        .lt('score', entry.score_direction === 'lower_better' ? entry.score : -entry.score)
 
       let rank = 1
-      if (!leaderboardError && leaderboard) {
-        const entries = leaderboard as LeaderboardRow[]
-        const foundEntry = entries.find((e) => e.score_id === scoreId)
-        if (foundEntry) {
-          rank = Number(foundEntry.rank)
+      if (!rankError && count !== null) {
+        // For higher_better, we need different logic
+        if (entry.score_direction === 'higher_better') {
+          const { count: betterCount } = await supabase
+            .from('high_scores')
+            .select('*', { count: 'exact', head: true })
+            .eq('game_mode_id', entry.game_mode_id)
+            .gt('score', entry.score)
+          
+          rank = (betterCount ?? 0) + 1
+        } else {
+          rank = count + 1
         }
       }
 
-      // Extract nested data
-      const playerData = scoreRow.players
-      const gameData = scoreRow.games
-      const modeData = scoreRow.game_modes
-      const detailData = scoreRow.game_details
-
       const result: RealtimeScoreData = {
-        scoreId: scoreRow.id,
-        playerName: playerData?.name || 'Unknown',
-        score: scoreRow.score,
-        scoreFormat: effectiveSettings.score_format,
-        scoreUnit: effectiveSettings.score_unit,
-        gameName: gameData?.name || 'Unknown Game',
-        modeName: modeData?.name || null,
-        detailName: detailData?.name || null,
+        scoreId: entry.score_id,
+        playerName: entry.player_name || entry.team_name || 'Unknown',
+        score: entry.score,
+        scoreFormat: entry.score_format,
+        scoreUnit: entry.score_unit,
+        gameName: entry.game_name,
+        modeName: entry.mode_name,
         rank,
       }
 
@@ -5102,18 +4677,11 @@ export function formatScore(
       return unit ? `${decimal} ${unit}` : decimal
     }
 
-        case 'level': {
+    case 'level': {
       // Display as World X-Y (e.g., 84 -> "World 8-4")
       const world = Math.floor(value / 10)
       const level = value % 10
       return `World ${world}-${level}`
-    }
-
-    case 'golf_relative': {
-      // Display relative to par: -4, E, +3
-      if (value === 0) return 'E'
-      if (value > 0) return `+${value}`
-      return value.toString()
     }
 
     case 'integer':
@@ -5294,13 +4862,12 @@ import {
 import { CelebrationOverlay } from '@/components/overlays'
 import { useGames } from '@/hooks/useGames'
 import { useGameModes } from '@/hooks/useGameModes'
-import { useGameDetails } from '@/hooks/useGameDetails'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useSubmitScore } from '@/hooks/useSubmitScore'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
-import type { ScoreFormat, ScoreDirection } from '@/lib/types'
+import type { ScoreFormat } from '@/lib/types'
 
-type PickerType = 'game' | 'mode' | 'detail' | 'player' | null
+type PickerType = 'game' | 'mode' | 'player' | null
 
 /**
  * AddScore - Multi-step score entry form
@@ -5309,7 +4876,6 @@ type PickerType = 'game' | 'mode' | 'detail' | 'player' | null
  * Supports URL params for pre-population:
  * - ?gameId=xxx - Pre-select a game
  * - ?modeId=xxx - Pre-select a mode (requires gameId)
- * - ?detailId=xxx - Pre-select a detail (requires gameId + modeId)
  */
 export function AddScore() {
   const navigate = useNavigate()
@@ -5321,9 +4887,6 @@ export function AddScore() {
   )
   const [selectedModeId, setSelectedModeId] = useState<string | null>(
     searchParams.get('modeId')
-  )
-  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(
-    searchParams.get('detailId')
   )
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [scoreValue, setScoreValue] = useState<number | null>(null)
@@ -5337,17 +4900,11 @@ export function AddScore() {
   // Data hooks
   const { games, loading: gamesLoading } = useGames()
   const { modes, loading: modesLoading } = useGameModes(selectedGameId)
-  const { details, loading: detailsLoading } = useGameDetails(selectedGameId, selectedModeId)
   const { players, loading: playersLoading, createPlayer } = usePlayers()
   const { submitScore, submitting, error: submitError } = useSubmitScore()
 
-  // Fetch current leaderboard to calculate rank
-  const { entries: currentLeaderboard } = useLeaderboard(
-    selectedGameId,
-    selectedModeId,
-    selectedDetailId,
-    100
-  )
+  // Fetch current leaderboard to calculate rank (fetch more to get accurate rank)
+  const { data: currentLeaderboard } = useLeaderboard(selectedModeId, 100)
 
   // Derived display values
   const selectedGame = useMemo(
@@ -5360,62 +4917,21 @@ export function AddScore() {
     [modes, selectedModeId]
   )
 
-  const selectedDetail = useMemo(
-    () => details.find((d) => d.id === selectedDetailId) || null,
-    [details, selectedDetailId]
-  )
-
   const selectedPlayer = useMemo(
     () => players.find((p) => p.id === selectedPlayerId) || null,
     [players, selectedPlayerId]
   )
 
-  // Does this game use details?
-  const gameHasDetails = selectedGame?.has_details ?? false
-  
-  // Does this game use modes?
-  const gameHasModes = selectedGame?.has_modes ?? true
-
-  // Get effective score format/direction (detail → mode → game defaults)
-  const effectiveScoreFormat: ScoreFormat = useMemo(() => {
-    if (selectedDetail?.score_format) return selectedDetail.score_format
-    if (selectedMode?.score_format) return selectedMode.score_format
-    if (selectedGame?.default_score_format) return selectedGame.default_score_format
-    return 'integer'
-  }, [selectedDetail, selectedMode, selectedGame])
-
-  const effectiveScoreDirection: ScoreDirection = useMemo(() => {
-    if (selectedDetail?.score_direction) return selectedDetail.score_direction
-    if (selectedMode?.score_direction) return selectedMode.score_direction
-    if (selectedGame?.default_score_direction) return selectedGame.default_score_direction
-    return 'higher_better'
-  }, [selectedDetail, selectedMode, selectedGame])
-
-  const effectiveScoreUnit: string | null = useMemo(() => {
-    if (selectedDetail?.score_unit) return selectedDetail.score_unit
-    if (selectedMode?.score_unit) return selectedMode.score_unit
-    if (selectedGame?.default_score_unit) return selectedGame.default_score_unit
-    return null
-  }, [selectedDetail, selectedMode, selectedGame])
-
   // Clear dependent fields when game changes
   const handleGameSelect = (gameId: string) => {
     setSelectedGameId(gameId)
-    setSelectedModeId(null)
-    setSelectedDetailId(null)
-    setScoreValue(null)
+    setSelectedModeId(null) // Clear mode since it depends on game
+    setScoreValue(null) // Clear score since input type may change
   }
 
-  // Clear detail and score when mode changes
+  // Clear score when mode changes (input type may differ)
   const handleModeSelect = (modeId: string) => {
     setSelectedModeId(modeId)
-    setSelectedDetailId(null)
-    setScoreValue(null)
-  }
-
-  // Clear score when detail changes (format may differ)
-  const handleDetailSelect = (detailId: string) => {
-    setSelectedDetailId(detailId)
     setScoreValue(null)
   }
 
@@ -5429,15 +4945,17 @@ export function AddScore() {
 
   // Calculate what rank this score would achieve
   const calculateRank = (score: number): number => {
-    if (currentLeaderboard.length === 0) return 1
+    if (!selectedMode || currentLeaderboard.length === 0) return 1
 
-    const isLowerBetter = effectiveScoreDirection === 'lower_better'
+    const isLowerBetter = selectedMode.score_direction === 'lower_better'
     let rank = 1
 
     for (const entry of currentLeaderboard) {
       if (isLowerBetter) {
+        // For lower_better: if new score is >= existing, it ranks below
         if (score >= entry.score) rank++
       } else {
+        // For higher_better: if new score is <= existing, it ranks below
         if (score <= entry.score) rank++
       }
     }
@@ -5445,11 +4963,10 @@ export function AddScore() {
     return rank
   }
 
-  // Form validation - detail is optional based on game config
+  // Form validation
   const isFormComplete = Boolean(
     selectedGameId &&
-    (!gameHasModes || selectedModeId) &&
-    (!gameHasDetails || selectedDetailId) &&
+    selectedModeId &&
     selectedPlayerId &&
     scoreValue !== null
   )
@@ -5457,17 +4974,16 @@ export function AddScore() {
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!selectedGameId || !selectedPlayerId || scoreValue === null) return
+    if (!selectedModeId || !selectedPlayerId || scoreValue === null) return
 
     const result = await submitScore({
-      gameId: selectedGameId,
-      modeId: selectedModeId,
-      detailId: selectedDetailId,
+      gameModeId: selectedModeId,
       playerId: selectedPlayerId,
       score: scoreValue,
     })
 
     if (result.success) {
+      // Calculate rank before showing celebration
       const rank = calculateRank(scoreValue)
       setSubmittedRank(rank)
       setShowCelebration(true)
@@ -5480,8 +4996,9 @@ export function AddScore() {
     navigate('/')
   }
 
-  // Handle back/cancel
+  // Handle back/cancel - go back or to home
   const handleBack = () => {
+    // If there's history, go back; otherwise go home
     if (window.history.length > 1) {
       navigate(-1)
     } else {
@@ -5489,22 +5006,19 @@ export function AddScore() {
     }
   }
 
-  // Render appropriate score input based on effective score format
+  // Render appropriate score input based on mode's score_format
   const renderScoreInput = () => {
-    // Need mode selected (or game without modes) before showing score input
-    const readyForScore = gameHasModes ? selectedModeId : selectedGameId
-    
-    if (!readyForScore) {
+    if (!selectedMode) {
       return (
         <div className="h-[64px] flex items-center justify-center">
-          <p className="text-text-muted">
-            Select a {gameHasModes ? selectedGame?.mode_label?.toLowerCase() || 'mode' : 'game'} first
-          </p>
+          <p className="text-text-muted">Select a game mode first</p>
         </div>
       )
     }
 
-    switch (effectiveScoreFormat) {
+    const format = selectedMode.score_format as ScoreFormat
+
+    switch (format) {
       case 'time_ms':
         return (
           <TimeInput
@@ -5528,30 +5042,18 @@ export function AddScore() {
           <NumericInput
             value={scoreValue}
             onChange={setScoreValue}
-            unit={effectiveScoreUnit}
+            unit={selectedMode.score_unit}
             isDecimal={true}
           />
         )
 
-      case 'golf_relative':
-        return (
-          <NumericInput
-            value={scoreValue}
-            onChange={setScoreValue}
-            unit={effectiveScoreUnit}
-            isDecimal={false}
-            allowNegative={true}
-          />
-        )
-
       case 'integer':
-      case 'level':
       default:
         return (
           <NumericInput
             value={scoreValue}
             onChange={setScoreValue}
-            unit={effectiveScoreUnit}
+            unit={selectedMode.score_unit}
             isDecimal={false}
           />
         )
@@ -5560,7 +5062,10 @@ export function AddScore() {
 
   // Get input label based on score format
   const getScoreInputLabel = (): string => {
-    if (effectiveScoreFormat === 'time_ms' || effectiveScoreFormat === 'time_seconds') {
+    if (!selectedMode) return 'Score'
+
+    const format = selectedMode.score_format as ScoreFormat
+    if (format === 'time_ms' || format === 'time_seconds') {
       return 'Enter time'
     }
     return 'Enter score'
@@ -5580,16 +5085,9 @@ export function AddScore() {
     modes.map((m) => ({
       id: m.id,
       label: m.name,
+      sublabel: m.subtitle
     })),
     [modes]
-  )
-
-  const detailOptions = useMemo(() =>
-    details.map((d) => ({
-      id: d.id,
-      label: d.name,
-    })),
-    [details]
   )
 
   const playerOptions = useMemo(() =>
@@ -5599,10 +5097,6 @@ export function AddScore() {
     })),
     [players]
   )
-
-  // Get labels from game config
-  const modeLabel = selectedGame?.mode_label || 'Mode'
-  const detailLabel = selectedGame?.detail_label || 'Track'
 
   return (
     <KioskLayout>
@@ -5625,41 +5119,20 @@ export function AddScore() {
             disabled={gamesLoading}
           />
 
-          {/* Mode selector - shown if game has modes */}
-          {gameHasModes && (
-            <SelectField
-              label={modeLabel}
-              value={selectedMode?.name || null}
-              placeholder={
-                !selectedGameId
-                  ? 'Select a game first'
-                  : modesLoading
-                    ? 'Loading...'
-                    : `Select ${modeLabel.toLowerCase()}`
-              }
-              onPress={() => setActivePicker('mode')}
-              disabled={!selectedGameId || modesLoading}
-            />
-          )}
-
-          {/* Detail selector - shown if game has details */}
-          {gameHasDetails && (
-            <SelectField
-              label={detailLabel}
-              value={selectedDetail?.name || null}
-              placeholder={
-                !selectedModeId && gameHasModes
-                  ? `Select ${modeLabel.toLowerCase()} first`
-                  : !selectedGameId
-                    ? 'Select a game first'
-                    : detailsLoading
-                      ? 'Loading...'
-                      : `Select ${detailLabel.toLowerCase()}`
-              }
-              onPress={() => setActivePicker('detail')}
-              disabled={(!selectedModeId && gameHasModes) || !selectedGameId || detailsLoading}
-            />
-          )}
+          {/* Mode selector - disabled until game is selected */}
+          <SelectField
+            label="Mode"
+            value={selectedMode?.name || null}
+            placeholder={
+              !selectedGameId
+                ? 'Select a game first'
+                : modesLoading
+                  ? 'Loading...'
+                  : 'Select a mode'
+            }
+            onPress={() => setActivePicker('mode')}
+            disabled={!selectedGameId || modesLoading}
+          />
 
           {/* Player selector */}
           <SelectField
@@ -5670,7 +5143,7 @@ export function AddScore() {
             disabled={playersLoading}
           />
 
-          {/* Score input */}
+          {/* Score input - type varies by mode */}
           <div className="pt-4">
             <p className="text-sm text-text-secondary mb-3 text-center">
               {getScoreInputLabel()}
@@ -5688,7 +5161,7 @@ export function AddScore() {
           )}
         </div>
 
-        {/* Submit button */}
+        {/* Submit button - fixed at bottom */}
         <div className="p-md border-t border-background-elevated">
           <button
             onClick={handleSubmit}
@@ -5725,26 +5198,11 @@ export function AddScore() {
       <PickerModal
         isOpen={activePicker === 'mode'}
         onClose={() => setActivePicker(null)}
-        title={`Select ${modeLabel}`}
+        title="Select Mode"
         options={modeOptions}
         selectedId={selectedModeId}
         onSelect={handleModeSelect}
-        emptyMessage={selectedGameId ? `No ${modeLabel.toLowerCase()}s for this game` : 'Select a game first'}
-      />
-
-      {/* Detail picker modal */}
-      <PickerModal
-        isOpen={activePicker === 'detail'}
-        onClose={() => setActivePicker(null)}
-        title={`Select ${detailLabel}`}
-        options={detailOptions}
-        selectedId={selectedDetailId}
-        onSelect={handleDetailSelect}
-        emptyMessage={
-          selectedModeId || !gameHasModes
-            ? `No ${detailLabel.toLowerCase()}s available`
-            : `Select ${modeLabel.toLowerCase()} first`
-        }
+        emptyMessage={selectedGameId ? 'No modes for this game' : 'Select a game first'}
       />
 
       {/* Player picker modal */}
@@ -5772,21 +5230,22 @@ export function AddScore() {
         onCreate={handleCreatePlayer}
       />
 
-      {/* Celebration overlay */}
-      {selectedPlayer && scoreValue !== null && (
+      {/* Celebration overlay - shown after successful submission */}
+      {selectedPlayer && selectedMode && scoreValue !== null && (
         <CelebrationOverlay
           isOpen={showCelebration}
           onClose={handleCelebrationClose}
           playerName={selectedPlayer.name}
           score={scoreValue}
-          scoreFormat={effectiveScoreFormat}
-          scoreUnit={effectiveScoreUnit}
+          scoreFormat={selectedMode.score_format as ScoreFormat}
+          scoreUnit={selectedMode.score_unit}
           rank={submittedRank}
         />
       )}
     </KioskLayout>
   )
 }
+
 ```
 
 ## File: src/pages/CategorySelection.tsx
@@ -5875,146 +5334,6 @@ export function CategorySelection() {
   )
 }
 
-```
-
-## File: src/pages/DetailSelection.tsx
-```tsx
-import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { KioskLayout } from '@/components/layout/KioskLayout'
-import { BrowseHeader } from '@/components/layout/BrowseHeader'
-import { DetailCard } from '@/components/cards/DetailCard'
-import { useGameDetails } from '@/hooks/useGameDetails'
-import { useGame } from '@/hooks/useGame'
-import { useGameMode } from '@/hooks/useGameMode'
-import { useIdleTimer } from '@/hooks/useIdleTimer'
-
-/**
- * DetailSelection - List of details (tracks, courses, etc.) for a specific game mode
- * Route: /browse/:category/:gameId/:modeId
- * 
- * If the game has no details (has_details=false), ModeSelection should skip this page
- * and navigate directly to LeaderboardView.
- */
-export function DetailSelection() {
-  const navigate = useNavigate()
-  const { category, gameId, modeId } = useParams<{
-    category: string
-    gameId: string
-    modeId: string
-  }>()
-  
-  const { game: currentGame } = useGame(gameId || null)
-  const { mode: currentMode } = useGameMode(modeId || null)
-  const { details, loading, error } = useGameDetails(gameId || null, modeId || null)
-  const { isIdle, resetTimer } = useIdleTimer(30000)
-
-  // Return to idle display when idle
-  useEffect(() => {
-    if (isIdle) {
-      navigate('/')
-    }
-  }, [isIdle, navigate])
-
-  // If game doesn't have details, redirect to leaderboard without detailId
-  useEffect(() => {
-    if (currentGame && !currentGame.has_details) {
-      navigate(`/browse/${category}/${gameId}/${modeId}/all`, { replace: true })
-    }
-  }, [currentGame, category, gameId, modeId, navigate])
-
-  const handleDetailClick = (detailId: string) => {
-    resetTimer()
-    navigate(`/browse/${category}/${gameId}/${modeId}/${detailId}`)
-  }
-
-  const handleViewAll = () => {
-    resetTimer()
-    // Navigate to leaderboard with "all" as detailId to show all scores for this mode
-    navigate(`/browse/${category}/${gameId}/${modeId}/all`)
-  }
-
-  const handleBack = () => {
-    navigate(`/browse/${category}/${gameId}`)
-  }
-
-  const handleAddScore = () => {
-    resetTimer()
-    navigate('/add-score')
-  }
-
-  // Get the label for details from game config
-  const detailLabel = currentGame?.detail_label || 'Track'
-
-  return (
-    <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
-        <BrowseHeader
-          backLabel={currentMode?.name || 'Back'}
-          onBack={handleBack}
-          onAddScore={handleAddScore}
-        />
-
-        {/* Mode title */}
-        <div className="h-[48px] px-md flex items-center gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-text-primary">
-              {currentGame?.name} — {currentMode?.name}
-            </h2>
-            <p className="text-sm text-text-secondary">
-              Select {detailLabel.toLowerCase()}
-            </p>
-          </div>
-        </div>
-
-        {/* Details list */}
-        <div className="flex-1 overflow-y-auto px-md py-2 space-y-2">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-text-secondary">Loading {detailLabel.toLowerCase()}s...</p>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <p className="text-red-500 mb-2">Error loading {detailLabel.toLowerCase()}s</p>
-              <p className="text-text-muted text-sm text-center">{error.message}</p>
-            </div>
-          ) : details.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
-              <p className="text-text-secondary">No {detailLabel.toLowerCase()}s configured</p>
-              <button
-                onClick={handleViewAll}
-                className="h-[56px] px-6 bg-category-golf text-white font-semibold rounded-xl"
-              >
-                View All Scores
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* View all option at top */}
-              <button
-                onClick={handleViewAll}
-                className="w-full h-[56px] flex items-center justify-center gap-2 bg-background-elevated text-text-secondary font-medium rounded-xl active:bg-background-card mb-2"
-              >
-                View All {detailLabel}s
-              </button>
-              
-              {/* Individual details */}
-              {details.map((detail, index) => (
-                <DetailCard
-                  key={detail.id}
-                  detail={detail}
-                  onClick={() => handleDetailClick(detail.id)}
-                  index={index}
-                />
-              ))}
-            </>
-          )}
-        </div>
-      </div>
-    </KioskLayout>
-  )
-}
 ```
 
 ## File: src/pages/GameSelection.tsx
@@ -6164,12 +5483,8 @@ export function IdleDisplay() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentMode = modes[currentIndex]
 
-  // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
-  const { entries: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
-    currentMode?.game_id || null,
-    currentMode?.id || null,
-    null, // detailId - not applicable in idle display
-    4     // limit - show top 4
+  const { data: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
+    currentMode?.id || null
   )
 
   // Realtime alert state
@@ -6305,6 +5620,7 @@ export function IdleDisplay() {
                   </h1>
                   <p className="text-sm text-text-secondary">
                     {currentMode?.name}
+                    {currentMode?.subtitle && ` — ${currentMode.subtitle}`}
                   </p>
                 </div>
               </div>
@@ -6347,12 +5663,12 @@ export function IdleDisplay() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <ScoreRow
-                      rank={entry.rank}
-                      playerName={entry.player_name || 'Unknown'}
-                      playerAvatar={entry.player_avatar}
+                      rank={index + 1}
+                      playerName={entry.player_name || entry.team_name || 'Unknown'}
+                      playerAvatar={entry.player_avatar || entry.team_avatar}
                       score={entry.score}
-                      scoreFormat={entry.effective_format}
-                      scoreUnit={entry.effective_unit}
+                      scoreFormat={entry.score_format}
+                      scoreUnit={entry.score_unit}
                       className="card"
                     />
                   </motion.div>
@@ -6412,7 +5728,7 @@ export function IdleDisplay() {
           scoreFormat={alertData.scoreFormat}
           scoreUnit={alertData.scoreUnit}
           gameName={alertData.gameName}
-          modeName={alertData.modeName ?? ''}
+          modeName={alertData.modeName}
           rank={alertData.rank}
         />
       )}
@@ -6431,7 +5747,6 @@ export { IdleDisplay } from './IdleDisplay'
 export { CategorySelection } from './CategorySelection'
 export { GameSelection } from './GameSelection'
 export { ModeSelection } from './ModeSelection'
-export { DetailSelection } from './DetailSelection'
 export { LeaderboardView } from './LeaderboardView'
 export { AddScore } from './AddScore'
 export { Settings } from './Settings'
@@ -6453,33 +5768,17 @@ import { useGameMode } from '@/hooks/useGameMode'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 
 /**
- * LeaderboardView - Full leaderboard for a specific game/mode/detail combination
- * Route: /browse/:category/:gameId/:modeId/:detailId
- * 
- * detailId can be:
- * - A valid UUID: show scores for that specific detail
- * - "all": show all scores for the mode (no detail filter)
+ * LeaderboardView - Full leaderboard for a specific game mode
+ * Route: /browse/:category/:gameId/:modeId
  */
 export function LeaderboardView() {
   const navigate = useNavigate()
-  const { category, gameId, modeId, detailId } = useParams<{
+  const { category, gameId, modeId } = useParams<{
     category: string
     gameId: string
     modeId: string
-    detailId: string
   }>()
-  
-  // Determine if we're filtering by detail or showing all
-  const effectiveDetailId = detailId === 'all' ? null : (detailId || null)
-  
-  // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
-  const { entries: scores, loading, error } = useLeaderboard(
-    gameId || null,
-    modeId || null,
-    effectiveDetailId,
-    10 // limit
-  )
-  
+  const { data: scores, loading, error } = useLeaderboard(modeId || null, 10)
   const { game: currentGame } = useGame(gameId || null)
   const { mode: currentMode } = useGameMode(modeId || null)
   const { isIdle, resetTimer } = useIdleTimer(30000)
@@ -6493,12 +5792,7 @@ export function LeaderboardView() {
 
   const handleBack = () => {
     resetTimer()
-    // Go back to detail selection if game has details, otherwise mode selection
-    if (currentGame?.has_details) {
-      navigate(`/browse/${category}/${gameId}/${modeId}`)
-    } else {
-      navigate(`/browse/${category}/${gameId}`)
-    }
+    navigate(`/browse/${category}/${gameId}`)
   }
 
   const handleAddScore = () => {
@@ -6506,32 +5800,23 @@ export function LeaderboardView() {
     navigate('/add-score')
   }
 
-  // Build title based on what's selected
-  const buildTitle = () => {
-    if (!currentMode) return 'Leaderboard'
-    return currentMode.name
-  }
-
   return (
     <KioskLayout>
       <div className="h-full flex flex-col">
         {/* Header */}
         <BrowseHeader
-          backLabel={currentGame?.has_details ? (currentGame?.detail_label || 'Back') : (currentGame?.name || 'Back')}
+          backLabel={currentGame?.name || 'Back'}
           onBack={handleBack}
           onAddScore={handleAddScore}
         />
 
-        {/* Mode/Detail title */}
+        {/* Mode title */}
         <div className="h-[56px] px-md flex flex-col justify-center">
           <h2 className="text-lg font-bold text-text-primary">
-            {buildTitle()}
+            {currentMode?.name || 'Leaderboard'}
           </h2>
-          {detailId && detailId !== 'all' && (
-            <p className="text-sm text-text-secondary">
-              {/* Detail name would need to be fetched - for now show generic */}
-              Filtered view
-            </p>
+          {currentMode?.subtitle && (
+            <p className="text-sm text-text-secondary">{currentMode.subtitle}</p>
           )}
         </div>
 
@@ -6570,12 +5855,12 @@ export function LeaderboardView() {
                 transition={{ delay: index * 0.03 }}
               >
                 <ScoreRow
-                  rank={entry.rank}
-                  playerName={entry.player_name || 'Unknown'}
-                  playerAvatar={entry.player_avatar}
+                  rank={index + 1}
+                  playerName={entry.player_name || entry.team_name || 'Unknown'}
+                  playerAvatar={entry.player_avatar || entry.team_avatar || null}
                   score={entry.score}
-                  scoreFormat={entry.effective_format}
-                  scoreUnit={entry.effective_unit || undefined}
+                  scoreFormat={entry.score_format}
+                  scoreUnit={entry.score_unit || undefined}
                   className="card"
                 />
               </motion.div>
@@ -6598,7 +5883,6 @@ import {
   Users, 
   Gamepad2, 
   Trophy,
-  Layers,
   Plus,
   Pencil,
   Trash2,
@@ -6611,13 +5895,12 @@ import { PlayerAvatar } from '@/components/display'
 import { useManagePlayers } from '@/hooks/useManagePlayers'
 import { useManageGames } from '@/hooks/useManageGames'
 import { useManageGameModes } from '@/hooks/useManageGameModes'
-import { useManageGameDetails } from '@/hooks/useManageGameDetails'
 import { useManageScores, type ScoreWithDetails } from '@/hooks/useManageScores'
 import { useKioskStore } from '@/stores/kioskStore'
-import { formatScore } from '@/lib/utils'
-import type { Player, Game, GameMode, GameDetail, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
+import { formatScore, getInitials, getPlayerColor } from '@/lib/utils'
+import type { Player, Game, GameMode, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
 
-type Tab = 'players' | 'games' | 'details' | 'scores'
+type Tab = 'players' | 'games' | 'scores'
 
 // Category options for game form
 const CATEGORIES: { value: GameCategory; label: string }[] = [
@@ -6636,7 +5919,6 @@ const SCORE_FORMATS: { value: ScoreFormat; label: string }[] = [
   { value: 'time_ms', label: 'Time (2:22.567)' },
   { value: 'time_seconds', label: 'Time (2:22)' },
   { value: 'decimal_2', label: 'Decimal (98.45%)' },
-  { value: 'golf_relative', label: 'Golf (+3, E, -2)' },
   { value: 'level', label: 'Level (8-4)' },
 ]
 
@@ -6646,7 +5928,7 @@ const SCORE_DIRECTIONS: { value: ScoreDirection; label: string }[] = [
 ]
 
 /**
- * Manage - Hub for managing players, games, modes, details, and scores
+ * Manage - Hub for managing players, games, modes, and scores
  * Uses tabs to navigate between sections
  */
 export function Manage() {
@@ -6675,24 +5957,11 @@ export function Manage() {
   const [editingMode, setEditingMode] = useState<GameMode | null>(null)
   const [showModeForm, setShowModeForm] = useState(false)
   const [modeName, setModeName] = useState('')
+  const [modeSubtitle, setModeSubtitle] = useState('')
   const [modeFormat, setModeFormat] = useState<ScoreFormat>('integer')
   const [modeDirection, setModeDirection] = useState<ScoreDirection>('higher_better')
   const [modeUnit, setModeUnit] = useState('')
   const [deletingMode, setDeletingMode] = useState<GameMode | null>(null)
-
-  // Details state
-  const { details, loading: detailsLoading, fetchDetails, createDetail, updateDetail, deleteDetail, clearDetails } = useManageGameDetails()
-  const [detailsGameId, setDetailsGameId] = useState<string | null>(null)
-  const [detailsModeId, setDetailsModeId] = useState<string | null>(null)
-  const [editingDetail, setEditingDetail] = useState<GameDetail | null>(null)
-  const [showDetailForm, setShowDetailForm] = useState(false)
-  const [detailName, setDetailName] = useState('')
-  const [detailModeScope, setDetailModeScope] = useState<string | null>(null) // null = all modes, UUID = specific mode
-  const [detailOverrideScore, setDetailOverrideScore] = useState(false)
-  const [detailFormat, setDetailFormat] = useState<ScoreFormat>('integer')
-  const [detailDirection, setDetailDirection] = useState<ScoreDirection>('higher_better')
-  const [detailUnit, setDetailUnit] = useState('')
-  const [deletingDetail, setDeletingDetail] = useState<GameDetail | null>(null)
 
   // Scores state
   const { scores, loading: scoresLoading, fetchScores, deleteScore } = useManageScores()
@@ -6711,14 +5980,12 @@ export function Manage() {
       fetchPlayers()
     } else if (activeTab === 'games') {
       fetchGames()
-    } else if (activeTab === 'details') {
-      fetchGames() // Need games list for selector
     } else if (activeTab === 'scores') {
       fetchScores()
     }
   }, [activeTab, fetchPlayers, fetchGames, fetchScores])
 
-  // Fetch modes when game is selected (for games tab)
+  // Fetch modes when game is selected
   useEffect(() => {
     if (selectedGame) {
       fetchModes(selectedGame.id)
@@ -6727,27 +5994,18 @@ export function Manage() {
     }
   }, [selectedGame, fetchModes, clearModes])
 
-  // Fetch details when game/mode selected (for details tab)
-  useEffect(() => {
-    if (detailsGameId) {
-      fetchDetails(detailsGameId, detailsModeId)
-      // Also fetch modes for the mode filter dropdown
-      fetchModes(detailsGameId)
-    } else {
-      clearDetails()
-    }
-  }, [detailsGameId, detailsModeId, fetchDetails, fetchModes, clearDetails])
-
   // ============================================================================
   // PIN HELPERS
   // ============================================================================
 
   const requirePin = (action: () => void) => {
     if (adminPin === null) {
+      // No PIN set, require setup first
       setPendingAction(() => action)
       setPinMode('setup')
       setShowPinModal(true)
     } else {
+      // PIN is set, require verification
       setPendingAction(() => action)
       setPinMode('verify')
       setShowPinModal(true)
@@ -6756,17 +6014,21 @@ export function Manage() {
 
   const handlePinSubmit = (pin: string) => {
     if (pinMode === 'setup') {
+      // Setting up new PIN
       setAdminPin(pin)
       setShowPinModal(false)
       setPinError(null)
+      // Execute the pending action
       if (pendingAction) {
         pendingAction()
         setPendingAction(null)
       }
     } else {
+      // Verifying existing PIN
       if (verifyPin(pin)) {
         setShowPinModal(false)
         setPinError(null)
+        // Execute the pending action
         if (pendingAction) {
           pendingAction()
           setPendingAction(null)
@@ -6850,9 +6112,7 @@ export function Manage() {
         category: gameCategory,
       })
     } else {
-      await createGame(gameName.trim(), gameCategory, {
-        platform: gamePlatform.trim() || null,
-      })
+      await createGame(gameName.trim(), gameCategory, gamePlatform.trim() || null)
     }
     setShowGameForm(false)
     setGameName('')
@@ -6879,6 +6139,7 @@ export function Manage() {
   const handleAddMode = () => {
     setEditingMode(null)
     setModeName('')
+    setModeSubtitle('')
     setModeFormat('integer')
     setModeDirection('higher_better')
     setModeUnit('')
@@ -6888,8 +6149,9 @@ export function Manage() {
   const handleEditMode = (mode: GameMode) => {
     setEditingMode(mode)
     setModeName(mode.name)
-    setModeFormat(mode.score_format ?? 'integer')
-    setModeDirection(mode.score_direction ?? 'higher_better')
+    setModeSubtitle(mode.subtitle || '')
+    setModeFormat(mode.score_format)
+    setModeDirection(mode.score_direction)
     setModeUnit(mode.score_unit || '')
     setShowModeForm(true)
   }
@@ -6900,6 +6162,7 @@ export function Manage() {
     if (editingMode) {
       await updateMode(editingMode.id, {
         name: modeName.trim(),
+        subtitle: modeSubtitle.trim() || null,
         score_format: modeFormat,
         score_direction: modeDirection,
         score_unit: modeUnit.trim() || null,
@@ -6908,14 +6171,15 @@ export function Manage() {
       await createMode(
         selectedGame.id,
         modeName.trim(),
-        modeFormat,
         modeDirection,
-        modeUnit.trim() || null,
-        null
+        modeFormat,
+        modeSubtitle.trim() || null,
+        modeUnit.trim() || null
       )
     }
     setShowModeForm(false)
     setModeName('')
+    setModeSubtitle('')
     setEditingMode(null)
   }
 
@@ -6925,67 +6189,6 @@ export function Manage() {
     requirePin(async () => {
       await deleteMode(modeToDelete.id)
       setDeletingMode(null)
-    })
-  }
-
-  // ============================================================================
-  // DETAIL HANDLERS
-  // ============================================================================
-
-  const handleAddDetail = () => {
-    setEditingDetail(null)
-    setDetailName('')
-    setDetailModeScope(null)
-    setDetailOverrideScore(false)
-    setDetailFormat('integer')
-    setDetailDirection('higher_better')
-    setDetailUnit('')
-    setShowDetailForm(true)
-  }
-
-  const handleEditDetail = (detail: GameDetail) => {
-    setEditingDetail(detail)
-    setDetailName(detail.name)
-    setDetailModeScope(detail.mode_id)
-    setDetailOverrideScore(!!(detail.score_format || detail.score_direction || detail.score_unit))
-    setDetailFormat(detail.score_format ?? 'integer')
-    setDetailDirection(detail.score_direction ?? 'higher_better')
-    setDetailUnit(detail.score_unit || '')
-    setShowDetailForm(true)
-  }
-
-  const handleSaveDetail = async () => {
-    if (!detailName.trim() || !detailsGameId) return
-    
-    if (editingDetail) {
-      await updateDetail(editingDetail.id, {
-        name: detailName.trim(),
-        mode_id: detailModeScope,
-        score_format: detailOverrideScore ? detailFormat : null,
-        score_direction: detailOverrideScore ? detailDirection : null,
-        score_unit: detailOverrideScore ? (detailUnit.trim() || null) : null,
-      })
-    } else {
-      await createDetail(
-        detailsGameId,
-        detailName.trim(),
-        detailModeScope,
-        detailOverrideScore ? detailFormat : null,
-        detailOverrideScore ? detailDirection : null,
-        detailOverrideScore ? (detailUnit.trim() || null) : null
-      )
-    }
-    setShowDetailForm(false)
-    setDetailName('')
-    setEditingDetail(null)
-  }
-
-  const handleConfirmDeleteDetail = () => {
-    if (!deletingDetail) return
-    const detailToDelete = deletingDetail
-    requirePin(async () => {
-      await deleteDetail(detailToDelete.id)
-      setDeletingDetail(null)
     })
   }
 
@@ -7003,12 +6206,6 @@ export function Manage() {
   }
 
   // ============================================================================
-  // HELPERS
-  // ============================================================================
-
-  const getSelectedDetailsGame = () => games.find(g => g.id === detailsGameId) || null
-
-  // ============================================================================
   // RENDER
   // ============================================================================
 
@@ -7016,62 +6213,43 @@ export function Manage() {
     <KioskLayout>
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="shrink-0 h-[64px] flex items-center px-md border-b border-white/10">
+        <div className="h-[56px] px-sm flex items-center border-b border-background-elevated/50">
           <button
-            onClick={() => navigate('/')}
-            className="w-12 h-12 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg"
+            onClick={() => navigate('/settings')}
+            className="min-h-[48px] px-sm flex items-center gap-1 text-text-secondary active:text-text-primary transition-colors rounded-lg active:bg-background-elevated"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-base">Settings</span>
           </button>
-          <h1 className="text-xl font-bold text-text-primary ml-2">Manage</h1>
+          <h1 className="flex-1 text-center text-lg font-bold text-text-primary pr-[80px]">
+            Manage
+          </h1>
         </div>
 
         {/* Tabs */}
-        <div className="shrink-0 flex border-b border-white/10 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('players')}
-            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
-              activeTab === 'players' 
-                ? 'text-category-golf border-b-2 border-category-golf' 
-                : 'text-text-muted'
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            <span className="hidden sm:inline">Players</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('games')}
-            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
-              activeTab === 'games' 
-                ? 'text-category-darts border-b-2 border-category-darts' 
-                : 'text-text-muted'
-            }`}
-          >
-            <Gamepad2 className="w-5 h-5" />
-            <span className="hidden sm:inline">Games</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
-              activeTab === 'details' 
-                ? 'text-category-racing border-b-2 border-category-racing' 
-                : 'text-text-muted'
-            }`}
-          >
-            <Layers className="w-5 h-5" />
-            <span className="hidden sm:inline">Details</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('scores')}
-            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
-              activeTab === 'scores' 
-                ? 'text-category-party border-b-2 border-category-party' 
-                : 'text-text-muted'
-            }`}
-          >
-            <Trophy className="w-5 h-5" />
-            <span className="hidden sm:inline">Scores</span>
-          </button>
+        <div className="h-[56px] px-md flex items-center gap-2 border-b border-background-elevated/30">
+          {[
+            { id: 'players' as Tab, label: 'Players', icon: Users },
+            { id: 'games' as Tab, label: 'Games', icon: Gamepad2 },
+            { id: 'scores' as Tab, label: 'Scores', icon: Trophy },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => {
+                setActiveTab(id)
+                setSelectedGame(null)
+              }}
+              className={`
+                flex-1 h-[44px] flex items-center justify-center gap-2 rounded-lg font-medium transition-all
+                ${activeTab === id 
+                  ? 'bg-background-elevated text-text-primary' 
+                  : 'text-text-muted active:bg-background-elevated/50'}
+              `}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="text-sm">{label}</span>
+            </button>
+          ))}
         </div>
 
         {/* Content */}
@@ -7086,16 +6264,18 @@ export function Manage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="h-full flex flex-col"
               >
+                {/* Add button */}
                 <div className="px-md py-3">
                   <button
                     onClick={handleAddPlayer}
-                    className="w-full h-[56px] flex items-center justify-center gap-2 bg-category-golf/20 text-category-golf font-medium rounded-xl active:bg-category-golf/30"
+                    className="w-full h-[48px] flex items-center justify-center gap-2 bg-category-golf/20 text-category-golf font-semibold rounded-lg active:bg-category-golf/30 transition-colors"
                   >
                     <Plus className="w-5 h-5" />
-                    Add Player
+                    <span>Add Player</span>
                   </button>
                 </div>
 
+                {/* Player list */}
                 <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                   {playersLoading ? (
                     <p className="text-center text-text-muted py-8">Loading...</p>
@@ -7105,12 +6285,12 @@ export function Manage() {
                     players.map((player) => (
                       <div
                         key={player.id}
-                        className="card px-md py-3 flex items-center gap-3"
+                        className="card h-[64px] px-md flex items-center gap-3"
                       >
-                        <PlayerAvatar 
-                          name={player.name} 
-                          avatarUrl={player.avatar_url} 
-                          size={32} 
+                        <PlayerAvatar
+                          name={player.name}
+                          avatarUrl={player.avatar_url}
+                          size={40}
                         />
                         <span className="flex-1 font-medium text-text-primary truncate">
                           {player.name}
@@ -7141,70 +6321,86 @@ export function Manage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="h-full flex"
+                className="h-full flex flex-col"
               >
-                {/* Game list */}
-                <div className="w-1/2 h-full flex flex-col border-r border-white/10">
-                  <div className="px-md py-3">
-                    <button
-                      onClick={handleAddGame}
-                      className="w-full h-[56px] flex items-center justify-center gap-2 bg-category-darts/20 text-category-darts font-medium rounded-xl active:bg-category-darts/30"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Add Game
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
-                    {gamesLoading ? (
-                      <p className="text-center text-text-muted py-8">Loading...</p>
-                    ) : games.length === 0 ? (
-                      <p className="text-center text-text-muted py-8">No games yet</p>
-                    ) : (
-                      games.map((game) => (
-                        <div
-                          key={game.id}
-                          onClick={() => setSelectedGame(game)}
-                          className={`card px-md py-3 flex items-center gap-3 cursor-pointer ${
-                            selectedGame?.id === game.id ? 'ring-2 ring-category-darts' : ''
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-text-primary truncate">{game.name}</p>
-                            <p className="text-xs text-text-muted">{game.platform || 'No platform'}</p>
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEditGame(game) }}
-                            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg active:bg-background-elevated"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeletingGame(game) }}
-                            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-red-500 rounded-lg active:bg-background-elevated"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <ChevronRight className="w-5 h-5 text-text-muted" />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Mode list */}
-                {selectedGame ? (
-                  <div className="w-1/2 h-full flex flex-col">
-                    <div className="px-md py-3 flex items-center justify-between">
-                      <p className="text-sm text-text-muted">{selectedGame.name} — Modes</p>
+                {!selectedGame ? (
+                  <>
+                    {/* Add game button */}
+                    <div className="px-md py-3">
                       <button
-                        onClick={handleAddMode}
-                        className="h-10 px-4 flex items-center justify-center gap-1 bg-category-party/20 text-category-party text-sm font-medium rounded-lg active:bg-category-party/30"
+                        onClick={handleAddGame}
+                        className="w-full h-[48px] flex items-center justify-center gap-2 bg-category-darts/20 text-category-darts font-semibold rounded-lg active:bg-category-darts/30 transition-colors"
                       >
-                        <Plus className="w-4 h-4" />
-                        Add
+                        <Plus className="w-5 h-5" />
+                        <span>Add Game</span>
                       </button>
                     </div>
 
+                    {/* Game list */}
+                    <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
+                      {gamesLoading ? (
+                        <p className="text-center text-text-muted py-8">Loading...</p>
+                      ) : games.length === 0 ? (
+                        <p className="text-center text-text-muted py-8">No games yet</p>
+                      ) : (
+                        games.map((game) => (
+                          <div
+                            key={game.id}
+                            className="card h-[64px] px-md flex items-center gap-3"
+                          >
+                            <div
+                              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                              style={{ backgroundColor: getPlayerColor(game.name) }}
+                            >
+                              {getInitials(game.name)}
+                            </div>
+                            <button
+                              onClick={() => setSelectedGame(game)}
+                              className="flex-1 text-left min-w-0"
+                            >
+                              <p className="font-medium text-text-primary truncate">{game.name}</p>
+                              <p className="text-xs text-text-muted">{game.platform || game.category}</p>
+                            </button>
+                            <button
+                              onClick={() => handleEditGame(game)}
+                              className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg active:bg-background-elevated"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingGame(game)}
+                              className="w-10 h-10 flex items-center justify-center text-text-muted active:text-red-500 rounded-lg active:bg-background-elevated"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <ChevronRight className="w-5 h-5 text-text-muted" />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* Game Modes View */
+                  <>
+                    {/* Back + Add mode button */}
+                    <div className="px-md py-3 flex gap-2">
+                      <button
+                        onClick={() => setSelectedGame(null)}
+                        className="h-[48px] px-4 flex items-center gap-1 bg-background-elevated text-text-secondary font-medium rounded-lg active:bg-background-primary"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Back</span>
+                      </button>
+                      <button
+                        onClick={handleAddMode}
+                        className="flex-1 h-[48px] flex items-center justify-center gap-2 bg-category-party/20 text-category-party font-semibold rounded-lg active:bg-category-party/30 transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                        <span>Add Mode to {selectedGame.name}</span>
+                      </button>
+                    </div>
+
+                    {/* Mode list */}
                     <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                       {modesLoading ? (
                         <p className="text-center text-text-muted py-8">Loading...</p>
@@ -7219,7 +6415,8 @@ export function Manage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-text-primary truncate">{mode.name}</p>
                               <p className="text-xs text-text-muted">
-                                {SCORE_FORMATS.find(f => f.value === mode.score_format)?.label ?? 'Inherits from game'}
+                                {mode.subtitle && `${mode.subtitle} • `}
+                                {SCORE_FORMATS.find(f => f.value === mode.score_format)?.label}
                                 {mode.score_unit && ` (${mode.score_unit})`}
                               </p>
                             </div>
@@ -7239,106 +6436,8 @@ export function Manage() {
                         ))
                       )}
                     </div>
-                  </div>
-                ) : (
-                  <div className="w-1/2 h-full flex items-center justify-center">
-                    <p className="text-text-muted">Select a game to manage modes</p>
-                  </div>
+                  </>
                 )}
-              </motion.div>
-            )}
-
-            {/* Details Tab */}
-            {activeTab === 'details' && (
-              <motion.div
-                key="details"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="h-full flex flex-col"
-              >
-                {/* Game and Mode selectors */}
-                <div className="px-md py-3 space-y-2">
-                  <select
-                    value={detailsGameId || ''}
-                    onChange={(e) => {
-                      setDetailsGameId(e.target.value || null)
-                      setDetailsModeId(null)
-                    }}
-                    className="w-full h-[48px] px-md bg-background-elevated text-text-primary rounded-lg outline-none"
-                  >
-                    <option value="">Select a game</option>
-                    {games.map(game => (
-                      <option key={game.id} value={game.id}>{game.name}</option>
-                    ))}
-                  </select>
-
-                  {detailsGameId && modes.length > 0 && (
-                    <select
-                      value={detailsModeId || ''}
-                      onChange={(e) => setDetailsModeId(e.target.value || null)}
-                      className="w-full h-[48px] px-md bg-background-elevated text-text-primary rounded-lg outline-none"
-                    >
-                      <option value="">All modes</option>
-                      {modes.map(mode => (
-                        <option key={mode.id} value={mode.id}>{mode.name}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  {detailsGameId && (
-                    <button
-                      onClick={handleAddDetail}
-                      className="w-full h-[48px] flex items-center justify-center gap-2 bg-category-racing/20 text-category-racing font-medium rounded-xl active:bg-category-racing/30"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Add {getSelectedDetailsGame()?.detail_label || 'Detail'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Details list */}
-                <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
-                  {!detailsGameId ? (
-                    <p className="text-center text-text-muted py-8">Select a game to manage details</p>
-                  ) : detailsLoading ? (
-                    <p className="text-center text-text-muted py-8">Loading...</p>
-                  ) : details.length === 0 ? (
-                    <p className="text-center text-text-muted py-8">
-                      No {getSelectedDetailsGame()?.detail_label?.toLowerCase() || 'detail'}s yet
-                    </p>
-                  ) : (
-                    details.map((detail) => (
-                      <div
-                        key={detail.id}
-                        className="card px-md py-3 flex items-center gap-3"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-text-primary truncate">{detail.name}</p>
-                          <p className="text-xs text-text-muted">
-                            {detail.mode_id 
-                              ? `${modes.find(m => m.id === detail.mode_id)?.name || 'Specific mode'} only`
-                              : 'All modes'
-                            }
-                            {detail.score_format && ` • ${SCORE_FORMATS.find(f => f.value === detail.score_format)?.label}`}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleEditDetail(detail)}
-                          className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg active:bg-background-elevated"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingDetail(detail)}
-                          className="w-10 h-10 flex items-center justify-center text-text-muted active:text-red-500 rounded-lg active:bg-background-elevated"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
               </motion.div>
             )}
 
@@ -7355,6 +6454,7 @@ export function Manage() {
                   <p className="text-sm text-text-muted">Recent scores — tap to delete</p>
                 </div>
 
+                {/* Score list */}
                 <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                   {scoresLoading ? (
                     <p className="text-center text-text-muted py-8">Loading...</p>
@@ -7371,9 +6471,7 @@ export function Manage() {
                             {score.player_name || 'Unknown'} — {formatScore(score.score, score.score_format, score.score_unit)}
                           </p>
                           <p className="text-xs text-text-muted truncate">
-                            {score.game_name}
-                            {score.mode_name && ` • ${score.mode_name}`}
-                            {score.detail_name && ` • ${score.detail_name}`}
+                            {score.game_name} • {score.mode_name}
                           </p>
                         </div>
                         <button
@@ -7543,6 +6641,13 @@ export function Manage() {
                 autoFocus
                 className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-party"
               />
+              <input
+                type="text"
+                value={modeSubtitle}
+                onChange={(e) => setModeSubtitle(e.target.value)}
+                placeholder="Subtitle (e.g. Time Trial)"
+                className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-party"
+              />
               <select
                 value={modeFormat}
                 onChange={(e) => setModeFormat(e.target.value as ScoreFormat)}
@@ -7580,109 +6685,6 @@ export function Manage() {
         )}
       </AnimatePresence>
 
-      {/* Detail Form Modal */}
-      <AnimatePresence>
-        {showDetailForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm p-md overflow-y-auto"
-            onClick={() => setShowDetailForm(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-[400px] bg-background-card rounded-xl p-lg my-4"
-              style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-text-primary">
-                  {editingDetail ? 'Edit' : 'Add'} {getSelectedDetailsGame()?.detail_label || 'Detail'}
-                </h2>
-                <button
-                  onClick={() => setShowDetailForm(false)}
-                  className="w-8 h-8 flex items-center justify-center text-text-muted rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <input
-                type="text"
-                value={detailName}
-                onChange={(e) => setDetailName(e.target.value)}
-                placeholder={`${getSelectedDetailsGame()?.detail_label || 'Detail'} name`}
-                autoFocus
-                className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-racing"
-              />
-
-              <label className="block text-sm text-text-secondary mb-2">Available for</label>
-              <select
-                value={detailModeScope || ''}
-                onChange={(e) => setDetailModeScope(e.target.value || null)}
-                className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none"
-              >
-                <option value="">All modes in this game</option>
-                {modes.map(mode => (
-                  <option key={mode.id} value={mode.id}>{mode.name} only</option>
-                ))}
-              </select>
-
-              <label className="flex items-center gap-3 mb-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={detailOverrideScore}
-                  onChange={(e) => setDetailOverrideScore(e.target.checked)}
-                  className="w-5 h-5 rounded"
-                />
-                <span className="text-text-primary">Override score settings</span>
-              </label>
-
-              {detailOverrideScore && (
-                <>
-                  <select
-                    value={detailFormat}
-                    onChange={(e) => setDetailFormat(e.target.value as ScoreFormat)}
-                    className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none"
-                  >
-                    {SCORE_FORMATS.map(f => (
-                      <option key={f.value} value={f.value}>{f.label}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={detailDirection}
-                    onChange={(e) => setDetailDirection(e.target.value as ScoreDirection)}
-                    className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none"
-                  >
-                    {SCORE_DIRECTIONS.map(d => (
-                      <option key={d.value} value={d.value}>{d.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={detailUnit}
-                    onChange={(e) => setDetailUnit(e.target.value)}
-                    placeholder="Unit (e.g. pts, throws, %)"
-                    className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-racing"
-                  />
-                </>
-              )}
-
-              <button
-                onClick={handleSaveDetail}
-                disabled={!detailName.trim()}
-                className="w-full h-[56px] bg-category-racing text-white font-semibold rounded-lg disabled:opacity-50 mt-2"
-              >
-                {editingDetail ? 'Save Changes' : 'Add'}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Delete Confirmations */}
       <ConfirmDialog
         isOpen={!!deletingPlayer}
@@ -7707,15 +6709,6 @@ export function Manage() {
         onConfirm={handleConfirmDeleteMode}
         title="Delete Mode?"
         message={`This will hide "${deletingMode?.name}". Existing scores will be preserved.`}
-        confirmLabel="Delete"
-      />
-
-      <ConfirmDialog
-        isOpen={!!deletingDetail}
-        onClose={() => setDeletingDetail(null)}
-        onConfirm={handleConfirmDeleteDetail}
-        title="Delete Detail?"
-        message={`This will hide "${deletingDetail?.name}". Existing scores will be preserved.`}
         confirmLabel="Delete"
       />
 
@@ -7755,10 +6748,6 @@ import { useIdleTimer } from '@/hooks/useIdleTimer'
 /**
  * ModeSelection - List of game modes for a specific game
  * Route: /browse/:category/:gameId
- * 
- * Navigates to:
- * - DetailSelection if game.has_details is true
- * - LeaderboardView (with /all) if game.has_details is false
  */
 export function ModeSelection() {
   const navigate = useNavigate()
@@ -7776,14 +6765,7 @@ export function ModeSelection() {
 
   const handleModeClick = (modeId: string) => {
     resetTimer()
-    
-    // If game has details, go to detail selection
-    // Otherwise, skip to leaderboard with "all" as detailId
-    if (currentGame?.has_details) {
-      navigate(`/browse/${category}/${gameId}/${modeId}`)
-    } else {
-      navigate(`/browse/${category}/${gameId}/${modeId}/all`)
-    }
+    navigate(`/browse/${category}/${gameId}/${modeId}`)
   }
 
   const handleBack = () => {
@@ -7794,9 +6776,6 @@ export function ModeSelection() {
     resetTimer()
     navigate('/add-score')
   }
-
-  // Get the label for modes from game config
-  const modeLabel = currentGame?.mode_label || 'Mode'
 
   return (
     <KioskLayout>
@@ -7817,38 +6796,32 @@ export function ModeSelection() {
               className="w-6 h-6 rounded"
             />
           )}
-          <div>
-            <h2 className="text-lg font-bold text-text-primary">
-              {currentGame?.name || 'Game'}
-            </h2>
-            <p className="text-sm text-text-secondary">
-              Select {modeLabel.toLowerCase()}
-            </p>
-          </div>
+          <h2 className="text-lg font-bold text-text-primary">
+            {currentGame?.name || 'Game Modes'}
+          </h2>
         </div>
 
         {/* Modes list */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-2">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-text-secondary">Loading {modeLabel.toLowerCase()}s...</p>
+              <p className="text-text-secondary">Loading modes...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full">
-              <p className="text-red-500 mb-2">Error loading {modeLabel.toLowerCase()}s</p>
+              <p className="text-red-500 mb-2">Error loading modes</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
           ) : modes.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-text-secondary">No {modeLabel.toLowerCase()}s for this game</p>
+              <p className="text-text-secondary">No modes for this game</p>
             </div>
           ) : (
-            modes.map((mode, index) => (
+            modes.map((mode) => (
               <ModeCard
                 key={mode.id}
                 mode={mode}
                 onClick={() => handleModeClick(mode.id)}
-                index={index}
               />
             ))
           )}
@@ -7857,6 +6830,7 @@ export function ModeSelection() {
     </KioskLayout>
   )
 }
+
 ```
 
 ## File: src/pages/Settings.tsx

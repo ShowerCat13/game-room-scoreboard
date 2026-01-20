@@ -9,11 +9,14 @@ import {
   Settings,
   Manage,
 } from '@/pages'
-import { useSoundInit } from '@/hooks'
+import { useSoundInit, useTheme } from '@/hooks'
 
 function App() {
   // Initialize audio context on first user interaction
   useSoundInit()
+  
+  // Apply theme CSS variables to document root
+  useTheme()
 
   return (
     <BrowserRouter>

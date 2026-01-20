@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { LeaderboardEntry, ScoreFormat } from '@/lib/types'
+import type { ScoreFormat, ScoreDirection } from '@/lib/types'
 
 export interface RealtimeScoreData {
   scoreId: string
@@ -9,13 +9,40 @@ export interface RealtimeScoreData {
   scoreFormat: ScoreFormat
   scoreUnit: string | null
   gameName: string
-  modeName: string
+  modeName: string | null
+  detailName: string | null
   rank: number
+}
+
+// Internal type for the join query result
+interface ScoreJoinResult {
+  id: string
+  score: number
+  game_id: string
+  mode_id: string | null
+  detail_id: string | null
+  players: { name: string } | null
+  games: { name: string } | null
+  game_modes: { name: string } | null
+  game_details: { name: string } | null
+}
+
+// Internal type for score settings RPC result
+interface ScoreSettingsRow {
+  score_format: ScoreFormat
+  score_direction: ScoreDirection
+  score_unit: string | null
+}
+
+// Internal type for leaderboard RPC result
+interface LeaderboardRow {
+  rank: number
+  score_id: string
 }
 
 /**
  * Hook to fetch full score details for realtime alerts
- * Queries the leaderboard view and calculates rank
+ * Fetches score with related data and calculates rank using RPC
  */
 export function useScoreDetails() {
   const [loading, setLoading] = useState(false)
@@ -25,11 +52,23 @@ export function useScoreDetails() {
     setLoading(true)
     
     try {
-      // Fetch the score details from the leaderboard view
-      const { data: scoreData, error: scoreError } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .eq('score_id', scoreId)
+      // Fetch the score with all related data
+      // Type assertion needed because Supabase client types don't handle complex joins
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: scoreData, error: scoreError } = await (supabase as any)
+        .from('high_scores')
+        .select(`
+          id,
+          score,
+          game_id,
+          mode_id,
+          detail_id,
+          players ( name ),
+          games ( name ),
+          game_modes ( name ),
+          game_details ( name )
+        `)
+        .eq('id', scoreId)
         .single()
 
       if (scoreError || !scoreData) {
@@ -38,39 +77,62 @@ export function useScoreDetails() {
         return null
       }
 
-      const entry = scoreData as LeaderboardEntry
+      const scoreRow = scoreData as ScoreJoinResult
 
-      // Calculate rank by counting how many scores are better
-      const { count, error: rankError } = await supabase
-        .from('high_scores')
-        .select('*', { count: 'exact', head: true })
-        .eq('game_mode_id', entry.game_mode_id)
-        .lt('score', entry.score_direction === 'lower_better' ? entry.score : -entry.score)
+      // Get effective score settings using RPC
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: settings, error: settingsError } = await (supabase as any).rpc('get_score_settings', {
+        p_game_id: scoreRow.game_id,
+        p_mode_id: scoreRow.mode_id,
+        p_detail_id: scoreRow.detail_id,
+      })
+
+      if (settingsError) {
+        console.error('Error fetching score settings:', settingsError)
+        setLoading(false)
+        return null
+      }
+
+      const settingsArray = settings as ScoreSettingsRow[] | null
+      const effectiveSettings: ScoreSettingsRow = settingsArray?.[0] || {
+        score_format: 'integer',
+        score_direction: 'higher_better',
+        score_unit: null,
+      }
+
+      // Get leaderboard to calculate rank
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: leaderboard, error: leaderboardError } = await (supabase as any).rpc('get_leaderboard', {
+        p_game_id: scoreRow.game_id,
+        p_mode_id: scoreRow.mode_id,
+        p_detail_id: scoreRow.detail_id,
+        p_limit: 100,
+      })
 
       let rank = 1
-      if (!rankError && count !== null) {
-        // For higher_better, we need different logic
-        if (entry.score_direction === 'higher_better') {
-          const { count: betterCount } = await supabase
-            .from('high_scores')
-            .select('*', { count: 'exact', head: true })
-            .eq('game_mode_id', entry.game_mode_id)
-            .gt('score', entry.score)
-          
-          rank = (betterCount ?? 0) + 1
-        } else {
-          rank = count + 1
+      if (!leaderboardError && leaderboard) {
+        const entries = leaderboard as LeaderboardRow[]
+        const foundEntry = entries.find((e) => e.score_id === scoreId)
+        if (foundEntry) {
+          rank = Number(foundEntry.rank)
         }
       }
 
+      // Extract nested data
+      const playerData = scoreRow.players
+      const gameData = scoreRow.games
+      const modeData = scoreRow.game_modes
+      const detailData = scoreRow.game_details
+
       const result: RealtimeScoreData = {
-        scoreId: entry.score_id,
-        playerName: entry.player_name || entry.team_name || 'Unknown',
-        score: entry.score,
-        scoreFormat: entry.score_format,
-        scoreUnit: entry.score_unit,
-        gameName: entry.game_name,
-        modeName: entry.mode_name,
+        scoreId: scoreRow.id,
+        playerName: playerData?.name || 'Unknown',
+        score: scoreRow.score,
+        scoreFormat: effectiveSettings.score_format,
+        scoreUnit: effectiveSettings.score_unit,
+        gameName: gameData?.name || 'Unknown Game',
+        modeName: modeData?.name || null,
+        detailName: detailData?.name || null,
         rank,
       }
 

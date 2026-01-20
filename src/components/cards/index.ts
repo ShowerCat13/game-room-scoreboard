@@ -4,3 +4,4 @@
 export { CategoryButton } from './CategoryButton'
 export { GameCard } from './GameCard'
 export { ModeCard } from './ModeCard'
+export { DetailCard } from './DetailCard'

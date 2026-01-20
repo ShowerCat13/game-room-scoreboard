@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, Trophy, QrCode } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { KioskLayout } from '@/components/layout'
 import { ScoreRow } from '@/components/display'
 import { RealtimeScoreAlert } from '@/components/overlays'
@@ -14,6 +15,25 @@ import { useKioskStore } from '@/stores/kioskStore'
 import { getInitials, getPlayerColor } from '@/lib/utils'
 import type { HighScore } from '@/lib/types'
 
+// Static URL for the scoreboard - uses mDNS hostname
+const SCOREBOARD_URL = 'http://scoreboard.local:4173'
+
+/**
+ * Format time in 12-hour format with AM/PM
+ */
+function formatTime(date: Date): string {
+  let hours = date.getHours()
+  const minutes = date.getMinutes()
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  
+  hours = hours % 12
+  hours = hours ? hours : 12 // 0 should be 12
+  
+  const minutesStr = minutes < 10 ? `0${minutes}` : minutes
+  
+  return `${hours}:${minutesStr} ${ampm}`
+}
+
 /**
  * IdleDisplay - Auto-cycling carousel of game mode leaderboards
  *
@@ -23,6 +43,8 @@ import type { HighScore } from '@/lib/types'
  * - Tap anywhere to navigate to browse mode
  * - Real-time score updates with toast alerts
  * - Smooth slide transitions between modes
+ * - Clock display readable from across the room
+ * - QR code for easy mobile access (tap to show/hide)
  */
 export function IdleDisplay() {
   const navigate = useNavigate()
@@ -32,8 +54,26 @@ export function IdleDisplay() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentMode = modes[currentIndex]
 
-  const { data: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
-    currentMode?.id || null
+  // Clock state - updates every minute
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // QR code visibility state
+  const [showQR, setShowQR] = useState(false)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+
+    return () => clearInterval(timer)
+  }, [])
+
+  // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
+  const { entries: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
+    currentMode?.game_id || null,
+    currentMode?.id || null,
+    null, // detailId - not applicable in idle display
+    4     // limit - show top 4
   )
 
   // Realtime alert state
@@ -76,7 +116,18 @@ export function IdleDisplay() {
 
   // Handle tap to navigate
   const handleTap = () => {
+    // Don't navigate if QR is showing - tap hides it instead
+    if (showQR) {
+      setShowQR(false)
+      return
+    }
     navigate('/browse')
+  }
+
+  // Toggle QR code visibility
+  const handleQRToggle = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowQR((prev) => !prev)
   }
 
   // Get game icon or generate fallback
@@ -122,7 +173,7 @@ export function IdleDisplay() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <p className="text-6xl mb-4">🏆</p>
+            <Trophy className="w-16 h-16 text-medals-gold mx-auto mb-4" strokeWidth={1.5} />
             <p className="text-xl text-text-primary mb-2">No scores yet!</p>
             <p className="text-text-secondary mb-6">Be the first to set a record</p>
             <p className="text-sm text-text-muted">Tap to browse games or add score</p>
@@ -135,11 +186,11 @@ export function IdleDisplay() {
   return (
     <KioskLayout>
       <div
-        className="h-full flex flex-col cursor-pointer"
+        className="h-full flex flex-col cursor-pointer relative"
         onClick={handleTap}
       >
-        {/* Header: Game + Mode info */}
-        <div className="h-[72px] px-md flex flex-col justify-center border-b border-background-elevated/50">
+        {/* Header: Game + Mode info + Clock */}
+        <div className="h-[72px] px-md flex items-center justify-between border-b border-background-elevated/50">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentMode?.id}
@@ -147,6 +198,7 @@ export function IdleDisplay() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
+              className="flex-1"
             >
               <div className="flex items-center gap-3">
                 {currentMode?.game_icon ? (
@@ -169,12 +221,16 @@ export function IdleDisplay() {
                   </h1>
                   <p className="text-sm text-text-secondary">
                     {currentMode?.name}
-                    {currentMode?.subtitle && ` — ${currentMode.subtitle}`}
                   </p>
                 </div>
               </div>
             </motion.div>
           </AnimatePresence>
+
+          {/* Clock - readable from across the room */}
+          <div className="text-xl font-mono font-bold text-text-secondary">
+            {formatTime(currentTime)}
+          </div>
         </div>
 
         {/* Leaderboard: Score rows */}
@@ -212,12 +268,12 @@ export function IdleDisplay() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <ScoreRow
-                      rank={index + 1}
-                      playerName={entry.player_name || entry.team_name || 'Unknown'}
-                      playerAvatar={entry.player_avatar || entry.team_avatar}
+                      rank={entry.rank}
+                      playerName={entry.player_name || 'Unknown'}
+                      playerAvatar={entry.player_avatar}
                       score={entry.score}
-                      scoreFormat={entry.score_format}
-                      scoreUnit={entry.score_unit}
+                      scoreFormat={entry.effective_format}
+                      scoreUnit={entry.effective_unit}
                       className="card"
                     />
                   </motion.div>
@@ -227,7 +283,7 @@ export function IdleDisplay() {
           </AnimatePresence>
         </div>
 
-        {/* Footer: Tap hint + progress indicator + settings */}
+        {/* Footer: Settings + hint/dots + QR toggle */}
         <div className="h-[48px] flex items-center justify-between px-md">
           {/* Settings button */}
           <button
@@ -262,9 +318,47 @@ export function IdleDisplay() {
             )}
           </div>
 
-          {/* Spacer to balance layout */}
-          <div className="w-10" />
+          {/* QR code toggle button */}
+          <button
+            onClick={handleQRToggle}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+              showQR 
+                ? 'text-text-primary bg-background-elevated' 
+                : 'text-text-muted active:text-text-secondary active:bg-background-elevated'
+            }`}
+          >
+            <QrCode className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* QR Code overlay - shows in bottom right when toggled */}
+        <AnimatePresence>
+          {showQR && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="absolute bottom-16 right-4 p-4 rounded-xl card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white p-3 rounded-lg">
+                <QRCodeSVG 
+                  value={SCOREBOARD_URL}
+                  size={120}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <p className="text-xs text-text-muted text-center mt-2">
+                Scan to add scores
+              </p>
+              <p className="text-xs text-text-secondary text-center font-mono">
+                scoreboard.local
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Realtime score alert */}
@@ -277,7 +371,7 @@ export function IdleDisplay() {
           scoreFormat={alertData.scoreFormat}
           scoreUnit={alertData.scoreUnit}
           gameName={alertData.gameName}
-          modeName={alertData.modeName}
+          modeName={alertData.modeName ?? ''}
           rank={alertData.rank}
         />
       )}

@@ -1,5 +1,16 @@
 import { motion } from 'framer-motion'
+import { 
+  Car, 
+  Flag, 
+  PartyPopper, 
+  Target, 
+  Disc3, 
+  Gamepad2, 
+  Swords, 
+  Puzzle 
+} from 'lucide-react'
 import type { GameCategory } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 
 interface CategoryButtonProps {
   category: GameCategory
@@ -13,55 +24,55 @@ const categoryConfig: Record<GameCategory, {
   color: string
   bgGradient: string
   glowClass: string
-  icon: string
+  Icon: LucideIcon
 }> = {
   racing: {
     color: 'text-category-racing',
     bgGradient: 'from-red-500/10 to-transparent',
     glowClass: 'category-glow-racing',
-    icon: '🏎️',
+    Icon: Car,
   },
   golf: {
     color: 'text-category-golf',
     bgGradient: 'from-green-500/10 to-transparent',
     glowClass: 'category-glow-golf',
-    icon: '⛳',
+    Icon: Flag,
   },
   party: {
     color: 'text-category-party',
     bgGradient: 'from-amber-500/10 to-transparent',
     glowClass: 'category-glow-party',
-    icon: '🎉',
+    Icon: PartyPopper,
   },
   darts: {
     color: 'text-category-darts',
     bgGradient: 'from-blue-500/10 to-transparent',
     glowClass: 'category-glow-darts',
-    icon: '🎯',
+    Icon: Target,
   },
   pinball: {
     color: 'text-category-pinball',
     bgGradient: 'from-purple-500/10 to-transparent',
     glowClass: 'category-glow-pinball',
-    icon: '🕹️',
+    Icon: Disc3,
   },
   platformer: {
     color: 'text-category-platformer',
     bgGradient: 'from-pink-500/10 to-transparent',
     glowClass: 'category-glow-platformer',
-    icon: '🍄',
+    Icon: Gamepad2,
   },
   rpg: {
     color: 'text-category-rpg',
     bgGradient: 'from-cyan-500/10 to-transparent',
     glowClass: 'category-glow-rpg',
-    icon: '⚔️',
+    Icon: Swords,
   },
   other: {
     color: 'text-category-other',
     bgGradient: 'from-gray-500/10 to-transparent',
     glowClass: 'category-glow-other',
-    icon: '🎮',
+    Icon: Puzzle,
   },
 }
 
@@ -73,6 +84,7 @@ const categoryConfig: Record<GameCategory, {
 export function CategoryButton({ category, onClick, className = '', index = 0 }: CategoryButtonProps) {
   const config = categoryConfig[category]
   const displayName = category.charAt(0).toUpperCase() + category.slice(1)
+  const { Icon } = config
 
   return (
     <motion.button
@@ -100,7 +112,7 @@ export function CategoryButton({ category, onClick, className = '', index = 0 }:
       
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-1">
-        <span className="text-xxl">{config.icon}</span>
+        <Icon className={`w-8 h-8 ${config.color}`} strokeWidth={2} />
         <span className={`text-lg font-bold ${config.color}`}>
           {displayName}
         </span>
@@ -108,10 +120,7 @@ export function CategoryButton({ category, onClick, className = '', index = 0 }:
 
       {/* Subtle bottom border accent */}
       <div 
-        className={`absolute bottom-0 left-4 right-4 h-[2px] rounded-full opacity-60`}
-        style={{ 
-          background: `linear-gradient(90deg, transparent, var(--tw-${category === 'racing' ? 'red' : category === 'golf' ? 'green' : category === 'party' ? 'amber' : category === 'darts' ? 'blue' : category === 'pinball' ? 'purple' : category === 'platformer' ? 'pink' : category === 'rpg' ? 'cyan' : 'gray'}-500), transparent)` 
-        }}
+        className={`absolute bottom-0 left-4 right-4 h-[2px] rounded-full opacity-60 ${config.color.replace('text-', 'bg-')}`}
       />
     </motion.button>
   )

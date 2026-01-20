@@ -1,27 +1,57 @@
 -- ============================================================================
--- GAME ROOM SCOREBOARD - SUPABASE SCHEMA
+-- GAME ROOM SCOREBOARD — DATABASE SCHEMA
+-- Version: 1.0.0-beta
 -- ============================================================================
--- Run this in your Supabase SQL Editor (supabase.com/dashboard → SQL Editor)
--- This creates all tables, views, functions, policies, and storage buckets
+-- 
+-- This schema implements a flexible 3-level hierarchy for game scoring:
+--   GAME → MODE (optional) → DETAIL (optional) → SCORE
+--
+-- Run this in Supabase SQL Editor: https://supabase.com/dashboard → SQL Editor
+-- 
+-- IMPORTANT: This is a FRESH START schema. If upgrading from alpha,
+-- drop all existing tables first (alpha data will be lost).
+--
 -- ============================================================================
 
+
 -- ============================================================================
--- ENUMS
+-- CLEAN UP (Only for fresh installs or alpha → beta migration)
 -- ============================================================================
 
--- How to rank scores (determines sort order for leaderboards)
-CREATE TYPE score_direction AS ENUM ('lower_better', 'higher_better');
+-- Uncomment these lines to drop existing alpha tables:
+-- DROP TABLE IF EXISTS high_scores CASCADE;
+-- DROP TABLE IF EXISTS team_members CASCADE;
+-- DROP TABLE IF EXISTS teams CASCADE;
+-- DROP TABLE IF EXISTS game_details CASCADE;
+-- DROP TABLE IF EXISTS game_modes CASCADE;
+-- DROP TABLE IF EXISTS games CASCADE;
+-- DROP TABLE IF EXISTS players CASCADE;
+-- DROP TYPE IF EXISTS score_direction CASCADE;
+-- DROP TYPE IF EXISTS score_format CASCADE;
+-- DROP TYPE IF EXISTS game_category CASCADE;
 
--- How to display the score value in the UI
-CREATE TYPE score_format AS ENUM (
-  'integer',        -- 47 (points, throws, strokes, eliminations)
-  'time_ms',        -- stored as ms, displayed as 1:23.456 or 2:22.567
-  'time_seconds',   -- stored as seconds, displayed as 1:23 or 4:56
-  'decimal_2',      -- 98.45 (for percentages, etc.)
-  'level'           -- World 8-4 (stored as integer 84, formatted in UI)
+
+-- ============================================================================
+-- ENUM TYPES
+-- ============================================================================
+
+-- How to interpret and sort scores on leaderboards
+CREATE TYPE score_direction AS ENUM (
+  'lower_better',   -- Golf strokes, race times, darts throws
+  'higher_better'   -- Points, eliminations, completion %
 );
 
--- Category for filtering/grouping in the display UI
+-- How to display score values in the UI
+CREATE TYPE score_format AS ENUM (
+  'integer',        -- 47 (points, throws, kills) → "47 pts"
+  'time_ms',        -- Milliseconds → "2:22.567"
+  'time_seconds',   -- Seconds → "4:56"  
+  'decimal_2',      -- Value × 100 → "12.20 in" or "98.45%"
+  'golf_relative',  -- Relative to par → "-4", "E", "+3"
+  'level'           -- Encoded digits → "World 8-4"
+);
+
+-- Category for browse filtering
 CREATE TYPE game_category AS ENUM (
   'racing',
   'golf',
@@ -32,6 +62,7 @@ CREATE TYPE game_category AS ENUM (
   'rpg',
   'other'
 );
+
 
 -- ============================================================================
 -- PLAYERS
@@ -46,77 +77,99 @@ CREATE TABLE players (
 );
 
 COMMENT ON TABLE players IS 'Player profiles for the game room';
-COMMENT ON COLUMN players.avatar_url IS 'URL to avatar image in Supabase Storage';
+
 
 -- ============================================================================
--- TEAMS (future-proofing for team-based games)
--- ============================================================================
-
-CREATE TABLE teams (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  avatar_url TEXT,                        -- Optional team logo
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE team_members (
-  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-  player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (team_id, player_id)
-);
-
-COMMENT ON TABLE teams IS 'Teams for multiplayer/co-op games (future use)';
-COMMENT ON TABLE team_members IS 'Junction table linking players to teams';
-
--- ============================================================================
--- GAMES & GAME MODES
+-- GAMES (Top-level container)
 -- ============================================================================
 
 CREATE TABLE games (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,                     -- "Assetto Corsa", "Mario Kart 8 Deluxe"
-  platform TEXT,                          -- "Switch", "PC", "Physical", "NES"
+  name TEXT NOT NULL,                     -- "Mario Kart 8 Deluxe", "Pinball"
   category game_category NOT NULL,
-  icon_url TEXT,                          -- Supabase Storage URL for game icon
-  description TEXT,                       -- Optional description for UI
-  sort_order INTEGER DEFAULT 0,           -- Manual ordering in UI (lower = first)
-  is_active BOOLEAN DEFAULT true,         -- Soft delete / hide from UI
+  platform TEXT,                          -- "Switch", "PC", "Physical"
+  icon_url TEXT,                          -- Supabase Storage URL
+  
+  -- Hierarchy configuration
+  -- These labels appear in the UI dropdowns
+  mode_label TEXT DEFAULT 'Mode',         -- "Mode", "Class", "Machine", "Category"
+  detail_label TEXT DEFAULT 'Track',      -- "Track", "Course", "Fish", "Enemy"
+  has_modes BOOLEAN DEFAULT true,         -- Does this game use Level 1?
+  has_details BOOLEAN DEFAULT true,       -- Does this game use Level 2?
+  
+  -- Default score settings (fallback when mode/detail don't specify)
+  default_score_format score_format DEFAULT 'integer',
+  default_score_direction score_direction DEFAULT 'higher_better',
+  default_score_unit TEXT,                -- "pts", "darts", "in", "%", NULL for times
+  
+  sort_order INTEGER DEFAULT 0,           -- Manual ordering in UI
+  is_active BOOLEAN DEFAULT true,         -- Soft delete
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+COMMENT ON TABLE games IS 'Top-level game containers with hierarchy configuration';
+COMMENT ON COLUMN games.mode_label IS 'UI label for the modes dropdown (e.g., "Class", "Machine")';
+COMMENT ON COLUMN games.detail_label IS 'UI label for the details dropdown (e.g., "Track", "Fish")';
+COMMENT ON COLUMN games.has_modes IS 'If false, skip mode selection in Add Score flow';
+COMMENT ON COLUMN games.has_details IS 'If false, skip detail selection in Add Score flow';
+
+
+-- ============================================================================
+-- GAME MODES (Level 1)
+-- ============================================================================
 
 CREATE TABLE game_modes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,                     -- "150cc Time Trial", "Fishing", "Attack From Mars"
   
-  -- Identity
-  name TEXT NOT NULL,                     -- "Rainbow Road", "Spa - GT3", "501"
-  subtitle TEXT,                          -- Optional clarifier: "Time Trial", "Speed Golf"
+  -- Override game defaults (NULL = use game default)
+  score_format score_format,
+  score_direction score_direction,
+  score_unit TEXT,
   
-  -- Score interpretation rules
-  score_direction score_direction NOT NULL,
-  score_format score_format NOT NULL,
-  score_unit TEXT,                        -- "throws", "strokes", "pts", "eliminations", null for times
+  -- Override detail label for this specific mode
+  -- Example: Stardew "Fishing" mode uses "Fish" instead of game's "Target"
+  detail_label_override TEXT,
   
-  -- Structured context for UI grouping/filtering
-  -- Examples: {"track": "Spa", "class": "GT3"}, {"variant": "speed"}
-  context JSONB DEFAULT '{}',
-  
-  -- Display options
-  icon_url TEXT,                          -- Override game icon if needed
-  sort_order INTEGER DEFAULT 0,           -- Manual ordering within game
-  is_active BOOLEAN DEFAULT true,         -- Soft delete / hide from UI
-  
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE games IS 'Parent container for games (e.g., "Mario Kart 8 Deluxe")';
-COMMENT ON TABLE game_modes IS 'Specific scoreable contexts (e.g., "Rainbow Road - Time Trial")';
-COMMENT ON COLUMN game_modes.context IS 'Structured metadata for grouping: {"track": "Spa", "class": "GT3"}';
-COMMENT ON COLUMN game_modes.score_format IS 'Determines how score BIGINT is displayed in UI';
+COMMENT ON TABLE game_modes IS 'Level 1 of hierarchy: game variants/modes';
+COMMENT ON COLUMN game_modes.detail_label_override IS 'Override game.detail_label for this mode only';
+
+
+-- ============================================================================
+-- GAME DETAILS (Level 2)
+-- ============================================================================
+
+CREATE TABLE game_details (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  mode_id UUID REFERENCES game_modes(id) ON DELETE CASCADE,
+  -- NULL mode_id = available for ALL modes in this game (shared)
+  -- Non-NULL mode_id = only available for that specific mode
+  
+  name TEXT NOT NULL,                     -- "Rainbow Road", "Tiger Trout", "Radstag"
+  
+  -- Override mode/game defaults (rare, usually NULL)
+  score_format score_format,
+  score_direction score_direction,
+  score_unit TEXT,
+  
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE game_details IS 'Level 2 of hierarchy: tracks, courses, targets, etc.';
+COMMENT ON COLUMN game_details.mode_id IS 'NULL = available for all modes; UUID = mode-specific';
+
 
 -- ============================================================================
 -- HIGH SCORES
@@ -124,144 +177,73 @@ COMMENT ON COLUMN game_modes.score_format IS 'Determines how score BIGINT is dis
 
 CREATE TABLE high_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  game_mode_id UUID NOT NULL REFERENCES game_modes(id) ON DELETE CASCADE,
+  player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  mode_id UUID REFERENCES game_modes(id) ON DELETE SET NULL,
+  detail_id UUID REFERENCES game_details(id) ON DELETE SET NULL,
   
-  -- Participant (exactly one must be set)
-  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
-  
-  -- The score value
-  -- Always stored as integer/bigint; score_format determines display
-  -- Times: stored as milliseconds (1:23.456 = 83456)
-  -- Percentages: stored as value * 100 (98.45% = 9845)
-  -- Levels: stored as concatenated digits (World 8-4 = 84)
+  -- The actual score value
+  -- Interpretation depends on effective score_format:
+  --   integer: raw value (47)
+  --   time_ms: milliseconds (142567 = 2:22.567)
+  --   time_seconds: seconds (296 = 4:56)
+  --   decimal_2: value × 100 (1220 = 12.20)
+  --   golf_relative: strokes relative to par (-4, 0, +3)
+  --   level: encoded digits (84 = World 8-4)
   score BIGINT NOT NULL,
   
-  -- Optional extended data
-  -- Examples: {"checkout": "D16"}, {"character": "Luigi"}, {"car": "Ferrari 488"}
-  metadata JSONB DEFAULT '{}',
-  
-  -- When the score was achieved (user-provided or defaults to now)
+  metadata JSONB DEFAULT '{}',            -- Optional extra data
   achieved_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  
-  -- Record keeping
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   
-  -- Data integrity: must have exactly one participant type
-  CONSTRAINT score_has_one_participant CHECK (
-    (player_id IS NOT NULL AND team_id IS NULL) OR
-    (player_id IS NULL AND team_id IS NOT NULL)
+  -- Ensure valid hierarchy combinations
+  CONSTRAINT valid_score_hierarchy CHECK (
+    -- No mode, no detail (game-only scores)
+    (mode_id IS NULL AND detail_id IS NULL) OR
+    -- Mode but no detail
+    (mode_id IS NOT NULL AND detail_id IS NULL) OR
+    -- Mode and detail (full hierarchy)
+    (mode_id IS NOT NULL AND detail_id IS NOT NULL)
+    -- Note: detail without mode is NOT allowed
   )
 );
 
-COMMENT ON TABLE high_scores IS 'Individual score records for leaderboards';
-COMMENT ON COLUMN high_scores.score IS 'Raw score value; interpret using game_mode.score_format';
-COMMENT ON COLUMN high_scores.metadata IS 'Optional game-specific details: {"checkout": "D16"}';
+COMMENT ON TABLE high_scores IS 'Score records linked to game hierarchy';
+COMMENT ON COLUMN high_scores.score IS 'Raw value; interpret using effective score_format';
+
 
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
 
--- Player lookups
-CREATE INDEX idx_players_name ON players(name);
+-- Games
+CREATE INDEX idx_games_category ON games(category) WHERE is_active = true;
+CREATE INDEX idx_games_active ON games(is_active, sort_order);
 
--- Game mode navigation
-CREATE INDEX idx_game_modes_game ON game_modes(game_id);
-CREATE INDEX idx_game_modes_active ON game_modes(game_id) WHERE is_active = true;
-CREATE INDEX idx_game_modes_context ON game_modes USING gin(context);
+-- Modes
+CREATE INDEX idx_game_modes_game ON game_modes(game_id) WHERE is_active = true;
+CREATE INDEX idx_game_modes_active ON game_modes(game_id, is_active, sort_order);
 
--- High score queries (these are critical for leaderboard performance)
-CREATE INDEX idx_high_scores_game_mode ON high_scores(game_mode_id);
-CREATE INDEX idx_high_scores_player ON high_scores(player_id) WHERE player_id IS NOT NULL;
-CREATE INDEX idx_high_scores_team ON high_scores(team_id) WHERE team_id IS NOT NULL;
+-- Details
+CREATE INDEX idx_game_details_game ON game_details(game_id) WHERE is_active = true;
+CREATE INDEX idx_game_details_mode ON game_details(mode_id) WHERE is_active = true;
+CREATE INDEX idx_game_details_shared ON game_details(game_id) 
+  WHERE mode_id IS NULL AND is_active = true;
+
+-- Scores (critical for leaderboard performance)
+CREATE INDEX idx_high_scores_game ON high_scores(game_id);
+CREATE INDEX idx_high_scores_mode ON high_scores(game_id, mode_id);
+CREATE INDEX idx_high_scores_detail ON high_scores(game_id, mode_id, detail_id);
+CREATE INDEX idx_high_scores_player ON high_scores(player_id);
+CREATE INDEX idx_high_scores_leaderboard ON high_scores(game_id, mode_id, detail_id, score);
 CREATE INDEX idx_high_scores_achieved ON high_scores(achieved_at DESC);
 
--- Composite index for leaderboard queries (mode + score for sorting)
-CREATE INDEX idx_high_scores_leaderboard ON high_scores(game_mode_id, score);
 
 -- ============================================================================
--- VIEWS
+-- HELPER FUNCTIONS
 -- ============================================================================
 
--- Denormalized leaderboard view for easy querying
-CREATE VIEW leaderboard AS
-SELECT 
-  hs.id AS score_id,
-  hs.score,
-  hs.achieved_at,
-  hs.metadata AS score_metadata,
-  
-  -- Game mode details
-  gm.id AS game_mode_id,
-  gm.name AS mode_name,
-  gm.subtitle AS mode_subtitle,
-  gm.score_direction,
-  gm.score_format,
-  gm.score_unit,
-  gm.context AS mode_context,
-  
-  -- Game details
-  g.id AS game_id,
-  g.name AS game_name,
-  g.platform,
-  g.category,
-  g.icon_url AS game_icon,
-  
-  -- Player details (null if team score)
-  p.id AS player_id,
-  p.name AS player_name,
-  p.avatar_url AS player_avatar,
-  
-  -- Team details (null if player score)
-  t.id AS team_id,
-  t.name AS team_name,
-  t.avatar_url AS team_avatar
-
-FROM high_scores hs
-JOIN game_modes gm ON hs.game_mode_id = gm.id
-JOIN games g ON gm.game_id = g.id
-LEFT JOIN players p ON hs.player_id = p.id
-LEFT JOIN teams t ON hs.team_id = t.id
-WHERE gm.is_active = true 
-  AND g.is_active = true;
-
-COMMENT ON VIEW leaderboard IS 'Denormalized view joining scores with all related data';
-
--- Best scores per player per mode (for "personal best" displays)
-CREATE VIEW personal_bests AS
-SELECT DISTINCT ON (hs.game_mode_id, hs.player_id)
-  hs.id AS score_id,
-  hs.score,
-  hs.achieved_at,
-  hs.game_mode_id,
-  hs.player_id,
-  gm.score_direction,
-  gm.score_format,
-  gm.score_unit,
-  gm.name AS mode_name,
-  g.name AS game_name,
-  p.name AS player_name,
-  p.avatar_url AS player_avatar
-FROM high_scores hs
-JOIN game_modes gm ON hs.game_mode_id = gm.id
-JOIN games g ON gm.game_id = g.id
-JOIN players p ON hs.player_id = p.id
-WHERE hs.player_id IS NOT NULL
-  AND gm.is_active = true
-  AND g.is_active = true
-ORDER BY 
-  hs.game_mode_id, 
-  hs.player_id,
-  CASE WHEN gm.score_direction = 'lower_better' THEN hs.score ELSE -hs.score END,
-  hs.achieved_at ASC;
-
-COMMENT ON VIEW personal_bests IS 'Best score per player per game mode';
-
--- ============================================================================
--- FUNCTIONS
--- ============================================================================
-
--- Auto-update updated_at timestamp on row changes
+-- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -270,13 +252,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply updated_at trigger to relevant tables
+-- Apply to relevant tables
 CREATE TRIGGER players_updated_at
   BEFORE UPDATE ON players
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER teams_updated_at
-  BEFORE UPDATE ON teams
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER games_updated_at
@@ -287,13 +265,53 @@ CREATE TRIGGER game_modes_updated_at
   BEFORE UPDATE ON game_modes
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+CREATE TRIGGER game_details_updated_at
+  BEFORE UPDATE ON game_details
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+
 -- ============================================================================
--- HELPER FUNCTION: Get leaderboard for a game mode
+-- GET EFFECTIVE SCORE SETTINGS
+-- Returns the score format/direction/unit for a game/mode/detail combination
+-- Uses inheritance: detail → mode → game defaults
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION get_score_settings(
+  p_game_id UUID,
+  p_mode_id UUID DEFAULT NULL,
+  p_detail_id UUID DEFAULT NULL
+)
+RETURNS TABLE (
+  score_format score_format,
+  score_direction score_direction,
+  score_unit TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    COALESCE(d.score_format, m.score_format, g.default_score_format) AS score_format,
+    COALESCE(d.score_direction, m.score_direction, g.default_score_direction) AS score_direction,
+    COALESCE(d.score_unit, m.score_unit, g.default_score_unit) AS score_unit
+  FROM games g
+  LEFT JOIN game_modes m ON m.id = p_mode_id
+  LEFT JOIN game_details d ON d.id = p_detail_id
+  WHERE g.id = p_game_id;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION get_score_settings IS 'Get effective score settings with inheritance';
+
+
+-- ============================================================================
+-- GET LEADERBOARD
+-- Returns ranked scores for any hierarchy level
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION get_leaderboard(
-  mode_id UUID,
-  max_results INTEGER DEFAULT 10
+  p_game_id UUID,
+  p_mode_id UUID DEFAULT NULL,
+  p_detail_id UUID DEFAULT NULL,
+  p_limit INTEGER DEFAULT 10
 )
 RETURNS TABLE (
   rank BIGINT,
@@ -303,22 +321,25 @@ RETURNS TABLE (
   player_id UUID,
   player_name TEXT,
   player_avatar TEXT,
-  team_id UUID,
-  team_name TEXT
+  effective_format score_format,
+  effective_direction score_direction,
+  effective_unit TEXT
 ) AS $$
 DECLARE
-  direction score_direction;
+  v_direction score_direction;
+  v_format score_format;
+  v_unit TEXT;
 BEGIN
-  -- Get the score direction for this mode
-  SELECT gm.score_direction INTO direction
-  FROM game_modes gm
-  WHERE gm.id = mode_id;
+  -- Get effective score settings
+  SELECT ss.score_format, ss.score_direction, ss.score_unit
+  INTO v_format, v_direction, v_unit
+  FROM get_score_settings(p_game_id, p_mode_id, p_detail_id) ss;
   
   RETURN QUERY
   SELECT
     ROW_NUMBER() OVER (
       ORDER BY 
-        CASE WHEN direction = 'lower_better' THEN hs.score ELSE -hs.score END,
+        CASE WHEN v_direction = 'lower_better' THEN hs.score ELSE -hs.score END,
         hs.achieved_at ASC
     ) AS rank,
     hs.id AS score_id,
@@ -327,20 +348,44 @@ BEGIN
     p.id AS player_id,
     p.name AS player_name,
     p.avatar_url AS player_avatar,
-    t.id AS team_id,
-    t.name AS team_name
+    v_format AS effective_format,
+    v_direction AS effective_direction,
+    v_unit AS effective_unit
   FROM high_scores hs
-  LEFT JOIN players p ON hs.player_id = p.id
-  LEFT JOIN teams t ON hs.team_id = t.id
-  WHERE hs.game_mode_id = mode_id
+  JOIN players p ON p.id = hs.player_id
+  WHERE hs.game_id = p_game_id
+    AND (p_mode_id IS NULL OR hs.mode_id = p_mode_id)
+    AND (p_detail_id IS NULL OR hs.detail_id = p_detail_id)
   ORDER BY 
-    CASE WHEN direction = 'lower_better' THEN hs.score ELSE -hs.score END,
+    CASE WHEN v_direction = 'lower_better' THEN hs.score ELSE -hs.score END,
     hs.achieved_at ASC
-  LIMIT max_results;
+  LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-COMMENT ON FUNCTION get_leaderboard IS 'Get ranked leaderboard for a game mode, respecting score_direction';
+COMMENT ON FUNCTION get_leaderboard IS 'Get ranked leaderboard with effective score settings';
+
+
+-- ============================================================================
+-- GET DETAIL LABEL
+-- Returns the appropriate detail label for a game/mode
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION get_detail_label(
+  p_game_id UUID,
+  p_mode_id UUID DEFAULT NULL
+)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN (
+    SELECT COALESCE(m.detail_label_override, g.detail_label)
+    FROM games g
+    LEFT JOIN game_modes m ON m.id = p_mode_id
+    WHERE g.id = p_game_id
+  );
+END;
+$$ LANGUAGE plpgsql STABLE;
+
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
@@ -348,127 +393,89 @@ COMMENT ON FUNCTION get_leaderboard IS 'Get ranked leaderboard for a game mode, 
 
 -- Enable RLS on all tables
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE games ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_modes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE game_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE high_scores ENABLE ROW LEVEL SECURITY;
 
--- For a home kiosk, we use anon access with open read/write
--- This is appropriate for a trusted home network
--- For public deployment, you'd want authentication
+-- Open policies for home network use (anon access)
+-- For production, replace with authenticated policies
 
 -- Players
-CREATE POLICY "Anyone can view players" 
-  ON players FOR SELECT USING (true);
-CREATE POLICY "Anyone can create players" 
-  ON players FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update players" 
-  ON players FOR UPDATE USING (true);
-CREATE POLICY "Anyone can delete players" 
-  ON players FOR DELETE USING (true);
-
--- Teams
-CREATE POLICY "Anyone can view teams" 
-  ON teams FOR SELECT USING (true);
-CREATE POLICY "Anyone can create teams" 
-  ON teams FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update teams" 
-  ON teams FOR UPDATE USING (true);
-CREATE POLICY "Anyone can delete teams" 
-  ON teams FOR DELETE USING (true);
-
--- Team members
-CREATE POLICY "Anyone can view team members" 
-  ON team_members FOR SELECT USING (true);
-CREATE POLICY "Anyone can manage team members" 
-  ON team_members FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can remove team members" 
-  ON team_members FOR DELETE USING (true);
+CREATE POLICY "Anyone can view players" ON players FOR SELECT USING (true);
+CREATE POLICY "Anyone can create players" ON players FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update players" ON players FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete players" ON players FOR DELETE USING (true);
 
 -- Games
-CREATE POLICY "Anyone can view games" 
-  ON games FOR SELECT USING (true);
-CREATE POLICY "Anyone can create games" 
-  ON games FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update games" 
-  ON games FOR UPDATE USING (true);
+CREATE POLICY "Anyone can view games" ON games FOR SELECT USING (true);
+CREATE POLICY "Anyone can create games" ON games FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update games" ON games FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete games" ON games FOR DELETE USING (true);
 
--- Game modes
-CREATE POLICY "Anyone can view game modes" 
-  ON game_modes FOR SELECT USING (true);
-CREATE POLICY "Anyone can create game modes" 
-  ON game_modes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can update game modes" 
-  ON game_modes FOR UPDATE USING (true);
+-- Game Modes
+CREATE POLICY "Anyone can view modes" ON game_modes FOR SELECT USING (true);
+CREATE POLICY "Anyone can create modes" ON game_modes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update modes" ON game_modes FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete modes" ON game_modes FOR DELETE USING (true);
 
--- High scores
-CREATE POLICY "Anyone can view high scores" 
-  ON high_scores FOR SELECT USING (true);
-CREATE POLICY "Anyone can submit high scores" 
-  ON high_scores FOR INSERT WITH CHECK (true);
-CREATE POLICY "Anyone can delete high scores" 
-  ON high_scores FOR DELETE USING (true);
+-- Game Details
+CREATE POLICY "Anyone can view details" ON game_details FOR SELECT USING (true);
+CREATE POLICY "Anyone can create details" ON game_details FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update details" ON game_details FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete details" ON game_details FOR DELETE USING (true);
 
--- ============================================================================
--- STORAGE BUCKETS (run separately in Supabase Dashboard → Storage)
--- ============================================================================
+-- High Scores
+CREATE POLICY "Anyone can view scores" ON high_scores FOR SELECT USING (true);
+CREATE POLICY "Anyone can submit scores" ON high_scores FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update scores" ON high_scores FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete scores" ON high_scores FOR DELETE USING (true);
 
--- NOTE: Storage buckets must be created via the Supabase Dashboard or API
--- Go to Storage → New Bucket and create these:
-
--- 1. Bucket: "avatars" (public)
---    - For player and team avatars
---    - Enable public access for easy URL sharing
-
--- 2. Bucket: "game-icons" (public)
---    - For game and game mode icons
---    - Enable public access for easy URL sharing
-
--- Storage policies (run in SQL editor after creating buckets):
-
--- Avatars bucket policies
--- INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
-
--- CREATE POLICY "Anyone can view avatars"
---   ON storage.objects FOR SELECT
---   USING (bucket_id = 'avatars');
-
--- CREATE POLICY "Anyone can upload avatars"
---   ON storage.objects FOR INSERT
---   WITH CHECK (bucket_id = 'avatars');
-
--- CREATE POLICY "Anyone can update avatars"
---   ON storage.objects FOR UPDATE
---   USING (bucket_id = 'avatars');
-
--- CREATE POLICY "Anyone can delete avatars"
---   ON storage.objects FOR DELETE
---   USING (bucket_id = 'avatars');
-
--- Game icons bucket policies (same pattern)
--- INSERT INTO storage.buckets (id, name, public) VALUES ('game-icons', 'game-icons', true);
-
--- CREATE POLICY "Anyone can view game icons"
---   ON storage.objects FOR SELECT
---   USING (bucket_id = 'game-icons');
-
--- CREATE POLICY "Anyone can upload game icons"
---   ON storage.objects FOR INSERT
---   WITH CHECK (bucket_id = 'game-icons');
 
 -- ============================================================================
 -- REALTIME SUBSCRIPTIONS
 -- ============================================================================
 
--- Enable realtime for tables the kiosk needs to watch
--- Run this in SQL editor:
-
 ALTER PUBLICATION supabase_realtime ADD TABLE high_scores;
 ALTER PUBLICATION supabase_realtime ADD TABLE players;
 ALTER PUBLICATION supabase_realtime ADD TABLE games;
 ALTER PUBLICATION supabase_realtime ADD TABLE game_modes;
+ALTER PUBLICATION supabase_realtime ADD TABLE game_details;
+
+
+-- ============================================================================
+-- STORAGE BUCKETS (Manual Setup Required)
+-- ============================================================================
+-- 
+-- Create these buckets in Supabase Dashboard → Storage:
+--
+-- 1. Bucket: "avatars" (public)
+--    - For player avatar images
+--    - Enable public access
+--
+-- 2. Bucket: "game-icons" (public)  
+--    - For game/category icons
+--    - Enable public access
+--
+-- Storage policies (run after creating buckets):
+--
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('game-icons', 'game-icons', true);
+--
+-- CREATE POLICY "Public avatar access" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+-- CREATE POLICY "Public avatar upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars');
+-- CREATE POLICY "Public icon access" ON storage.objects FOR SELECT USING (bucket_id = 'game-icons');
+-- CREATE POLICY "Public icon upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'game-icons');
+
 
 -- ============================================================================
 -- SCHEMA COMPLETE
+-- ============================================================================
+-- 
+-- Next steps:
+-- 1. Run this SQL in Supabase SQL Editor
+-- 2. Create storage buckets manually
+-- 3. Add seed data (see seed.sql)
+-- 4. Update TypeScript types to match
+-- 
 -- ============================================================================

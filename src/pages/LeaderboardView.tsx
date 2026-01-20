@@ -11,17 +11,33 @@ import { useGameMode } from '@/hooks/useGameMode'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 
 /**
- * LeaderboardView - Full leaderboard for a specific game mode
- * Route: /browse/:category/:gameId/:modeId
+ * LeaderboardView - Full leaderboard for a specific game/mode/detail combination
+ * Route: /browse/:category/:gameId/:modeId/:detailId
+ * 
+ * detailId can be:
+ * - A valid UUID: show scores for that specific detail
+ * - "all": show all scores for the mode (no detail filter)
  */
 export function LeaderboardView() {
   const navigate = useNavigate()
-  const { category, gameId, modeId } = useParams<{
+  const { category, gameId, modeId, detailId } = useParams<{
     category: string
     gameId: string
     modeId: string
+    detailId: string
   }>()
-  const { data: scores, loading, error } = useLeaderboard(modeId || null, 10)
+  
+  // Determine if we're filtering by detail or showing all
+  const effectiveDetailId = detailId === 'all' ? null : (detailId || null)
+  
+  // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
+  const { entries: scores, loading, error } = useLeaderboard(
+    gameId || null,
+    modeId || null,
+    effectiveDetailId,
+    10 // limit
+  )
+  
   const { game: currentGame } = useGame(gameId || null)
   const { mode: currentMode } = useGameMode(modeId || null)
   const { isIdle, resetTimer } = useIdleTimer(30000)
@@ -35,7 +51,12 @@ export function LeaderboardView() {
 
   const handleBack = () => {
     resetTimer()
-    navigate(`/browse/${category}/${gameId}`)
+    // Go back to detail selection if game has details, otherwise mode selection
+    if (currentGame?.has_details) {
+      navigate(`/browse/${category}/${gameId}/${modeId}`)
+    } else {
+      navigate(`/browse/${category}/${gameId}`)
+    }
   }
 
   const handleAddScore = () => {
@@ -43,23 +64,32 @@ export function LeaderboardView() {
     navigate('/add-score')
   }
 
+  // Build title based on what's selected
+  const buildTitle = () => {
+    if (!currentMode) return 'Leaderboard'
+    return currentMode.name
+  }
+
   return (
     <KioskLayout>
       <div className="h-full flex flex-col">
         {/* Header */}
         <BrowseHeader
-          backLabel={currentGame?.name || 'Back'}
+          backLabel={currentGame?.has_details ? (currentGame?.detail_label || 'Back') : (currentGame?.name || 'Back')}
           onBack={handleBack}
           onAddScore={handleAddScore}
         />
 
-        {/* Mode title */}
+        {/* Mode/Detail title */}
         <div className="h-[56px] px-md flex flex-col justify-center">
           <h2 className="text-lg font-bold text-text-primary">
-            {currentMode?.name || 'Leaderboard'}
+            {buildTitle()}
           </h2>
-          {currentMode?.subtitle && (
-            <p className="text-sm text-text-secondary">{currentMode.subtitle}</p>
+          {detailId && detailId !== 'all' && (
+            <p className="text-sm text-text-secondary">
+              {/* Detail name would need to be fetched - for now show generic */}
+              Filtered view
+            </p>
           )}
         </div>
 
@@ -98,12 +128,12 @@ export function LeaderboardView() {
                 transition={{ delay: index * 0.03 }}
               >
                 <ScoreRow
-                  rank={index + 1}
-                  playerName={entry.player_name || entry.team_name || 'Unknown'}
-                  playerAvatar={entry.player_avatar || entry.team_avatar || null}
+                  rank={entry.rank}
+                  playerName={entry.player_name || 'Unknown'}
+                  playerAvatar={entry.player_avatar}
                   score={entry.score}
-                  scoreFormat={entry.score_format}
-                  scoreUnit={entry.score_unit || undefined}
+                  scoreFormat={entry.effective_format}
+                  scoreUnit={entry.effective_unit || undefined}
                   className="card"
                 />
               </motion.div>

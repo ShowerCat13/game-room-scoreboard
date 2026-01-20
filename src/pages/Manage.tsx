@@ -6,6 +6,7 @@ import {
   Users, 
   Gamepad2, 
   Trophy,
+  Layers,
   Plus,
   Pencil,
   Trash2,
@@ -18,12 +19,13 @@ import { PlayerAvatar } from '@/components/display'
 import { useManagePlayers } from '@/hooks/useManagePlayers'
 import { useManageGames } from '@/hooks/useManageGames'
 import { useManageGameModes } from '@/hooks/useManageGameModes'
+import { useManageGameDetails } from '@/hooks/useManageGameDetails'
 import { useManageScores, type ScoreWithDetails } from '@/hooks/useManageScores'
 import { useKioskStore } from '@/stores/kioskStore'
-import { formatScore, getInitials, getPlayerColor } from '@/lib/utils'
-import type { Player, Game, GameMode, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
+import { formatScore } from '@/lib/utils'
+import type { Player, Game, GameMode, GameDetail, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
 
-type Tab = 'players' | 'games' | 'scores'
+type Tab = 'players' | 'games' | 'details' | 'scores'
 
 // Category options for game form
 const CATEGORIES: { value: GameCategory; label: string }[] = [
@@ -42,6 +44,7 @@ const SCORE_FORMATS: { value: ScoreFormat; label: string }[] = [
   { value: 'time_ms', label: 'Time (2:22.567)' },
   { value: 'time_seconds', label: 'Time (2:22)' },
   { value: 'decimal_2', label: 'Decimal (98.45%)' },
+  { value: 'golf_relative', label: 'Golf (+3, E, -2)' },
   { value: 'level', label: 'Level (8-4)' },
 ]
 
@@ -51,7 +54,7 @@ const SCORE_DIRECTIONS: { value: ScoreDirection; label: string }[] = [
 ]
 
 /**
- * Manage - Hub for managing players, games, modes, and scores
+ * Manage - Hub for managing players, games, modes, details, and scores
  * Uses tabs to navigate between sections
  */
 export function Manage() {
@@ -80,11 +83,24 @@ export function Manage() {
   const [editingMode, setEditingMode] = useState<GameMode | null>(null)
   const [showModeForm, setShowModeForm] = useState(false)
   const [modeName, setModeName] = useState('')
-  const [modeSubtitle, setModeSubtitle] = useState('')
   const [modeFormat, setModeFormat] = useState<ScoreFormat>('integer')
   const [modeDirection, setModeDirection] = useState<ScoreDirection>('higher_better')
   const [modeUnit, setModeUnit] = useState('')
   const [deletingMode, setDeletingMode] = useState<GameMode | null>(null)
+
+  // Details state
+  const { details, loading: detailsLoading, fetchDetails, createDetail, updateDetail, deleteDetail, clearDetails } = useManageGameDetails()
+  const [detailsGameId, setDetailsGameId] = useState<string | null>(null)
+  const [detailsModeId, setDetailsModeId] = useState<string | null>(null)
+  const [editingDetail, setEditingDetail] = useState<GameDetail | null>(null)
+  const [showDetailForm, setShowDetailForm] = useState(false)
+  const [detailName, setDetailName] = useState('')
+  const [detailModeScope, setDetailModeScope] = useState<string | null>(null) // null = all modes, UUID = specific mode
+  const [detailOverrideScore, setDetailOverrideScore] = useState(false)
+  const [detailFormat, setDetailFormat] = useState<ScoreFormat>('integer')
+  const [detailDirection, setDetailDirection] = useState<ScoreDirection>('higher_better')
+  const [detailUnit, setDetailUnit] = useState('')
+  const [deletingDetail, setDeletingDetail] = useState<GameDetail | null>(null)
 
   // Scores state
   const { scores, loading: scoresLoading, fetchScores, deleteScore } = useManageScores()
@@ -103,12 +119,14 @@ export function Manage() {
       fetchPlayers()
     } else if (activeTab === 'games') {
       fetchGames()
+    } else if (activeTab === 'details') {
+      fetchGames() // Need games list for selector
     } else if (activeTab === 'scores') {
       fetchScores()
     }
   }, [activeTab, fetchPlayers, fetchGames, fetchScores])
 
-  // Fetch modes when game is selected
+  // Fetch modes when game is selected (for games tab)
   useEffect(() => {
     if (selectedGame) {
       fetchModes(selectedGame.id)
@@ -117,18 +135,27 @@ export function Manage() {
     }
   }, [selectedGame, fetchModes, clearModes])
 
+  // Fetch details when game/mode selected (for details tab)
+  useEffect(() => {
+    if (detailsGameId) {
+      fetchDetails(detailsGameId, detailsModeId)
+      // Also fetch modes for the mode filter dropdown
+      fetchModes(detailsGameId)
+    } else {
+      clearDetails()
+    }
+  }, [detailsGameId, detailsModeId, fetchDetails, fetchModes, clearDetails])
+
   // ============================================================================
   // PIN HELPERS
   // ============================================================================
 
   const requirePin = (action: () => void) => {
     if (adminPin === null) {
-      // No PIN set, require setup first
       setPendingAction(() => action)
       setPinMode('setup')
       setShowPinModal(true)
     } else {
-      // PIN is set, require verification
       setPendingAction(() => action)
       setPinMode('verify')
       setShowPinModal(true)
@@ -137,21 +164,17 @@ export function Manage() {
 
   const handlePinSubmit = (pin: string) => {
     if (pinMode === 'setup') {
-      // Setting up new PIN
       setAdminPin(pin)
       setShowPinModal(false)
       setPinError(null)
-      // Execute the pending action
       if (pendingAction) {
         pendingAction()
         setPendingAction(null)
       }
     } else {
-      // Verifying existing PIN
       if (verifyPin(pin)) {
         setShowPinModal(false)
         setPinError(null)
-        // Execute the pending action
         if (pendingAction) {
           pendingAction()
           setPendingAction(null)
@@ -235,7 +258,9 @@ export function Manage() {
         category: gameCategory,
       })
     } else {
-      await createGame(gameName.trim(), gameCategory, gamePlatform.trim() || null)
+      await createGame(gameName.trim(), gameCategory, {
+        platform: gamePlatform.trim() || null,
+      })
     }
     setShowGameForm(false)
     setGameName('')
@@ -262,7 +287,6 @@ export function Manage() {
   const handleAddMode = () => {
     setEditingMode(null)
     setModeName('')
-    setModeSubtitle('')
     setModeFormat('integer')
     setModeDirection('higher_better')
     setModeUnit('')
@@ -272,9 +296,8 @@ export function Manage() {
   const handleEditMode = (mode: GameMode) => {
     setEditingMode(mode)
     setModeName(mode.name)
-    setModeSubtitle(mode.subtitle || '')
-    setModeFormat(mode.score_format)
-    setModeDirection(mode.score_direction)
+    setModeFormat(mode.score_format ?? 'integer')
+    setModeDirection(mode.score_direction ?? 'higher_better')
     setModeUnit(mode.score_unit || '')
     setShowModeForm(true)
   }
@@ -285,7 +308,6 @@ export function Manage() {
     if (editingMode) {
       await updateMode(editingMode.id, {
         name: modeName.trim(),
-        subtitle: modeSubtitle.trim() || null,
         score_format: modeFormat,
         score_direction: modeDirection,
         score_unit: modeUnit.trim() || null,
@@ -294,15 +316,14 @@ export function Manage() {
       await createMode(
         selectedGame.id,
         modeName.trim(),
-        modeDirection,
         modeFormat,
-        modeSubtitle.trim() || null,
-        modeUnit.trim() || null
+        modeDirection,
+        modeUnit.trim() || null,
+        null
       )
     }
     setShowModeForm(false)
     setModeName('')
-    setModeSubtitle('')
     setEditingMode(null)
   }
 
@@ -312,6 +333,67 @@ export function Manage() {
     requirePin(async () => {
       await deleteMode(modeToDelete.id)
       setDeletingMode(null)
+    })
+  }
+
+  // ============================================================================
+  // DETAIL HANDLERS
+  // ============================================================================
+
+  const handleAddDetail = () => {
+    setEditingDetail(null)
+    setDetailName('')
+    setDetailModeScope(null)
+    setDetailOverrideScore(false)
+    setDetailFormat('integer')
+    setDetailDirection('higher_better')
+    setDetailUnit('')
+    setShowDetailForm(true)
+  }
+
+  const handleEditDetail = (detail: GameDetail) => {
+    setEditingDetail(detail)
+    setDetailName(detail.name)
+    setDetailModeScope(detail.mode_id)
+    setDetailOverrideScore(!!(detail.score_format || detail.score_direction || detail.score_unit))
+    setDetailFormat(detail.score_format ?? 'integer')
+    setDetailDirection(detail.score_direction ?? 'higher_better')
+    setDetailUnit(detail.score_unit || '')
+    setShowDetailForm(true)
+  }
+
+  const handleSaveDetail = async () => {
+    if (!detailName.trim() || !detailsGameId) return
+    
+    if (editingDetail) {
+      await updateDetail(editingDetail.id, {
+        name: detailName.trim(),
+        mode_id: detailModeScope,
+        score_format: detailOverrideScore ? detailFormat : null,
+        score_direction: detailOverrideScore ? detailDirection : null,
+        score_unit: detailOverrideScore ? (detailUnit.trim() || null) : null,
+      })
+    } else {
+      await createDetail(
+        detailsGameId,
+        detailName.trim(),
+        detailModeScope,
+        detailOverrideScore ? detailFormat : null,
+        detailOverrideScore ? detailDirection : null,
+        detailOverrideScore ? (detailUnit.trim() || null) : null
+      )
+    }
+    setShowDetailForm(false)
+    setDetailName('')
+    setEditingDetail(null)
+  }
+
+  const handleConfirmDeleteDetail = () => {
+    if (!deletingDetail) return
+    const detailToDelete = deletingDetail
+    requirePin(async () => {
+      await deleteDetail(detailToDelete.id)
+      setDeletingDetail(null)
     })
   }
 
@@ -329,6 +411,12 @@ export function Manage() {
   }
 
   // ============================================================================
+  // HELPERS
+  // ============================================================================
+
+  const getSelectedDetailsGame = () => games.find(g => g.id === detailsGameId) || null
+
+  // ============================================================================
   // RENDER
   // ============================================================================
 
@@ -336,43 +424,62 @@ export function Manage() {
     <KioskLayout>
       <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="h-[56px] px-sm flex items-center border-b border-background-elevated/50">
+        <div className="shrink-0 h-[64px] flex items-center px-md border-b border-white/10">
           <button
-            onClick={() => navigate('/settings')}
-            className="min-h-[48px] px-sm flex items-center gap-1 text-text-secondary active:text-text-primary transition-colors rounded-lg active:bg-background-elevated"
+            onClick={() => navigate('/')}
+            className="w-12 h-12 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg"
           >
-            <ChevronLeft className="w-5 h-5" />
-            <span className="text-base">Settings</span>
+            <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="flex-1 text-center text-lg font-bold text-text-primary pr-[80px]">
-            Manage
-          </h1>
+          <h1 className="text-xl font-bold text-text-primary ml-2">Manage</h1>
         </div>
 
         {/* Tabs */}
-        <div className="h-[56px] px-md flex items-center gap-2 border-b border-background-elevated/30">
-          {[
-            { id: 'players' as Tab, label: 'Players', icon: Users },
-            { id: 'games' as Tab, label: 'Games', icon: Gamepad2 },
-            { id: 'scores' as Tab, label: 'Scores', icon: Trophy },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => {
-                setActiveTab(id)
-                setSelectedGame(null)
-              }}
-              className={`
-                flex-1 h-[44px] flex items-center justify-center gap-2 rounded-lg font-medium transition-all
-                ${activeTab === id 
-                  ? 'bg-background-elevated text-text-primary' 
-                  : 'text-text-muted active:bg-background-elevated/50'}
-              `}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="text-sm">{label}</span>
-            </button>
-          ))}
+        <div className="shrink-0 flex border-b border-white/10 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('players')}
+            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
+              activeTab === 'players' 
+                ? 'text-category-golf border-b-2 border-category-golf' 
+                : 'text-text-muted'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            <span className="hidden sm:inline">Players</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('games')}
+            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
+              activeTab === 'games' 
+                ? 'text-category-darts border-b-2 border-category-darts' 
+                : 'text-text-muted'
+            }`}
+          >
+            <Gamepad2 className="w-5 h-5" />
+            <span className="hidden sm:inline">Games</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
+              activeTab === 'details' 
+                ? 'text-category-racing border-b-2 border-category-racing' 
+                : 'text-text-muted'
+            }`}
+          >
+            <Layers className="w-5 h-5" />
+            <span className="hidden sm:inline">Details</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('scores')}
+            className={`flex-1 min-w-[80px] h-[56px] flex items-center justify-center gap-2 font-medium transition-colors ${
+              activeTab === 'scores' 
+                ? 'text-category-party border-b-2 border-category-party' 
+                : 'text-text-muted'
+            }`}
+          >
+            <Trophy className="w-5 h-5" />
+            <span className="hidden sm:inline">Scores</span>
+          </button>
         </div>
 
         {/* Content */}
@@ -387,18 +494,16 @@ export function Manage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="h-full flex flex-col"
               >
-                {/* Add button */}
                 <div className="px-md py-3">
                   <button
                     onClick={handleAddPlayer}
-                    className="w-full h-[48px] flex items-center justify-center gap-2 bg-category-golf/20 text-category-golf font-semibold rounded-lg active:bg-category-golf/30 transition-colors"
+                    className="w-full h-[56px] flex items-center justify-center gap-2 bg-category-golf/20 text-category-golf font-medium rounded-xl active:bg-category-golf/30"
                   >
                     <Plus className="w-5 h-5" />
-                    <span>Add Player</span>
+                    Add Player
                   </button>
                 </div>
 
-                {/* Player list */}
                 <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                   {playersLoading ? (
                     <p className="text-center text-text-muted py-8">Loading...</p>
@@ -408,12 +513,12 @@ export function Manage() {
                     players.map((player) => (
                       <div
                         key={player.id}
-                        className="card h-[64px] px-md flex items-center gap-3"
+                        className="card px-md py-3 flex items-center gap-3"
                       >
-                        <PlayerAvatar
-                          name={player.name}
-                          avatarUrl={player.avatar_url}
-                          size={40}
+                        <PlayerAvatar 
+                          name={player.name} 
+                          avatarUrl={player.avatar_url} 
+                          size={32} 
                         />
                         <span className="flex-1 font-medium text-text-primary truncate">
                           {player.name}
@@ -444,86 +549,70 @@ export function Manage() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="h-full flex flex-col"
+                className="h-full flex"
               >
-                {!selectedGame ? (
-                  <>
-                    {/* Add game button */}
-                    <div className="px-md py-3">
-                      <button
-                        onClick={handleAddGame}
-                        className="w-full h-[48px] flex items-center justify-center gap-2 bg-category-darts/20 text-category-darts font-semibold rounded-lg active:bg-category-darts/30 transition-colors"
-                      >
-                        <Plus className="w-5 h-5" />
-                        <span>Add Game</span>
-                      </button>
-                    </div>
-
-                    {/* Game list */}
-                    <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
-                      {gamesLoading ? (
-                        <p className="text-center text-text-muted py-8">Loading...</p>
-                      ) : games.length === 0 ? (
-                        <p className="text-center text-text-muted py-8">No games yet</p>
-                      ) : (
-                        games.map((game) => (
-                          <div
-                            key={game.id}
-                            className="card h-[64px] px-md flex items-center gap-3"
-                          >
-                            <div
-                              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                              style={{ backgroundColor: getPlayerColor(game.name) }}
-                            >
-                              {getInitials(game.name)}
-                            </div>
-                            <button
-                              onClick={() => setSelectedGame(game)}
-                              className="flex-1 text-left min-w-0"
-                            >
-                              <p className="font-medium text-text-primary truncate">{game.name}</p>
-                              <p className="text-xs text-text-muted">{game.platform || game.category}</p>
-                            </button>
-                            <button
-                              onClick={() => handleEditGame(game)}
-                              className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg active:bg-background-elevated"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeletingGame(game)}
-                              className="w-10 h-10 flex items-center justify-center text-text-muted active:text-red-500 rounded-lg active:bg-background-elevated"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                            <ChevronRight className="w-5 h-5 text-text-muted" />
+                {/* Game list */}
+                <div className="w-1/2 h-full flex flex-col border-r border-white/10">
+                  <div className="px-md py-3">
+                    <button
+                      onClick={handleAddGame}
+                      className="w-full h-[56px] flex items-center justify-center gap-2 bg-category-darts/20 text-category-darts font-medium rounded-xl active:bg-category-darts/30"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Add Game
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
+                    {gamesLoading ? (
+                      <p className="text-center text-text-muted py-8">Loading...</p>
+                    ) : games.length === 0 ? (
+                      <p className="text-center text-text-muted py-8">No games yet</p>
+                    ) : (
+                      games.map((game) => (
+                        <div
+                          key={game.id}
+                          onClick={() => setSelectedGame(game)}
+                          className={`card px-md py-3 flex items-center gap-3 cursor-pointer ${
+                            selectedGame?.id === game.id ? 'ring-2 ring-category-darts' : ''
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-text-primary truncate">{game.name}</p>
+                            <p className="text-xs text-text-muted">{game.platform || 'No platform'}</p>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  /* Game Modes View */
-                  <>
-                    {/* Back + Add mode button */}
-                    <div className="px-md py-3 flex gap-2">
-                      <button
-                        onClick={() => setSelectedGame(null)}
-                        className="h-[48px] px-4 flex items-center gap-1 bg-background-elevated text-text-secondary font-medium rounded-lg active:bg-background-primary"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>Back</span>
-                      </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEditGame(game) }}
+                            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg active:bg-background-elevated"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletingGame(game) }}
+                            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-red-500 rounded-lg active:bg-background-elevated"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <ChevronRight className="w-5 h-5 text-text-muted" />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Mode list */}
+                {selectedGame ? (
+                  <div className="w-1/2 h-full flex flex-col">
+                    <div className="px-md py-3 flex items-center justify-between">
+                      <p className="text-sm text-text-muted">{selectedGame.name} — Modes</p>
                       <button
                         onClick={handleAddMode}
-                        className="flex-1 h-[48px] flex items-center justify-center gap-2 bg-category-party/20 text-category-party font-semibold rounded-lg active:bg-category-party/30 transition-colors"
+                        className="h-10 px-4 flex items-center justify-center gap-1 bg-category-party/20 text-category-party text-sm font-medium rounded-lg active:bg-category-party/30"
                       >
-                        <Plus className="w-5 h-5" />
-                        <span>Add Mode to {selectedGame.name}</span>
+                        <Plus className="w-4 h-4" />
+                        Add
                       </button>
                     </div>
 
-                    {/* Mode list */}
                     <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                       {modesLoading ? (
                         <p className="text-center text-text-muted py-8">Loading...</p>
@@ -538,8 +627,7 @@ export function Manage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-text-primary truncate">{mode.name}</p>
                               <p className="text-xs text-text-muted">
-                                {mode.subtitle && `${mode.subtitle} • `}
-                                {SCORE_FORMATS.find(f => f.value === mode.score_format)?.label}
+                                {SCORE_FORMATS.find(f => f.value === mode.score_format)?.label ?? 'Inherits from game'}
                                 {mode.score_unit && ` (${mode.score_unit})`}
                               </p>
                             </div>
@@ -559,8 +647,106 @@ export function Manage() {
                         ))
                       )}
                     </div>
-                  </>
+                  </div>
+                ) : (
+                  <div className="w-1/2 h-full flex items-center justify-center">
+                    <p className="text-text-muted">Select a game to manage modes</p>
+                  </div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Details Tab */}
+            {activeTab === 'details' && (
+              <motion.div
+                key="details"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="h-full flex flex-col"
+              >
+                {/* Game and Mode selectors */}
+                <div className="px-md py-3 space-y-2">
+                  <select
+                    value={detailsGameId || ''}
+                    onChange={(e) => {
+                      setDetailsGameId(e.target.value || null)
+                      setDetailsModeId(null)
+                    }}
+                    className="w-full h-[48px] px-md bg-background-elevated text-text-primary rounded-lg outline-none"
+                  >
+                    <option value="">Select a game</option>
+                    {games.map(game => (
+                      <option key={game.id} value={game.id}>{game.name}</option>
+                    ))}
+                  </select>
+
+                  {detailsGameId && modes.length > 0 && (
+                    <select
+                      value={detailsModeId || ''}
+                      onChange={(e) => setDetailsModeId(e.target.value || null)}
+                      className="w-full h-[48px] px-md bg-background-elevated text-text-primary rounded-lg outline-none"
+                    >
+                      <option value="">All modes</option>
+                      {modes.map(mode => (
+                        <option key={mode.id} value={mode.id}>{mode.name}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {detailsGameId && (
+                    <button
+                      onClick={handleAddDetail}
+                      className="w-full h-[48px] flex items-center justify-center gap-2 bg-category-racing/20 text-category-racing font-medium rounded-xl active:bg-category-racing/30"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Add {getSelectedDetailsGame()?.detail_label || 'Detail'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Details list */}
+                <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
+                  {!detailsGameId ? (
+                    <p className="text-center text-text-muted py-8">Select a game to manage details</p>
+                  ) : detailsLoading ? (
+                    <p className="text-center text-text-muted py-8">Loading...</p>
+                  ) : details.length === 0 ? (
+                    <p className="text-center text-text-muted py-8">
+                      No {getSelectedDetailsGame()?.detail_label?.toLowerCase() || 'detail'}s yet
+                    </p>
+                  ) : (
+                    details.map((detail) => (
+                      <div
+                        key={detail.id}
+                        className="card px-md py-3 flex items-center gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-text-primary truncate">{detail.name}</p>
+                          <p className="text-xs text-text-muted">
+                            {detail.mode_id 
+                              ? `${modes.find(m => m.id === detail.mode_id)?.name || 'Specific mode'} only`
+                              : 'All modes'
+                            }
+                            {detail.score_format && ` • ${SCORE_FORMATS.find(f => f.value === detail.score_format)?.label}`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleEditDetail(detail)}
+                          className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg active:bg-background-elevated"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingDetail(detail)}
+                          className="w-10 h-10 flex items-center justify-center text-text-muted active:text-red-500 rounded-lg active:bg-background-elevated"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -577,7 +763,6 @@ export function Manage() {
                   <p className="text-sm text-text-muted">Recent scores — tap to delete</p>
                 </div>
 
-                {/* Score list */}
                 <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                   {scoresLoading ? (
                     <p className="text-center text-text-muted py-8">Loading...</p>
@@ -594,7 +779,9 @@ export function Manage() {
                             {score.player_name || 'Unknown'} — {formatScore(score.score, score.score_format, score.score_unit)}
                           </p>
                           <p className="text-xs text-text-muted truncate">
-                            {score.game_name} • {score.mode_name}
+                            {score.game_name}
+                            {score.mode_name && ` • ${score.mode_name}`}
+                            {score.detail_name && ` • ${score.detail_name}`}
                           </p>
                         </div>
                         <button
@@ -764,13 +951,6 @@ export function Manage() {
                 autoFocus
                 className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-party"
               />
-              <input
-                type="text"
-                value={modeSubtitle}
-                onChange={(e) => setModeSubtitle(e.target.value)}
-                placeholder="Subtitle (e.g. Time Trial)"
-                className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-party"
-              />
               <select
                 value={modeFormat}
                 onChange={(e) => setModeFormat(e.target.value as ScoreFormat)}
@@ -808,6 +988,109 @@ export function Manage() {
         )}
       </AnimatePresence>
 
+      {/* Detail Form Modal */}
+      <AnimatePresence>
+        {showDetailForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm p-md overflow-y-auto"
+            onClick={() => setShowDetailForm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-[400px] bg-background-card rounded-xl p-lg my-4"
+              style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-text-primary">
+                  {editingDetail ? 'Edit' : 'Add'} {getSelectedDetailsGame()?.detail_label || 'Detail'}
+                </h2>
+                <button
+                  onClick={() => setShowDetailForm(false)}
+                  className="w-8 h-8 flex items-center justify-center text-text-muted rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <input
+                type="text"
+                value={detailName}
+                onChange={(e) => setDetailName(e.target.value)}
+                placeholder={`${getSelectedDetailsGame()?.detail_label || 'Detail'} name`}
+                autoFocus
+                className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-racing"
+              />
+
+              <label className="block text-sm text-text-secondary mb-2">Available for</label>
+              <select
+                value={detailModeScope || ''}
+                onChange={(e) => setDetailModeScope(e.target.value || null)}
+                className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none"
+              >
+                <option value="">All modes in this game</option>
+                {modes.map(mode => (
+                  <option key={mode.id} value={mode.id}>{mode.name} only</option>
+                ))}
+              </select>
+
+              <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={detailOverrideScore}
+                  onChange={(e) => setDetailOverrideScore(e.target.checked)}
+                  className="w-5 h-5 rounded"
+                />
+                <span className="text-text-primary">Override score settings</span>
+              </label>
+
+              {detailOverrideScore && (
+                <>
+                  <select
+                    value={detailFormat}
+                    onChange={(e) => setDetailFormat(e.target.value as ScoreFormat)}
+                    className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none"
+                  >
+                    {SCORE_FORMATS.map(f => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={detailDirection}
+                    onChange={(e) => setDetailDirection(e.target.value as ScoreDirection)}
+                    className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none"
+                  >
+                    {SCORE_DIRECTIONS.map(d => (
+                      <option key={d.value} value={d.value}>{d.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={detailUnit}
+                    onChange={(e) => setDetailUnit(e.target.value)}
+                    placeholder="Unit (e.g. pts, throws, %)"
+                    className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-3 outline-none focus:ring-2 focus:ring-category-racing"
+                  />
+                </>
+              )}
+
+              <button
+                onClick={handleSaveDetail}
+                disabled={!detailName.trim()}
+                className="w-full h-[56px] bg-category-racing text-white font-semibold rounded-lg disabled:opacity-50 mt-2"
+              >
+                {editingDetail ? 'Save Changes' : 'Add'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Delete Confirmations */}
       <ConfirmDialog
         isOpen={!!deletingPlayer}
@@ -832,6 +1115,15 @@ export function Manage() {
         onConfirm={handleConfirmDeleteMode}
         title="Delete Mode?"
         message={`This will hide "${deletingMode?.name}". Existing scores will be preserved.`}
+        confirmLabel="Delete"
+      />
+
+      <ConfirmDialog
+        isOpen={!!deletingDetail}
+        onClose={() => setDeletingDetail(null)}
+        onConfirm={handleConfirmDeleteDetail}
+        title="Delete Detail?"
+        message={`This will hide "${deletingDetail?.name}". Existing scores will be preserved.`}
         confirmLabel="Delete"
       />
 

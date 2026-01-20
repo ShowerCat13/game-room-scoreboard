@@ -1,0 +1,319 @@
+
+> game-room-scoreboard@0.9.6 test:e2e
+> playwright test
+
+
+Running 104 tests using 16 workers
+
+  ✓   11 [chromium-kiosk] › tests\management.spec.ts:13:3 › Management › should have back button (5.8s)
+  ✓   16 [chromium-kiosk] › tests\management.spec.ts:26:5 › Management › Tab Navigation › should show Players tab (5.8s)
+  ✓   14 [chromium-kiosk] › tests\management.spec.ts:8:3 › Management › should display management page (5.7s)
+  ✓   15 [chromium-kiosk] › tests\management.spec.ts:19:3 › Management › should navigate back to home (4.1s)
+  ✓   17 [chromium-kiosk] › tests\management.spec.ts:30:5 › Management › Tab Navigation › should show Games tab (453ms)
+  ✓   18 [chromium-kiosk] › tests\management.spec.ts:34:5 › Management › Tab Navigation › should show Scores tab (453ms)
+  ✓   20 [chromium-kiosk] › tests\management.spec.ts:44:5 › Management › Tab Navigation › should switch to Scores tab (822ms)
+  ✓   19 [chromium-kiosk] › tests\management.spec.ts:38:5 › Management › Tab Navigation › should switch to Games tab (942ms)
+  ✓    1 [chromium-kiosk] › tests\crud-operations.spec.ts:50:3 › Player CRUD › READ: should display all players with avatars (6.9s)
+  ✓    6 [chromium-kiosk] › tests\crud-operations.spec.ts:181:3 › Score Management › READ: should display scores with context (7.0s)
+  ✓   13 [chromium-kiosk] › tests\crud-operations.spec.ts:125:3 › Game Management › READ: should display games list (6.9s)
+  ✓   12 [chromium-kiosk] › tests\crud-operations.spec.ts:293:3 › PIN Protection Integration › should reject wrong PIN (5.2s)
+  ✓   10 [chromium-kiosk] › tests\crud-operations.spec.ts:255:3 › PIN Protection Integration › should allow delete after correct PIN (7.1s)
+  ✓   21 [chromium-kiosk] › tests\management.spec.ts:52:5 › Management › Players Management › should show add player button (917ms)
+  ✘    9 [chromium-kiosk] › tests\crud-operations.spec.ts:227:3 › PIN Protection Integration › should block delete without PIN when enabled (7.1s)
+  ✓   22 [chromium-kiosk] › tests\management.spec.ts:61:5 › Management › Players Management › should show player list or empty state (1.1s)
+  ✓   27 [chromium-kiosk] › tests\navigation.spec.ts:5:5 › Navigation › Idle Display › should load idle display on root path (634ms)
+  ✓   28 [chromium-kiosk] › tests\navigation.spec.ts:19:5 › Navigation › Idle Display › should show settings icon in footer (638ms)
+  ✓    4 [chromium-kiosk] › tests\crud-operations.spec.ts:133:3 › Game Management › should show game modes when game is selected (7.9s)
+  ✓    8 [chromium-kiosk] › tests\crud-operations.spec.ts:31:3 › Player CRUD › CREATE: should add a new player (6.0s)
+  ✓   23 [chromium-kiosk] › tests\management.spec.ts:72:5 › Management › Games Management › should show games content when Games tab is selected (1.1s)
+  ✓    3 [chromium-kiosk] › tests\crud-operations.spec.ts:149:3 › Game Management › should navigate to game details (tracks/courses) (8.0s)
+  ✓   24 [chromium-kiosk] › tests\management.spec.ts:83:5 › Management › Scores Management › should show scores content when Scores tab is selected (1.1s)
+  ✓   29 [chromium-kiosk] › tests\navigation.spec.ts:27:5 › Navigation › Idle Display › should navigate to browse on tap (810ms)
+  ✓   26 [chromium-kiosk] › tests\navigation.spec.ts:12:5 › Navigation › Idle Display › should show clock in header (901ms)
+  ✓    2 [chromium-kiosk] › tests\crud-operations.spec.ts:61:3 › Player CRUD › UPDATE: should edit player name (8.1s)
+  ✓   25 [chromium-kiosk] › tests\management.spec.ts:95:3 › PIN Protection › should prompt for PIN when deleting with PIN enabled (1.2s)
+  ✓   30 [chromium-kiosk] › tests\navigation.spec.ts:37:5 › Navigation › Idle Display › should navigate to settings when clicking settings icon (796ms)
+  ✓   32 [chromium-kiosk] › tests\navigation.spec.ts:71:5 › Navigation › Browse Hierarchy › should navigate back from category selection (493ms)
+  ✓   31 [chromium-kiosk] › tests\navigation.spec.ts:59:5 › Navigation › Browse Hierarchy › should navigate to game selection when clicking a category (815ms)
+  ✓   33 [chromium-kiosk] › tests\navigation.spec.ts:81:5 › Navigation › Browse Hierarchy › should navigate back through hierarchy (574ms)
+  ✘    5 [chromium-kiosk] › tests\crud-operations.spec.ts:85:3 › Player CRUD › DELETE: should remove a player (6.1s)
+  ✓   34 [chromium-kiosk] › tests\navigation.spec.ts:94:5 › Navigation › Add Score Button › should show add score button on browse pages (725ms)
+  ✓   35 [chromium-kiosk] › tests\navigation.spec.ts:101:5 › Navigation › Add Score Button › should navigate to add score page (746ms)
+  ✓   42 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:119:3 › Idle Timer › should reset timer on interaction (778ms)
+  ✓   46 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:195:3 › QR Code Feature › should show QR code with correct URL (552ms)
+  ✘    7 [chromium-kiosk] › tests\crud-operations.spec.ts:197:3 › Score Management › DELETE: should remove a score (8.4s)
+  ✓   37 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:27:3 › Celebration Overlay › should display celebration with correct rank styling (1.2s)
+  ✓   48 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:252:3 › Clock Feature › should update time every minute (591ms)
+  ✓   50 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:288:3 › Touch-Specific Interactions › should not have hover-only interactions (407ms)
+  ✓   49 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:266:3 › Touch-Specific Interactions › should have minimum 48px touch targets (557ms)
+  ✓   47 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:239:3 › Clock Feature › should show current time in 12-hour format (804ms)
+  ✓   36 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:8:3 › Realtime Score Updates › should show score update notification (1.6s)
+  ✓   38 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:60:3 › Error Handling › should handle empty database gracefully (1.7s)
+  ✓   43 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:132:3 › Settings Persistence › should persist sound settings across page loads (1.7s)
+  ✓   44 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:153:3 › Settings Persistence › should persist theme across sessions (2.0s)
+  ✓   51 [chromium-kiosk] › tests\navigation.spec.ts:49:5 › Navigation › Browse Hierarchy › should show category selection on /browse (648ms)
+  ✓   58 [chromium-kiosk] › tests\score-flow.spec.ts:234:3 › Leaderboard Display › should navigate to browse on tap (609ms)
+  ✓   45 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:169:3 › Settings Persistence › should persist carousel speed setting (2.0s)
+  ✓   55 [chromium-kiosk] › tests\score-flow.spec.ts:161:3 › Score Submission E2E › should handle time-based score input (942ms)
+  ✓   39 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:44:3 › Error Handling › should handle network failure gracefully (2.7s)
+  ✓   63 [chromium-kiosk] › tests\score-submission.spec.ts:12:3 › Score Submission › should have back button (409ms)
+  ✓   64 [chromium-kiosk] › tests\score-submission.spec.ts:8:3 › Score Submission › should display add score page (432ms)
+  ✓   41 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:104:3 › Idle Timer › should return to home after inactivity on browse (2.8s)
+  ✓   65 [chromium-kiosk] › tests\score-submission.spec.ts:17:3 › Score Submission › should navigate back when clicking cancel (415ms)
+  ✓   66 [chromium-kiosk] › tests\score-submission.spec.ts:24:5 › Score Submission › Form Elements › should show player selection field (424ms)
+  ✓   59 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:214:3 › QR Code Feature › should dismiss QR code on tap outside (670ms)
+  ✓   52 [chromium-kiosk] › tests\score-flow.spec.ts:87:3 › Score Submission E2E › should create new player during score entry (1.9s)
+  ✓   67 [chromium-kiosk] › tests\score-submission.spec.ts:28:5 › Score Submission › Form Elements › should show game selection field (423ms)
+  ✓   68 [chromium-kiosk] › tests\score-submission.spec.ts:33:5 › Score Submission › Form Elements › should show mode/class selection after selecting a game (435ms)
+  ✓   69 [chromium-kiosk] › tests\score-submission.spec.ts:40:5 › Score Submission › Form Elements › should show score input section (466ms)
+  ✓   62 [chromium-kiosk] › tests\score-flow.spec.ts:270:3 › Browse and View Leaderboard › should show player rank and score on leaderboard (1.0s)
+  ✓   71 [chromium-kiosk] › tests\score-submission.spec.ts:52:5 › Score Submission › Player Selection › should open player picker when clicking player field (442ms)
+  ✓   70 [chromium-kiosk] › tests\score-submission.spec.ts:46:5 › Score Submission › Form Elements › should have submit button (451ms)
+  ✓   72 [chromium-kiosk] › tests\score-submission.spec.ts:66:5 › Score Submission › Player Selection › should show create new player option (430ms)
+  ✓   73 [chromium-kiosk] › tests\score-submission.spec.ts:77:5 › Score Submission › Game Selection › should open game picker when clicking game field (400ms)
+  ✓   74 [chromium-kiosk] › tests\score-submission.spec.ts:90:5 › Score Submission › Submit Button State › should disable submit button when form is incomplete (432ms)
+  ✓   75 [chromium-kiosk] › tests\score-submission.spec.ts:103:3 › Score Submission Flow › should complete full score submission flow (437ms)
+  ✓   76 [chromium-kiosk] › tests\settings.spec.ts:8:3 › Settings › should display settings page (444ms)
+  ✓   60 [chromium-kiosk] › tests\score-flow.spec.ts:247:3 › Browse and View Leaderboard › should navigate full hierarchy to view leaderboard (1.9s)
+  ✓   79 [chromium-kiosk] › tests\settings.spec.ts:18:5 › Settings › Sound Settings › should display sound toggle (517ms)
+  ✓   77 [chromium-kiosk] › tests\settings.spec.ts:12:3 › Settings › should have back button that navigates home (603ms)
+  ✓   80 [chromium-kiosk] › tests\settings.spec.ts:32:5 › Settings › Sound Settings › should show volume slider when sound is enabled (548ms)
+  ✓   81 [chromium-kiosk] › tests\settings.spec.ts:43:5 › Settings › Theme Settings › should display theme section (538ms)
+  ✓   56 [chromium-kiosk] › tests\score-flow.spec.ts:203:3 › Leaderboard Display › should show scores on idle carousel (2.4s)
+  ✓   82 [chromium-kiosk] › tests\settings.spec.ts:47:5 › Settings › Theme Settings › should show all theme options (563ms)
+  ✓   85 [chromium-kiosk] › tests\settings.spec.ts:80:5 › Settings › Theme Settings › should show text color override options (465ms)
+  ✓   78 [chromium-kiosk] › tests\settings.spec.ts:22:5 › Settings › Sound Settings › should toggle sound on/off (949ms)
+  ✓   83 [chromium-kiosk] › tests\settings.spec.ts:57:5 › Settings › Theme Settings › should change theme when clicking theme button (759ms)
+  ✓   92 [chromium-kiosk] › tests\settings.spec.ts:161:5 › Settings › Management Link › should show management link (465ms)
+  ✓   90 [chromium-kiosk] › tests\settings.spec.ts:130:5 › Settings › Display Settings › should show celebration duration options (567ms)
+  ✓   91 [chromium-kiosk] › tests\settings.spec.ts:141:5 › Settings › Security Settings › should show PIN setup option when no PIN is set (594ms)
+  ✓   86 [chromium-kiosk] › tests\settings.spec.ts:85:5 › Settings › Theme Settings › should apply text color override (792ms)
+  ✓   93 [chromium-kiosk] › tests\settings.spec.ts:165:5 › Settings › Management Link › should navigate to management page (468ms)
+  ✓   84 [chromium-kiosk] › tests\settings.spec.ts:65:5 › Settings › Theme Settings › should persist theme selection (964ms)
+  ✓   95 [chromium-kiosk] › tests\visual-accessibility.spec.ts:26:5 › Visual & Accessibility › Font Sizes › body text should be readable (>= 16px) (379ms)
+  ✓   88 [chromium-kiosk] › tests\settings.spec.ts:111:5 › Settings › Display Settings › should show carousel speed options (908ms)
+  ✓   87 [chromium-kiosk] › tests\settings.spec.ts:95:5 › Settings › Theme Settings › should reset customizations (979ms)
+  ✓   94 [chromium-kiosk] › tests\visual-accessibility.spec.ts:5:5 › Visual & Accessibility › Touch Targets › buttons should meet minimum touch target size (56px) (581ms)
+  ✓   96 [chromium-kiosk] › tests\visual-accessibility.spec.ts:41:5 › Visual & Accessibility › Viewport › should render correctly at kiosk dimensions (800x480) (389ms)
+  ✓   89 [chromium-kiosk] › tests\settings.spec.ts:120:5 › Settings › Display Settings › should change carousel speed (1.0s)
+  ✓   97 [chromium-kiosk] › tests\visual-accessibility.spec.ts:53:5 › Visual & Accessibility › Viewport › should not overflow at kiosk dimensions (436ms)
+  ✓   99 [chromium-kiosk] › tests\visual-accessibility.spec.ts:72:5 › Visual & Accessibility › Theme Application › should apply dark theme by default (560ms)
+  ✓  103 [chromium-kiosk] › tests\visual-accessibility.spec.ts:154:3 › QR Code Feature › should show QR code button on idle screen (551ms)
+  ✓   98 [chromium-kiosk] › tests\visual-accessibility.spec.ts:89:5 › Visual & Accessibility › Theme Application › should apply theme CSS variables to root (1.0s)
+  ✓  101 [chromium-kiosk] › tests\visual-accessibility.spec.ts:108:5 › Visual & Accessibility › Animations › should have smooth page transitions (1.2s)
+  ✘  104 [chromium-kiosk] › tests\visual-accessibility.spec.ts:165:3 › QR Code Feature › should toggle QR code visibility (878ms)
+  ✓  100 [chromium-kiosk] › tests\visual-accessibility.spec.ts:123:5 › Visual & Accessibility › Loading States › should show loading indicator when data is loading (1.4s)
+  ✓  102 [chromium-kiosk] › tests\visual-accessibility.spec.ts:138:5 › Visual & Accessibility › Error Handling › should handle network errors gracefully (2.4s)
+  ✓   57 [chromium-kiosk] › tests\score-flow.spec.ts:218:3 › Leaderboard Display › should auto-cycle through leaderboards (7.4s)
+  ✘   61 [chromium-kiosk] › tests\score-flow.spec.ts:11:3 › Score Submission E2E › should complete full score entry flow (6.3s)
+  ✘   40 [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:76:3 › Error Handling › should handle invalid score format input (30.0s)
+  ✘   53 [chromium-kiosk] › tests\score-flow.spec.ts:120:3 › Score Submission E2E › should preserve selections when navigating back (30.0s)
+  ✘   54 [chromium-kiosk] › tests\score-flow.spec.ts:143:3 › Score Submission E2E › should show validation - cannot submit without all fields (30.0s)
+
+
+  1) [chromium-kiosk] › tests\crud-operations.spec.ts:85:3 › Player CRUD › DELETE: should remove a player 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeLessThanOrEqual[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: <= [32m13[39m
+    Received:    [31m20[39m
+
+      104 |           // Verify deletion
+      105 |           const newCount = await players.count()
+    > 106 |           expect(newCount).toBeLessThanOrEqual(initialCount)
+          |                            ^
+      107 |         }
+      108 |       }
+      109 |     }
+        at C:\Users\asp94\game-room-scoreboard\tests\crud-operations.spec.ts:106:28
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\crud-operations-Player-CRUD-DELETE-should-remove-a-player-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\crud-operations-Player-CRUD-DELETE-should-remove-a-player-chromium-kiosk\error-context.md
+
+  2) [chromium-kiosk] › tests\crud-operations.spec.ts:197:3 › Score Management › DELETE: should remove a score 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeLessThanOrEqual[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: <= [32m75[39m
+    Received:    [31m88[39m
+
+      215 |         
+      216 |         const newCount = await scoreItems.count()
+    > 217 |         expect(newCount).toBeLessThanOrEqual(initialCount)
+          |                          ^
+      218 |       }
+      219 |     } else {
+      220 |       // No scores to delete - test passes
+        at C:\Users\asp94\game-room-scoreboard\tests\crud-operations.spec.ts:217:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\crud-operations-Score-Mana-e65a6-ELETE-should-remove-a-score-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\crud-operations-Score-Mana-e65a6-ELETE-should-remove-a-score-chromium-kiosk\error-context.md
+
+  3) [chromium-kiosk] › tests\crud-operations.spec.ts:227:3 › PIN Protection Integration › should block delete without PIN when enabled 
+
+    Error: locator.isVisible: Unexpected token "=" while parsing css selector "input[inputmode="numeric"], text=/PIN|Confirm|Delete/i". Did you mean to CSS.escape it?
+    Call log:
+    [2m    - checking visibility of input[inputmode="numeric"], text=/PIN|Confirm|Delete/i >> nth=0[22m
+
+
+      245 |       // Should show PIN prompt or confirm
+      246 |       const pinPrompt = page.locator('input[inputmode="numeric"], text=/PIN|Confirm|Delete/i')
+    > 247 |       const hasPrompt = await pinPrompt.first().isVisible()
+          |                                                 ^
+      248 |       expect(hasPrompt).toBe(true)
+      249 |     } else {
+      250 |       // No delete buttons - pass trivially
+        at C:\Users\asp94\game-room-scoreboard\tests\crud-operations.spec.ts:247:49
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\crud-operations-PIN-Protec-b66ef-te-without-PIN-when-enabled-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\crud-operations-PIN-Protec-b66ef-te-without-PIN-when-enabled-chromium-kiosk\error-context.md
+
+  4) [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:76:3 › Error Handling › should handle invalid score format input 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[role="dialog"] button').first()[22m
+
+
+      81 |     await gameButton.click()
+      82 |     await page.waitForTimeout(300)
+    > 83 |     await page.locator('[role="dialog"] button').first().click()
+         |                                                          ^
+      84 |     await page.waitForTimeout(300)
+      85 |     
+      86 |     // Try to enter invalid input into score field
+        at C:\Users\asp94\game-room-scoreboard\tests\realtime-edge-cases.spec.ts:83:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\realtime-edge-cases-Error--baa03--invalid-score-format-input-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\realtime-edge-cases-Error--baa03--invalid-score-format-input-chromium-kiosk\error-context.md
+
+  5) [chromium-kiosk] › tests\score-flow.spec.ts:11:3 › Score Submission E2E › should complete full score entry flow 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('[role="dialog"] button').first()
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('[role="dialog"] button').first()[22m
+
+
+      19 |     // Pick first available game
+      20 |     const gameOption = page.locator('[role="dialog"] button').first()
+    > 21 |     await expect(gameOption).toBeVisible()
+         |                              ^
+      22 |     const gameName = await gameOption.textContent()
+      23 |     await gameOption.click()
+      24 |     await page.waitForTimeout(300)
+        at C:\Users\asp94\game-room-scoreboard\tests\score-flow.spec.ts:21:30
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\score-flow-Score-Submissio-afbc4-plete-full-score-entry-flow-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\score-flow-Score-Submissio-afbc4-plete-full-score-entry-flow-chromium-kiosk\error-context.md
+
+  6) [chromium-kiosk] › tests\score-flow.spec.ts:120:3 › Score Submission E2E › should preserve selections when navigating back 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[role="dialog"] button').first()[22m
+
+
+      127 |     
+      128 |     const gameOption = page.locator('[role="dialog"] button').first()
+    > 129 |     await gameOption.click()
+          |                      ^
+      130 |     await page.waitForTimeout(300)
+      131 |     
+      132 |     // Cancel and go back
+        at C:\Users\asp94\game-room-scoreboard\tests\score-flow.spec.ts:129:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\score-flow-Score-Submissio-58481-ctions-when-navigating-back-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\score-flow-Score-Submissio-58481-ctions-when-navigating-back-chromium-kiosk\error-context.md
+
+  7) [chromium-kiosk] › tests\score-flow.spec.ts:143:3 › Score Submission E2E › should show validation - cannot submit without all fields 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[role="dialog"] button').first()[22m
+
+
+      152 |     await gameButton.click()
+      153 |     await page.waitForTimeout(300)
+    > 154 |     await page.locator('[role="dialog"] button').first().click()
+          |                                                          ^
+      155 |     await page.waitForTimeout(300)
+      156 |     
+      157 |     // Still disabled without player and score
+        at C:\Users\asp94\game-room-scoreboard\tests\score-flow.spec.ts:154:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\score-flow-Score-Submissio-9652c-t-submit-without-all-fields-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\score-flow-Score-Submissio-9652c-t-submit-without-all-fields-chromium-kiosk\error-context.md
+
+  8) [chromium-kiosk] › tests\visual-accessibility.spec.ts:165:3 › QR Code Feature › should toggle QR code visibility 
+
+    Error: locator.isVisible: Error: strict mode violation: locator('text=Scan to add scores').or(locator('text=scoreboard.local')) resolved to 2 elements:
+        1) <p class="text-xs text-text-muted text-center mt-2">Scan to add scores</p> aka getByText('Scan to add scores')
+        2) <p class="text-xs text-text-secondary text-center font-mono">scoreboard.local</p> aka getByText('scoreboard.local')
+
+    Call log:
+    [2m    - checking visibility of locator('text=Scan to add scores').or(locator('text=scoreboard.local'))[22m
+
+
+      178 |     )
+      179 |     
+    > 180 |     const isVisible = await qrPopup.isVisible()
+          |                                     ^
+      181 |     
+      182 |     if (isVisible) {
+      183 |       // Click again or elsewhere to hide
+        at C:\Users\asp94\game-room-scoreboard\tests\visual-accessibility.spec.ts:180:37
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\visual-accessibility-QR-Co-c4b9b-d-toggle-QR-code-visibility-chromium-kiosk\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\visual-accessibility-QR-Co-c4b9b-d-toggle-QR-code-visibility-chromium-kiosk\error-context.md
+
+  8 failed
+    [chromium-kiosk] › tests\crud-operations.spec.ts:85:3 › Player CRUD › DELETE: should remove a player 
+    [chromium-kiosk] › tests\crud-operations.spec.ts:197:3 › Score Management › DELETE: should remove a score 
+    [chromium-kiosk] › tests\crud-operations.spec.ts:227:3 › PIN Protection Integration › should block delete without PIN when enabled 
+    [chromium-kiosk] › tests\realtime-edge-cases.spec.ts:76:3 › Error Handling › should handle invalid score format input 
+    [chromium-kiosk] › tests\score-flow.spec.ts:11:3 › Score Submission E2E › should complete full score entry flow 
+    [chromium-kiosk] › tests\score-flow.spec.ts:120:3 › Score Submission E2E › should preserve selections when navigating back 
+    [chromium-kiosk] › tests\score-flow.spec.ts:143:3 › Score Submission E2E › should show validation - cannot submit without all fields 
+    [chromium-kiosk] › tests\visual-accessibility.spec.ts:165:3 › QR Code Feature › should toggle QR code visibility 
+  96 passed (42.5s)
+
+[36m  Serving HTML report at http://localhost:9323. Press Ctrl+C to quit.[39m
+Terminate batch job (Y/N)? 
+^C

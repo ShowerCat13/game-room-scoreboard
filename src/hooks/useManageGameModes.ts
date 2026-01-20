@@ -10,19 +10,19 @@ interface UseManageGameModesResult {
   createMode: (
     gameId: string,
     name: string,
-    scoreDirection: ScoreDirection,
-    scoreFormat: ScoreFormat,
-    subtitle?: string | null,
-    scoreUnit?: string | null
+    scoreFormat?: ScoreFormat | null,
+    scoreDirection?: ScoreDirection | null,
+    scoreUnit?: string | null,
+    detailLabelOverride?: string | null
   ) => Promise<GameMode | null>
   updateMode: (
     id: string,
     updates: {
       name?: string
-      subtitle?: string | null
-      score_direction?: ScoreDirection
-      score_format?: ScoreFormat
+      score_format?: ScoreFormat | null
+      score_direction?: ScoreDirection | null
       score_unit?: string | null
+      detail_label_override?: string | null
     }
   ) => Promise<boolean>
   deleteMode: (id: string) => Promise<boolean>
@@ -63,10 +63,10 @@ export function useManageGameModes(): UseManageGameModesResult {
   const createMode = useCallback(async (
     gameId: string,
     name: string,
-    scoreDirection: ScoreDirection,
-    scoreFormat: ScoreFormat,
-    subtitle?: string | null,
-    scoreUnit?: string | null
+    scoreFormat?: ScoreFormat | null,
+    scoreDirection?: ScoreDirection | null,
+    scoreUnit?: string | null,
+    detailLabelOverride?: string | null
   ): Promise<GameMode | null> => {
     try {
       const { data, error: insertError } = await (supabase as any)
@@ -74,14 +74,14 @@ export function useManageGameModes(): UseManageGameModesResult {
         .insert({
           game_id: gameId,
           name,
-          subtitle: subtitle || null,
-          score_direction: scoreDirection,
-          score_format: scoreFormat,
+          score_format: scoreFormat || null,
+          score_direction: scoreDirection || null,
           score_unit: scoreUnit || null,
+          detail_label_override: detailLabelOverride || null,
         })
         .select()
         .single()
-
+  
       if (insertError) throw insertError
       
       // Update local state
@@ -100,12 +100,13 @@ export function useManageGameModes(): UseManageGameModesResult {
     id: string,
     updates: {
       name?: string
-      subtitle?: string | null
-      score_direction?: ScoreDirection
-      score_format?: ScoreFormat
+      score_format?: ScoreFormat | null
+      score_direction?: ScoreDirection | null
       score_unit?: string | null
+      detail_label_override?: string | null
     }
   ): Promise<boolean> => {
+  
     try {
       const { error: updateError } = await (supabase as any)
         .from('game_modes')

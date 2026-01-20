@@ -12,12 +12,13 @@ import {
 import { CelebrationOverlay } from '@/components/overlays'
 import { useGames } from '@/hooks/useGames'
 import { useGameModes } from '@/hooks/useGameModes'
+import { useGameDetails } from '@/hooks/useGameDetails'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useSubmitScore } from '@/hooks/useSubmitScore'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
-import type { ScoreFormat } from '@/lib/types'
+import type { ScoreFormat, ScoreDirection } from '@/lib/types'
 
-type PickerType = 'game' | 'mode' | 'player' | null
+type PickerType = 'game' | 'mode' | 'detail' | 'player' | null
 
 /**
  * AddScore - Multi-step score entry form
@@ -26,6 +27,7 @@ type PickerType = 'game' | 'mode' | 'player' | null
  * Supports URL params for pre-population:
  * - ?gameId=xxx - Pre-select a game
  * - ?modeId=xxx - Pre-select a mode (requires gameId)
+ * - ?detailId=xxx - Pre-select a detail (requires gameId + modeId)
  */
 export function AddScore() {
   const navigate = useNavigate()
@@ -37,6 +39,9 @@ export function AddScore() {
   )
   const [selectedModeId, setSelectedModeId] = useState<string | null>(
     searchParams.get('modeId')
+  )
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(
+    searchParams.get('detailId')
   )
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [scoreValue, setScoreValue] = useState<number | null>(null)
@@ -50,11 +55,17 @@ export function AddScore() {
   // Data hooks
   const { games, loading: gamesLoading } = useGames()
   const { modes, loading: modesLoading } = useGameModes(selectedGameId)
+  const { details, loading: detailsLoading } = useGameDetails(selectedGameId, selectedModeId)
   const { players, loading: playersLoading, createPlayer } = usePlayers()
   const { submitScore, submitting, error: submitError } = useSubmitScore()
 
-  // Fetch current leaderboard to calculate rank (fetch more to get accurate rank)
-  const { data: currentLeaderboard } = useLeaderboard(selectedModeId, 100)
+  // Fetch current leaderboard to calculate rank
+  const { entries: currentLeaderboard } = useLeaderboard(
+    selectedGameId,
+    selectedModeId,
+    selectedDetailId,
+    100
+  )
 
   // Derived display values
   const selectedGame = useMemo(
@@ -67,21 +78,62 @@ export function AddScore() {
     [modes, selectedModeId]
   )
 
+  const selectedDetail = useMemo(
+    () => details.find((d) => d.id === selectedDetailId) || null,
+    [details, selectedDetailId]
+  )
+
   const selectedPlayer = useMemo(
     () => players.find((p) => p.id === selectedPlayerId) || null,
     [players, selectedPlayerId]
   )
 
+  // Does this game use details?
+  const gameHasDetails = selectedGame?.has_details ?? false
+  
+  // Does this game use modes?
+  const gameHasModes = selectedGame?.has_modes ?? true
+
+  // Get effective score format/direction (detail → mode → game defaults)
+  const effectiveScoreFormat: ScoreFormat = useMemo(() => {
+    if (selectedDetail?.score_format) return selectedDetail.score_format
+    if (selectedMode?.score_format) return selectedMode.score_format
+    if (selectedGame?.default_score_format) return selectedGame.default_score_format
+    return 'integer'
+  }, [selectedDetail, selectedMode, selectedGame])
+
+  const effectiveScoreDirection: ScoreDirection = useMemo(() => {
+    if (selectedDetail?.score_direction) return selectedDetail.score_direction
+    if (selectedMode?.score_direction) return selectedMode.score_direction
+    if (selectedGame?.default_score_direction) return selectedGame.default_score_direction
+    return 'higher_better'
+  }, [selectedDetail, selectedMode, selectedGame])
+
+  const effectiveScoreUnit: string | null = useMemo(() => {
+    if (selectedDetail?.score_unit) return selectedDetail.score_unit
+    if (selectedMode?.score_unit) return selectedMode.score_unit
+    if (selectedGame?.default_score_unit) return selectedGame.default_score_unit
+    return null
+  }, [selectedDetail, selectedMode, selectedGame])
+
   // Clear dependent fields when game changes
   const handleGameSelect = (gameId: string) => {
     setSelectedGameId(gameId)
-    setSelectedModeId(null) // Clear mode since it depends on game
-    setScoreValue(null) // Clear score since input type may change
+    setSelectedModeId(null)
+    setSelectedDetailId(null)
+    setScoreValue(null)
   }
 
-  // Clear score when mode changes (input type may differ)
+  // Clear detail and score when mode changes
   const handleModeSelect = (modeId: string) => {
     setSelectedModeId(modeId)
+    setSelectedDetailId(null)
+    setScoreValue(null)
+  }
+
+  // Clear score when detail changes (format may differ)
+  const handleDetailSelect = (detailId: string) => {
+    setSelectedDetailId(detailId)
     setScoreValue(null)
   }
 
@@ -95,17 +147,15 @@ export function AddScore() {
 
   // Calculate what rank this score would achieve
   const calculateRank = (score: number): number => {
-    if (!selectedMode || currentLeaderboard.length === 0) return 1
+    if (currentLeaderboard.length === 0) return 1
 
-    const isLowerBetter = selectedMode.score_direction === 'lower_better'
+    const isLowerBetter = effectiveScoreDirection === 'lower_better'
     let rank = 1
 
     for (const entry of currentLeaderboard) {
       if (isLowerBetter) {
-        // For lower_better: if new score is >= existing, it ranks below
         if (score >= entry.score) rank++
       } else {
-        // For higher_better: if new score is <= existing, it ranks below
         if (score <= entry.score) rank++
       }
     }
@@ -113,10 +163,11 @@ export function AddScore() {
     return rank
   }
 
-  // Form validation
+  // Form validation - detail is optional based on game config
   const isFormComplete = Boolean(
     selectedGameId &&
-    selectedModeId &&
+    (!gameHasModes || selectedModeId) &&
+    (!gameHasDetails || selectedDetailId) &&
     selectedPlayerId &&
     scoreValue !== null
   )
@@ -124,16 +175,17 @@ export function AddScore() {
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!selectedModeId || !selectedPlayerId || scoreValue === null) return
+    if (!selectedGameId || !selectedPlayerId || scoreValue === null) return
 
     const result = await submitScore({
-      gameModeId: selectedModeId,
+      gameId: selectedGameId,
+      modeId: selectedModeId,
+      detailId: selectedDetailId,
       playerId: selectedPlayerId,
       score: scoreValue,
     })
 
     if (result.success) {
-      // Calculate rank before showing celebration
       const rank = calculateRank(scoreValue)
       setSubmittedRank(rank)
       setShowCelebration(true)
@@ -146,9 +198,8 @@ export function AddScore() {
     navigate('/')
   }
 
-  // Handle back/cancel - go back or to home
+  // Handle back/cancel
   const handleBack = () => {
-    // If there's history, go back; otherwise go home
     if (window.history.length > 1) {
       navigate(-1)
     } else {
@@ -156,19 +207,22 @@ export function AddScore() {
     }
   }
 
-  // Render appropriate score input based on mode's score_format
+  // Render appropriate score input based on effective score format
   const renderScoreInput = () => {
-    if (!selectedMode) {
+    // Need mode selected (or game without modes) before showing score input
+    const readyForScore = gameHasModes ? selectedModeId : selectedGameId
+    
+    if (!readyForScore) {
       return (
         <div className="h-[64px] flex items-center justify-center">
-          <p className="text-text-muted">Select a game mode first</p>
+          <p className="text-text-muted">
+            Select a {gameHasModes ? selectedGame?.mode_label?.toLowerCase() || 'mode' : 'game'} first
+          </p>
         </div>
       )
     }
 
-    const format = selectedMode.score_format as ScoreFormat
-
-    switch (format) {
+    switch (effectiveScoreFormat) {
       case 'time_ms':
         return (
           <TimeInput
@@ -192,18 +246,30 @@ export function AddScore() {
           <NumericInput
             value={scoreValue}
             onChange={setScoreValue}
-            unit={selectedMode.score_unit}
+            unit={effectiveScoreUnit}
             isDecimal={true}
           />
         )
 
+      case 'golf_relative':
+        return (
+          <NumericInput
+            value={scoreValue}
+            onChange={setScoreValue}
+            unit={effectiveScoreUnit}
+            isDecimal={false}
+            allowNegative={true}
+          />
+        )
+
       case 'integer':
+      case 'level':
       default:
         return (
           <NumericInput
             value={scoreValue}
             onChange={setScoreValue}
-            unit={selectedMode.score_unit}
+            unit={effectiveScoreUnit}
             isDecimal={false}
           />
         )
@@ -212,10 +278,7 @@ export function AddScore() {
 
   // Get input label based on score format
   const getScoreInputLabel = (): string => {
-    if (!selectedMode) return 'Score'
-
-    const format = selectedMode.score_format as ScoreFormat
-    if (format === 'time_ms' || format === 'time_seconds') {
+    if (effectiveScoreFormat === 'time_ms' || effectiveScoreFormat === 'time_seconds') {
       return 'Enter time'
     }
     return 'Enter score'
@@ -235,9 +298,16 @@ export function AddScore() {
     modes.map((m) => ({
       id: m.id,
       label: m.name,
-      sublabel: m.subtitle
     })),
     [modes]
+  )
+
+  const detailOptions = useMemo(() =>
+    details.map((d) => ({
+      id: d.id,
+      label: d.name,
+    })),
+    [details]
   )
 
   const playerOptions = useMemo(() =>
@@ -247,6 +317,10 @@ export function AddScore() {
     })),
     [players]
   )
+
+  // Get labels from game config
+  const modeLabel = selectedGame?.mode_label || 'Mode'
+  const detailLabel = selectedGame?.detail_label || 'Track'
 
   return (
     <KioskLayout>
@@ -269,20 +343,41 @@ export function AddScore() {
             disabled={gamesLoading}
           />
 
-          {/* Mode selector - disabled until game is selected */}
-          <SelectField
-            label="Mode"
-            value={selectedMode?.name || null}
-            placeholder={
-              !selectedGameId
-                ? 'Select a game first'
-                : modesLoading
-                  ? 'Loading...'
-                  : 'Select a mode'
-            }
-            onPress={() => setActivePicker('mode')}
-            disabled={!selectedGameId || modesLoading}
-          />
+          {/* Mode selector - shown if game has modes */}
+          {gameHasModes && (
+            <SelectField
+              label={modeLabel}
+              value={selectedMode?.name || null}
+              placeholder={
+                !selectedGameId
+                  ? 'Select a game first'
+                  : modesLoading
+                    ? 'Loading...'
+                    : `Select ${modeLabel.toLowerCase()}`
+              }
+              onPress={() => setActivePicker('mode')}
+              disabled={!selectedGameId || modesLoading}
+            />
+          )}
+
+          {/* Detail selector - shown if game has details */}
+          {gameHasDetails && (
+            <SelectField
+              label={detailLabel}
+              value={selectedDetail?.name || null}
+              placeholder={
+                !selectedModeId && gameHasModes
+                  ? `Select ${modeLabel.toLowerCase()} first`
+                  : !selectedGameId
+                    ? 'Select a game first'
+                    : detailsLoading
+                      ? 'Loading...'
+                      : `Select ${detailLabel.toLowerCase()}`
+              }
+              onPress={() => setActivePicker('detail')}
+              disabled={(!selectedModeId && gameHasModes) || !selectedGameId || detailsLoading}
+            />
+          )}
 
           {/* Player selector */}
           <SelectField
@@ -293,7 +388,7 @@ export function AddScore() {
             disabled={playersLoading}
           />
 
-          {/* Score input - type varies by mode */}
+          {/* Score input */}
           <div className="pt-4">
             <p className="text-sm text-text-secondary mb-3 text-center">
               {getScoreInputLabel()}
@@ -311,7 +406,7 @@ export function AddScore() {
           )}
         </div>
 
-        {/* Submit button - fixed at bottom */}
+        {/* Submit button */}
         <div className="p-md border-t border-background-elevated">
           <button
             onClick={handleSubmit}
@@ -348,11 +443,26 @@ export function AddScore() {
       <PickerModal
         isOpen={activePicker === 'mode'}
         onClose={() => setActivePicker(null)}
-        title="Select Mode"
+        title={`Select ${modeLabel}`}
         options={modeOptions}
         selectedId={selectedModeId}
         onSelect={handleModeSelect}
-        emptyMessage={selectedGameId ? 'No modes for this game' : 'Select a game first'}
+        emptyMessage={selectedGameId ? `No ${modeLabel.toLowerCase()}s for this game` : 'Select a game first'}
+      />
+
+      {/* Detail picker modal */}
+      <PickerModal
+        isOpen={activePicker === 'detail'}
+        onClose={() => setActivePicker(null)}
+        title={`Select ${detailLabel}`}
+        options={detailOptions}
+        selectedId={selectedDetailId}
+        onSelect={handleDetailSelect}
+        emptyMessage={
+          selectedModeId || !gameHasModes
+            ? `No ${detailLabel.toLowerCase()}s available`
+            : `Select ${modeLabel.toLowerCase()} first`
+        }
       />
 
       {/* Player picker modal */}
@@ -380,15 +490,15 @@ export function AddScore() {
         onCreate={handleCreatePlayer}
       />
 
-      {/* Celebration overlay - shown after successful submission */}
-      {selectedPlayer && selectedMode && scoreValue !== null && (
+      {/* Celebration overlay */}
+      {selectedPlayer && scoreValue !== null && (
         <CelebrationOverlay
           isOpen={showCelebration}
           onClose={handleCelebrationClose}
           playerName={selectedPlayer.name}
           score={scoreValue}
-          scoreFormat={selectedMode.score_format as ScoreFormat}
-          scoreUnit={selectedMode.score_unit}
+          scoreFormat={effectiveScoreFormat}
+          scoreUnit={effectiveScoreUnit}
           rank={submittedRank}
         />
       )}

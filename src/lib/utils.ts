@@ -34,11 +34,18 @@ export function formatScore(
       return unit ? `${decimal} ${unit}` : decimal
     }
 
-    case 'level': {
+        case 'level': {
       // Display as World X-Y (e.g., 84 -> "World 8-4")
       const world = Math.floor(value / 10)
       const level = value % 10
       return `World ${world}-${level}`
+    }
+
+    case 'golf_relative': {
+      // Display relative to par: -4, E, +3
+      if (value === 0) return 'E'
+      if (value > 0) return `+${value}`
+      return value.toString()
     }
 
     case 'integer':

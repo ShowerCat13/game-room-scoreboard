@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 
-interface ModeCardProps {
-  mode: {
+interface DetailCardProps {
+  detail: {
     id: string
     name: string
   }
@@ -12,11 +12,11 @@ interface ModeCardProps {
 }
 
 /**
- * ModeCard - Card displaying a game mode with name
+ * DetailCard - Card displaying a game detail (track, course, enemy type, etc.)
  * Height: 64px, padding: 12px vertical, 16px horizontal
  * Features: Card shadow, press animation, chevron indicator
  */
-export function ModeCard({ mode, onClick, className = '', index = 0 }: ModeCardProps) {
+export function DetailCard({ detail, onClick, className = '', index = 0 }: DetailCardProps) {
   return (
     <motion.button
       onClick={onClick}
@@ -34,7 +34,7 @@ export function ModeCard({ mode, onClick, className = '', index = 0 }: ModeCardP
     >
       <div className="flex flex-col justify-center min-w-0 flex-1">
         <div className="text-base font-semibold text-text-primary truncate">
-          {mode.name}
+          {detail.name}
         </div>
       </div>
       

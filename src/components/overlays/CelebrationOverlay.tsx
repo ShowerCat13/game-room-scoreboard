@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatScore, getMedalEmoji } from '@/lib/utils'
+import { Trophy, Medal, Sparkles } from 'lucide-react'
+import { formatScore } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
 import { useKioskStore } from '@/stores/kioskStore'
 import type { ScoreFormat } from '@/lib/types'
@@ -86,8 +87,17 @@ export function CelebrationOverlay({
 
   const isFirstPlace = rank === 1
   const isPodium = rank <= 3
-  const medalEmoji = getMedalEmoji(rank)
   const formattedScore = formatScore(score, scoreFormat, scoreUnit)
+
+  // Get medal color class
+  const getMedalColorClass = () => {
+    switch (rank) {
+      case 1: return 'text-medals-gold'
+      case 2: return 'text-medals-silver'
+      case 3: return 'text-medals-bronze'
+      default: return 'text-text-primary'
+    }
+  }
 
   // Confetti colors based on rank
   const confettiColors = isFirstPlace 
@@ -160,10 +170,13 @@ export function CelebrationOverlay({
                 initial={{ y: -30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1, type: 'spring', damping: 10 }}
+                className="flex items-center justify-center gap-3 mb-2"
               >
-                <p className="text-xl font-bold text-gradient-gold mb-2">
-                  🎉 NEW HIGH SCORE! 🎉
+                <Sparkles className="w-6 h-6 text-medals-gold" />
+                <p className="text-xl font-bold text-gradient-gold">
+                  NEW HIGH SCORE!
                 </p>
+                <Sparkles className="w-6 h-6 text-medals-gold" />
               </motion.div>
             ) : (
               <motion.p
@@ -199,17 +212,23 @@ export function CelebrationOverlay({
               {formattedScore}
             </motion.div>
 
-            {/* Rank badge */}
+            {/* Rank badge with icon */}
             <motion.div
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3, type: 'spring', damping: 12 }}
               className={`
+                flex items-center justify-center gap-2
                 text-lg font-semibold
                 ${rank === 1 ? 'medal-gold' : rank === 2 ? 'medal-silver' : rank === 3 ? 'medal-bronze' : 'text-text-primary'}
               `}
             >
-              {medalEmoji} {getOrdinal(rank)} Place!
+              {isPodium ? (
+                <Medal className={`w-6 h-6 ${getMedalColorClass()}`} fill="currentColor" fillOpacity={0.2} />
+              ) : (
+                <Trophy className="w-6 h-6 text-text-primary" />
+              )}
+              <span>{getOrdinal(rank)} Place!</span>
             </motion.div>
           </motion.div>
 
