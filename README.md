@@ -1,43 +1,39 @@
-# 🏆 Game Room Scoreboard
+# Game Room Scoreboard
 
-A beautiful, touch-friendly high score tracker for your home game room. Built for Raspberry Pi kiosks, accessible from any device.
+A touch-friendly high score tracker for your home game room. Built for Raspberry Pi kiosks, accessible from any device.
 
-![Version](https://img.shields.io/badge/version-1.0.0--beta-blue)
+![Version](https://img.shields.io/badge/version-0.9.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-119%20passing-brightgreen)
 
-<p align="center">
-  <img src="docs/images/idle-display.png" alt="Idle Display" width="400">
-  <img src="docs/images/mobile-view.png" alt="Mobile View" width="200">
-</p>
+<!-- TODO: Add screenshots
+![Idle Display](docs/images/idle-display.png)
+![Mobile View](docs/images/mobile-view.png)
+-->
 
----
+## Features
 
-## ✨ Features
+- **Kiosk Display** — Auto-cycling leaderboards on a 7" touchscreen
+- **Mobile Access** — Add scores from your phone via QR code
+- **Multi-Format Scoring** — Times (1:58.234), golf (-3, E, +2), points, percentages
+- **Real-time Sync** — Scores update instantly across all devices
+- **Celebrations** — Confetti and sound effects for new high scores
+- **6 Themes** — Dark, Light, OLED, Cyberpunk, Retro, Nature
+- **Bulk Import** — Paste CSV/JSON to import historical scores
+- **PIN Protection** — Optional admin PIN for destructive actions
 
-- **🖥️ Kiosk Display** — Auto-cycling leaderboards on a 7" touchscreen
-- **📱 Mobile Access** — Add scores from your phone via QR code
-- **🎮 Any Game** — Racing, golf, darts, pinball, RPGs, and more
-- **⚡ Real-time** — Scores sync instantly across all devices
-- **🎉 Celebrations** — Confetti and sound effects for new high scores
-- **🎨 Themes** — 6 beautiful presets (Dark, Light, OLED, Cyberpunk, Retro, Nature)
-- **📊 Bulk Import** — Paste CSV/JSON to import historical scores
-- **🔒 PIN Protection** — Optional admin PIN for destructive actions
+## Supported Games
 
----
+Works with any game that has trackable scores:
 
-## 🎯 Perfect For
+- **Racing** — Mario Kart lap times, F1, iRacing, Assetto Corsa
+- **Golf** — Mario Golf, PGA 2K, with relative-to-par scoring
+- **Darts** — 301, 501, Cricket
+- **Arcade** — Pinball, classic games
+- **Party Games** — Mario Party, Jackbox
+- **RPGs** — Kill counts, completion percentage, speedruns
 
-- 🏎️ **Racing** — Mario Kart lap times, F1, iRacing, Assetto Corsa
-- ⛳ **Golf** — Mario Golf, PGA, with relative-to-par scoring
-- 🎯 **Darts** — 301, 501, Cricket
-- 🕹️ **Arcade** — Pinball, classic games
-- 🎲 **Party Games** — Mario Party minigames, Jackbox
-- ⚔️ **RPGs** — Kill counts, completion percentage
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -48,18 +44,11 @@ A beautiful, touch-friendly high score tracker for your home game room. Built fo
 ### Installation
 
 ```bash
-# Clone the repo
 git clone https://github.com/yourusername/game-room-scoreboard.git
 cd game-room-scoreboard
-
-# Install dependencies
 npm install
-
-# Set up environment
 cp .env.example .env.local
 # Edit .env.local with your Supabase credentials
-
-# Run development server
 npm run dev
 ```
 
@@ -71,11 +60,9 @@ npm run dev
 4. Create an `avatars` bucket in Storage (set to public)
 5. Copy your project URL and anon key to `.env.local`
 
----
+## Usage
 
-## 📱 Usage
-
-### On the Kiosk
+### Kiosk
 
 The idle display shows auto-cycling leaderboards. Tap to interact:
 
@@ -83,51 +70,35 @@ The idle display shows auto-cycling leaderboards. Tap to interact:
 |--------|--------|
 | **Browse** | Explore leaderboards by category |
 | **+Add** | Add score, add player, or manage data |
-| **⚙️** | Settings (themes, sound, display) |
+| **Settings** | Themes, sound, display options |
 
-### On Your Phone
+### Mobile
 
 1. Scan the QR code on the kiosk display
 2. Or visit `http://scoreboard.local:4173`
-3. Add scores from the couch!
+3. Add scores from the couch
 
-### Adding a Score
+## Themes
 
-1. Tap **+Add** → **Add Score**
-2. Select player, game, mode, and (optionally) track
-3. Enter the score
-4. Submit and celebrate! 🎉
+| Theme | Description |
+|-------|-------------|
+| Dark | Classic dark mode (default) |
+| Light | Clean and bright |
+| OLED | Pure black for OLED screens |
+| Cyberpunk | Neon cyan and magenta |
+| Retro | Warm amber arcade vibes |
+| Nature | Forest greens |
 
----
-
-## 🎨 Themes
-
-| Theme | Preview |
-|-------|---------|
-| **Dark** (default) | Classic dark mode |
-| **Light** | Clean and bright |
-| **OLED** | Pure black backgrounds |
-| **Cyberpunk** | Neon cyan/magenta |
-| **Retro** | Warm amber arcade |
-| **Nature** | Forest greens |
-
----
-
-## 🖥️ Raspberry Pi Deployment
-
-### Build & Serve
+## Raspberry Pi Deployment
 
 ```bash
 npm run build
 npm install -g serve pm2
 pm2 start "serve -s dist -l 4173" --name scoreboard
-pm2 save
-pm2 startup
+pm2 save && pm2 startup
 ```
 
-### Kiosk Auto-Start
-
-Create `~/.config/autostart/scoreboard.desktop`:
+For kiosk auto-start, create `~/.config/autostart/scoreboard.desktop`:
 
 ```ini
 [Desktop Entry]
@@ -136,72 +107,39 @@ Name=Scoreboard
 Exec=chromium-browser --kiosk --noerrdialogs http://localhost:4173
 ```
 
-### mDNS (scoreboard.local)
-
-```bash
-sudo apt install avahi-daemon
-sudo hostnamectl set-hostname scoreboard
-sudo reboot
-```
-
----
-
-## 🧪 Testing
-
-```bash
-npm run test:e2e         # Run all 104 tests
-npm run test:e2e:ui      # Interactive test UI
-npm run test:e2e:headed  # Watch tests run
-```
-
----
-
-## 📖 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | How to use all features |
-| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Architecture, contributing, deployment |
+| [User Guide](USER_GUIDE.md) | How to use all features |
+| [Developer Guide](DEVELOPER_GUIDE.md) | Architecture and contributing |
 | [Changelog](CHANGELOG.md) | Version history |
-| [Future Enhancements](docs/FUTURE_ENHANCEMENTS.md) | Roadmap and ideas |
+| [Future Enhancements](FUTURE_ENHANCEMENTS.md) | Roadmap |
 
----
+## Tech Stack
 
-## 🛠️ Tech Stack
-
-- **Frontend:** React 18 + TypeScript + Vite
+- **Frontend:** React 18, TypeScript, Vite
 - **Styling:** Tailwind CSS
 - **Animations:** Framer Motion
 - **State:** Zustand
 - **Backend:** Supabase (PostgreSQL + Realtime + Storage)
 - **Testing:** Playwright
 
----
+## Known Limitations
 
-## 🤝 Contributing
+- Requires network connection (no offline mode)
+- Single household (no multi-tenant support)
+- English only
+- PIN is a simple deterrent, not cryptographic security
 
-Contributions are welcome! Please read the [Developer Guide](docs/DEVELOPER_GUIDE.md) for setup instructions and coding standards.
+## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Open a Pull Request
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
----
-
-## 📄 License
+## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
-
 Built with [Supabase](https://supabase.com), [Tailwind CSS](https://tailwindcss.com), [Framer Motion](https://framer.com/motion), and [Lucide Icons](https://lucide.dev).
-
----
-
-<p align="center">
-  Made with ❤️ for game rooms everywhere
-</p>
