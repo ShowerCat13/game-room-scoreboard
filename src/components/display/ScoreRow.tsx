@@ -16,10 +16,19 @@ interface ScoreRowProps {
 
 /**
  * ScoreRow - Individual leaderboard entry
- * Height: 72px, padding: 0 16px
- * Layout: flex row, align center, justify space-between
- * Contains: RankBadge (40px) | PlayerInfo (avatar 48px + name) | ScoreValue
- * Features: Podium highlighting for top 3, avatar rings for medals
+ * 
+ * Desktop (≥640px):
+ *   Height: 72px, horizontal layout
+ *   Layout: RankBadge (40px) | Avatar + Name | Score
+ * 
+ * Mobile (<640px):
+ *   Height: auto (min 80px), stacked layout
+ *   Layout: [Rank + Avatar + Name] row, then [Score] row
+ * 
+ * Features:
+ * - Podium highlighting for top 3
+ * - Avatar rings for medals
+ * - Responsive layout adapts to screen size
  */
 export function ScoreRow({
   rank,
@@ -52,7 +61,7 @@ export function ScoreRow({
   return (
     <div
       className={`
-        h-[72px] px-md flex flex-row items-center justify-between
+        score-row-layout
         rounded-lg
         ${podiumClass}
         ${className}
@@ -63,29 +72,34 @@ export function ScoreRow({
         opacity: 0
       } : undefined}
     >
-      {/* Rank badge */}
-      <RankBadge rank={rank} />
+      {/* Top row: Rank + Player info */}
+      <div className="flex flex-row items-center flex-1 min-w-0 w-full">
+        {/* Rank badge */}
+        <RankBadge rank={rank} />
 
-      {/* Player info: avatar + name */}
-      <div className="flex flex-row items-center gap-3 flex-1 ml-3 min-w-0">
-        <PlayerAvatar 
-          name={playerName} 
-          avatarUrl={playerAvatar} 
-          size={48}
-          ringClass={avatarRingClass}
-        />
-        <div className={`text-lg truncate ${rank <= 3 ? 'font-semibold' : 'font-normal'} text-text-primary`}>
-          {playerName}
+        {/* Player info: avatar + name */}
+        <div className="score-row-player">
+          <PlayerAvatar 
+            name={playerName} 
+            avatarUrl={playerAvatar} 
+            size={48}
+            ringClass={avatarRingClass}
+          />
+          <div className={`text-lg truncate ${rank <= 3 ? 'font-semibold' : 'font-normal'} text-text-primary`}>
+            {playerName}
+          </div>
         </div>
       </div>
 
-      {/* Score value */}
-      <ScoreValue 
-        value={score} 
-        format={scoreFormat} 
-        unit={scoreUnit}
-        highlight={rank === 1}
-      />
+      {/* Score value - right side on desktop, below on mobile */}
+      <div className="score-row-value">
+        <ScoreValue 
+          value={score} 
+          format={scoreFormat} 
+          unit={scoreUnit}
+          highlight={rank === 1}
+        />
+      </div>
     </div>
   )
 }

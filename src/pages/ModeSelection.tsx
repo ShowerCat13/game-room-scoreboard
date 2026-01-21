@@ -1,10 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { ModeCard } from '@/components/cards/ModeCard'
+import { NewPlayerModal } from '@/components/input'
 import { useGameModes } from '@/hooks/useGameModes'
 import { useGame } from '@/hooks/useGame'
+import { usePlayers } from '@/hooks/usePlayers'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 
 /**
@@ -20,7 +22,12 @@ export function ModeSelection() {
   const { category, gameId } = useParams<{ category: string; gameId: string }>()
   const { modes, loading, error } = useGameModes(gameId || null)
   const { game: currentGame } = useGame(gameId || null)
+  const { createPlayer } = usePlayers()
   const { isIdle, resetTimer } = useIdleTimer(30000)
+
+  // New Player modal state
+  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -50,21 +57,43 @@ export function ModeSelection() {
     navigate('/add-score')
   }
 
+  const handleAddPlayer = () => {
+    resetTimer()
+    setShowNewPlayerModal(true)
+  }
+
+  const handleManage = () => {
+    resetTimer()
+    navigate('/manage')
+  }
+
+  const handleCreatePlayer = async (name: string) => {
+    setIsCreatingPlayer(true)
+    try {
+      await createPlayer(name)
+      setShowNewPlayerModal(false)
+    } finally {
+      setIsCreatingPlayer(false)
+    }
+  }
+
   // Get the label for modes from game config
   const modeLabel = currentGame?.mode_label || 'Mode'
 
   return (
     <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
+      <div className="h-full min-h-[480px] flex flex-col">
+        {/* Header with action sheet */}
         <BrowseHeader
           backLabel={currentGame?.name || 'Back'}
           onBack={handleBack}
           onAddScore={handleAddScore}
+          onAddPlayer={handleAddPlayer}
+          onManage={handleManage}
         />
 
         {/* Game title */}
-        <div className="h-[48px] px-md flex items-center gap-3">
+        <div className="h-[48px] px-md flex items-center gap-3 flex-shrink-0">
           {currentGame?.icon_url && (
             <img
               src={currentGame.icon_url}
@@ -85,16 +114,16 @@ export function ModeSelection() {
         {/* Modes list */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">Loading {modeLabel.toLowerCase()}s...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
               <p className="text-red-500 mb-2">Error loading {modeLabel.toLowerCase()}s</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
           ) : modes.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">No {modeLabel.toLowerCase()}s for this game</p>
             </div>
           ) : (
@@ -109,6 +138,14 @@ export function ModeSelection() {
           )}
         </div>
       </div>
+
+      {/* New Player Modal */}
+      <NewPlayerModal
+        isOpen={showNewPlayerModal}
+        onClose={() => setShowNewPlayerModal(false)}
+        onCreate={handleCreatePlayer}
+        isCreating={isCreatingPlayer}
+      />
     </KioskLayout>
   )
 }

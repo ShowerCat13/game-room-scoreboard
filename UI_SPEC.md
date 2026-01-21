@@ -800,6 +800,210 @@ Note: Not all routes require all params. If a game has no modes, skip to details
 
 ---
 
+Theme System
+Theme Definitions
+Insert after "Color Tokens" section:
+yamlthemes:
+  dark:  # Default
+    background:
+      primary: "#0f0f0f"
+      card: "#1a1a1a"
+      elevated: "#252525"
+    text:
+      primary: "#ffffff"
+      secondary: "#a1a1a1"
+      muted: "#6b6b6b"
+      
+  light:
+    background:
+      primary: "#f8fafc"
+      card: "#ffffff"
+      elevated: "#f1f5f9"
+    text:
+      primary: "#111111"
+      secondary: "#374151"
+      muted: "#6b7280"
+      
+  oled:
+    background:
+      primary: "#000000"
+      card: "#0a0a0a"
+      elevated: "#141414"
+    text:
+      primary: "#ffffff"
+      secondary: "#a1a1a1"
+      muted: "#6b6b6b"
+      
+  cyberpunk:
+    background:
+      primary: "#0a0a0f"
+      card: "#12121a"
+      elevated: "#1a1a25"
+    text:
+      primary: "#00fff5"  # Cyan
+      secondary: "#ff00ff" # Magenta
+      muted: "#00cccc"
+    accent: "#ff00ff"
+    
+  retro:
+    background:
+      primary: "#1a0f0a"
+      card: "#2a1a10"
+      elevated: "#3a2515"
+    text:
+      primary: "#ffb347"  # Orange
+      secondary: "#ffd700" # Gold
+      muted: "#cc8030"
+    accent: "#ff6b35"
+    
+  nature:
+    background:
+      primary: "#0a1a0f"
+      card: "#102515"
+      elevated: "#15301a"
+    text:
+      primary: "#90ee90"  # Light green
+      secondary: "#98d8aa"
+      muted: "#5a9a6a"
+    accent: "#228b22"
+Theme Implementation
+css/* Applied via data-theme attribute on <html> */
+[data-theme="light"] {
+  --color-background-primary: #f8fafc;
+  --color-text-primary: #111111;
+  /* ... */
+}
+Text Color Override
+For accessibility when theme colors don't provide enough contrast:
+OverrideEffectAuto (default)Use theme's text colorsLightForce #ffffff textDarkForce #111111 text
+
+Settings Page — Theme Section
+Add after existing Settings sections:
+Theme Selection
+yamlThemeSection:
+  layout: 
+    container: "flex flex-col gap-4"
+    
+  header:
+    text: "Theme"
+    style: "text-lg font-semibold text-text-primary"
+    
+  theme_grid:
+    layout: "grid grid-cols-3 gap-2"
+    items:
+      - button:
+          label: "Dark"
+          active_style: "ring-2 ring-accent-primary"
+          preview: "bg-[#0f0f0f] border border-gray-700"
+      - button:
+          label: "Light"
+          preview: "bg-[#f8fafc] border border-gray-300"
+      - button:
+          label: "OLED"
+          preview: "bg-black border border-gray-800"
+      - button:
+          label: "Cyber"
+          preview: "bg-[#0a0a0f] border border-cyan-500"
+      - button:
+          label: "Retro"
+          preview: "bg-[#1a0f0a] border border-orange-500"
+      - button:
+          label: "Nature"
+          preview: "bg-[#0a1a0f] border border-green-500"
+          
+  text_override:
+    label: "Text Color"
+    type: "button_group"
+    options:
+      - { value: "auto", label: "Auto" }
+      - { value: "light", label: "Light" }
+      - { value: "dark", label: "Dark" }
+      
+  reset_button:
+    label: "Reset to Defaults"
+    style: "text-sm text-text-muted"
+
+IdleDisplay — Clock Component
+Add to IdleDisplay page spec:
+Clock
+yamlClock:
+  location: "header, right side"
+  
+  layout:
+    container: "flex items-center"
+    
+  time_display:
+    format: "12-hour with AM/PM"
+    example: "12:34 PM"
+    font: "text-lg font-medium font-mono"
+    color: "text-text-primary"
+    
+  update_interval: "60 seconds"
+  
+  implementation:
+    - Use useEffect with setInterval
+    - Update every minute (not every second)
+    - Format: h:mm A (using date-fns or native)
+
+IdleDisplay — QR Code Popup
+Add to IdleDisplay page spec:
+QR Code Button
+yamlQRButton:
+  location: "footer, right side"
+  
+  button:
+    icon: "QrCode from lucide-react"
+    size: "w-10 h-10"
+    style: "text-text-muted active:text-text-secondary"
+    
+  behavior:
+    on_click: "Toggle QR popup visibility"
+QR Code Popup
+yamlQRPopup:
+  position: "absolute, bottom-right corner above footer"
+  
+  container:
+    style: "bg-white p-4 rounded-lg shadow-lg"
+    
+  content:
+    qr_code:
+      size: "150x150"
+      data: "http://{hostname}:{port}"
+      library: "qrcode.react"
+      
+    url_text:
+      text: "scoreboard.local"
+      style: "text-xs text-center font-mono text-gray-600"
+      
+    hint_text:
+      text: "Scan to add scores"
+      style: "text-xs text-center text-gray-500"
+      
+  dismiss:
+    trigger: "Click outside popup"
+    animation: "fade out"
+
+Light Theme Adjustments
+For light theme, certain elements need color overrides:
+yamllight_theme_overrides:
+  medals:
+    gold: "#b8860b"      # Darker gold
+    silver: "#708090"    # Slate gray
+    bronze: "#8b4513"    # Saddle brown
+    
+  category_icons:
+    # All category colors darkened by ~20%
+    racing: "#dc2626"
+    golf: "#16a34a"
+    party: "#d97706"
+    # etc.
+    
+  podium_gradients:
+    # Use solid colors instead of gradients
+    first: "bg-[#b8860b]"
+    second: "bg-[#708090]"
+    third: "bg-[#8b4513]"
+
 ## Accessibility
 
 - All touch targets ≥ 56px

@@ -1,21 +1,32 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { GameCard } from '@/components/cards/GameCard'
+import { NewPlayerModal } from '@/components/input'
 import { useGames } from '@/hooks/useGames'
+import { usePlayers } from '@/hooks/usePlayers'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 import type { GameCategory } from '@/lib/types'
 
 /**
  * GameSelection - List of games in a category
  * Route: /browse/:category
+ * 
+ * Responsive:
+ * - Desktop/Kiosk: Fixed height, scrollable list
+ * - Mobile: Full height with scrolling
  */
 export function GameSelection() {
   const navigate = useNavigate()
   const { category } = useParams<{ category: GameCategory }>()
   const { games, loading, error } = useGames(category)
+  const { createPlayer } = usePlayers()
   const { isIdle, resetTimer } = useIdleTimer(30000)
+
+  // New Player modal state
+  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -38,6 +49,26 @@ export function GameSelection() {
     navigate('/add-score')
   }
 
+  const handleAddPlayer = () => {
+    resetTimer()
+    setShowNewPlayerModal(true)
+  }
+
+  const handleManage = () => {
+    resetTimer()
+    navigate('/manage')
+  }
+
+  const handleCreatePlayer = async (name: string) => {
+    setIsCreatingPlayer(true)
+    try {
+      await createPlayer(name)
+      setShowNewPlayerModal(false)
+    } finally {
+      setIsCreatingPlayer(false)
+    }
+  }
+
   // Category display name
   const categoryName = category
     ? category.charAt(0).toUpperCase() + category.slice(1)
@@ -45,16 +76,18 @@ export function GameSelection() {
 
   return (
     <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
+      <div className="h-full min-h-[480px] flex flex-col">
+        {/* Header with action sheet */}
         <BrowseHeader
           backLabel="Categories"
           onBack={handleBack}
           onAddScore={handleAddScore}
+          onAddPlayer={handleAddPlayer}
+          onManage={handleManage}
         />
 
         {/* Category title */}
-        <div className="h-[40px] px-md flex items-center">
+        <div className="h-[40px] px-md flex items-center flex-shrink-0">
           <h2 className="text-lg font-bold" style={{ color: getCategoryColor(category) }}>
             {categoryName.toUpperCase()}
           </h2>
@@ -63,16 +96,16 @@ export function GameSelection() {
         {/* Games list */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-3">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">Loading games...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
               <p className="text-red-500 mb-2">Error loading games</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
           ) : games.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">No games in this category</p>
             </div>
           ) : (
@@ -86,6 +119,14 @@ export function GameSelection() {
           )}
         </div>
       </div>
+
+      {/* New Player Modal */}
+      <NewPlayerModal
+        isOpen={showNewPlayerModal}
+        onClose={() => setShowNewPlayerModal(false)}
+        onCreate={handleCreatePlayer}
+        isCreating={isCreatingPlayer}
+      />
     </KioskLayout>
   )
 }

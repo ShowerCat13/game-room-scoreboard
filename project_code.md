@@ -28,29 +28,33 @@ export default {
     extend: {
       colors: {
         background: {
-          primary: '#0f0f0f',
-          card: '#1a1a1a',
-          elevated: '#252525',
+          primary: 'var(--color-bg-primary)',
+          card: 'var(--color-bg-card)',
+          elevated: 'var(--color-bg-elevated)',
         },
         text: {
-          primary: '#ffffff',
-          secondary: '#a1a1a1',
-          muted: '#6b6b6b',
+          primary: 'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
+        },
+        accent: {
+          primary: 'var(--color-accent-primary)',
+          secondary: 'var(--color-accent-secondary)',
         },
         category: {
-          racing: '#ef4444',
-          golf: '#22c55e',
-          party: '#f59e0b',
-          darts: '#3b82f6',
-          pinball: '#a855f7',
-          platformer: '#ec4899',
-          rpg: '#06b6d4',
-          other: '#6b7280',
+          racing: 'var(--color-category-racing)',
+          golf: 'var(--color-category-golf)',
+          party: 'var(--color-category-party)',
+          darts: 'var(--color-category-darts)',
+          pinball: 'var(--color-category-pinball)',
+          platformer: 'var(--color-category-platformer)',
+          rpg: 'var(--color-category-rpg)',
+          other: 'var(--color-category-other)',
         },
         medals: {
-          gold: '#ffd700',
-          silver: '#c0c0c0',
-          bronze: '#cd7f32',
+          gold: 'var(--color-medal-gold)',
+          silver: 'var(--color-medal-silver)',
+          bronze: 'var(--color-medal-bronze)',
         },
       },
       fontFamily: {
@@ -87,7 +91,6 @@ export default {
   },
   plugins: [],
 }
-
 ```
 
 ## File: vite.config.ts
@@ -121,18 +124,23 @@ export default defineConfig({
 {
   "name": "game-room-scoreboard",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.9.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.13",
     "framer-motion": "^11.18.0",
     "lucide-react": "^0.562.0",
+    "qrcode.react": "^4.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.2.1",
@@ -140,6 +148,7 @@ export default defineConfig({
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@playwright/test": "^1.40.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
@@ -155,7 +164,6 @@ export default defineConfig({
     "vite": "^6.0.7"
   }
 }
-
 ```
 
 ## File: tsconfig.json
@@ -183,11 +191,14 @@ import {
   Settings,
   Manage,
 } from '@/pages'
-import { useSoundInit } from '@/hooks'
+import { useSoundInit, useTheme } from '@/hooks'
 
 function App() {
   // Initialize audio context on first user interaction
   useSoundInit()
+  
+  // Apply theme CSS variables to document root
+  useTheme()
 
   return (
     <BrowserRouter>
@@ -218,7 +229,18 @@ export default App
 ## File: src/components/cards/CategoryButton.tsx
 ```tsx
 import { motion } from 'framer-motion'
+import { 
+  Car, 
+  Flag, 
+  PartyPopper, 
+  Target, 
+  Disc3, 
+  Gamepad2, 
+  Swords, 
+  Puzzle 
+} from 'lucide-react'
 import type { GameCategory } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 
 interface CategoryButtonProps {
   category: GameCategory
@@ -232,55 +254,55 @@ const categoryConfig: Record<GameCategory, {
   color: string
   bgGradient: string
   glowClass: string
-  icon: string
+  Icon: LucideIcon
 }> = {
   racing: {
     color: 'text-category-racing',
     bgGradient: 'from-red-500/10 to-transparent',
     glowClass: 'category-glow-racing',
-    icon: '🏎️',
+    Icon: Car,
   },
   golf: {
     color: 'text-category-golf',
     bgGradient: 'from-green-500/10 to-transparent',
     glowClass: 'category-glow-golf',
-    icon: '⛳',
+    Icon: Flag,
   },
   party: {
     color: 'text-category-party',
     bgGradient: 'from-amber-500/10 to-transparent',
     glowClass: 'category-glow-party',
-    icon: '🎉',
+    Icon: PartyPopper,
   },
   darts: {
     color: 'text-category-darts',
     bgGradient: 'from-blue-500/10 to-transparent',
     glowClass: 'category-glow-darts',
-    icon: '🎯',
+    Icon: Target,
   },
   pinball: {
     color: 'text-category-pinball',
     bgGradient: 'from-purple-500/10 to-transparent',
     glowClass: 'category-glow-pinball',
-    icon: '🕹️',
+    Icon: Disc3,
   },
   platformer: {
     color: 'text-category-platformer',
     bgGradient: 'from-pink-500/10 to-transparent',
     glowClass: 'category-glow-platformer',
-    icon: '🍄',
+    Icon: Gamepad2,
   },
   rpg: {
     color: 'text-category-rpg',
     bgGradient: 'from-cyan-500/10 to-transparent',
     glowClass: 'category-glow-rpg',
-    icon: '⚔️',
+    Icon: Swords,
   },
   other: {
     color: 'text-category-other',
     bgGradient: 'from-gray-500/10 to-transparent',
     glowClass: 'category-glow-other',
-    icon: '🎮',
+    Icon: Puzzle,
   },
 }
 
@@ -292,6 +314,7 @@ const categoryConfig: Record<GameCategory, {
 export function CategoryButton({ category, onClick, className = '', index = 0 }: CategoryButtonProps) {
   const config = categoryConfig[category]
   const displayName = category.charAt(0).toUpperCase() + category.slice(1)
+  const { Icon } = config
 
   return (
     <motion.button
@@ -319,7 +342,7 @@ export function CategoryButton({ category, onClick, className = '', index = 0 }:
       
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-1">
-        <span className="text-xxl">{config.icon}</span>
+        <Icon className={`w-8 h-8 ${config.color}`} strokeWidth={2} />
         <span className={`text-lg font-bold ${config.color}`}>
           {displayName}
         </span>
@@ -327,10 +350,7 @@ export function CategoryButton({ category, onClick, className = '', index = 0 }:
 
       {/* Subtle bottom border accent */}
       <div 
-        className={`absolute bottom-0 left-4 right-4 h-[2px] rounded-full opacity-60`}
-        style={{ 
-          background: `linear-gradient(90deg, transparent, var(--tw-${category === 'racing' ? 'red' : category === 'golf' ? 'green' : category === 'party' ? 'amber' : category === 'darts' ? 'blue' : category === 'pinball' ? 'purple' : category === 'platformer' ? 'pink' : category === 'rpg' ? 'cyan' : 'gray'}-500), transparent)` 
-        }}
+        className={`absolute bottom-0 left-4 right-4 h-[2px] rounded-full opacity-60 ${config.color.replace('text-', 'bg-')}`}
       />
     </motion.button>
   )
@@ -583,7 +603,7 @@ export function PlayerAvatar({
 
 ## File: src/components/display/RankBadge.tsx
 ```tsx
-import { getMedalEmoji } from '@/lib/utils'
+import { Medal } from 'lucide-react'
 
 interface RankBadgeProps {
   rank: number
@@ -591,33 +611,58 @@ interface RankBadgeProps {
 }
 
 /**
- * RankBadge - Displays medal emoji for ranks 1-3 or number for other ranks
+ * RankBadge - Displays medal icon for ranks 1-3 or number for other ranks
  * Width: 40px, Font: lg (24px), bold
- * Features: Glowing text shadow for medals
+ * Features: Colored medals with glow effects
  */
 export function RankBadge({ rank, className = '' }: RankBadgeProps) {
-  const medal = getMedalEmoji(rank)
+  const isMedalist = rank >= 1 && rank <= 3
   
-  // Medal glow class
-  const medalClass = rank === 1 
-    ? 'medal-gold' 
-    : rank === 2 
-    ? 'medal-silver' 
-    : rank === 3 
-    ? 'medal-bronze' 
-    : 'text-text-muted'
+  // Medal color and glow class based on rank
+  const getMedalStyle = () => {
+    switch (rank) {
+      case 1:
+        return {
+          colorClass: 'text-medals-gold',
+          glowClass: 'medal-gold',
+        }
+      case 2:
+        return {
+          colorClass: 'text-medals-silver',
+          glowClass: 'medal-silver',
+        }
+      case 3:
+        return {
+          colorClass: 'text-medals-bronze',
+          glowClass: 'medal-bronze',
+        }
+      default:
+        return {
+          colorClass: 'text-text-muted',
+          glowClass: '',
+        }
+    }
+  }
+
+  const { colorClass, glowClass } = getMedalStyle()
 
   return (
     <div 
       className={`
         w-10 flex items-center justify-center 
         text-lg font-bold
-        ${medal ? medalClass : 'text-text-muted'}
         ${className}
       `}
     >
-      {medal || (
-        <span className="text-base">{rank}.</span>
+      {isMedalist ? (
+        <Medal 
+          className={`w-6 h-6 ${colorClass} ${glowClass}`} 
+          strokeWidth={2}
+          fill="currentColor"
+          fillOpacity={0.2}
+        />
+      ) : (
+        <span className="text-base text-text-muted">{rank}.</span>
       )}
     </div>
   )
@@ -1490,18 +1535,23 @@ interface KioskLayoutProps {
 
 /**
  * KioskLayout - 800x480 fixed container for Raspberry Pi touchscreen
- * Centers content on screen with dark background
+ * Centers content on screen with themed background
  */
 export function KioskLayout({ children, className = '' }: KioskLayoutProps) {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background-primary">
-      <div className={`kiosk-container bg-background-primary ${className}`}>
+    <div 
+      className="min-h-screen w-full flex items-center justify-center"
+      style={{ backgroundColor: 'var(--color-bg-primary)' }}
+    >
+      <div 
+        className={`kiosk-container ${className}`}
+        style={{ backgroundColor: 'var(--color-bg-primary)' }}
+      >
         {children}
       </div>
     </div>
   )
 }
-
 ```
 
 ## File: src/components/management/ConfirmDialog.tsx
@@ -1839,7 +1889,8 @@ export function PinModal({
 ```tsx
 import { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { formatScore, getMedalEmoji } from '@/lib/utils'
+import { Trophy, Medal, Sparkles } from 'lucide-react'
+import { formatScore } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
 import { useKioskStore } from '@/stores/kioskStore'
 import type { ScoreFormat } from '@/lib/types'
@@ -1925,8 +1976,17 @@ export function CelebrationOverlay({
 
   const isFirstPlace = rank === 1
   const isPodium = rank <= 3
-  const medalEmoji = getMedalEmoji(rank)
   const formattedScore = formatScore(score, scoreFormat, scoreUnit)
+
+  // Get medal color class
+  const getMedalColorClass = () => {
+    switch (rank) {
+      case 1: return 'text-medals-gold'
+      case 2: return 'text-medals-silver'
+      case 3: return 'text-medals-bronze'
+      default: return 'text-text-primary'
+    }
+  }
 
   // Confetti colors based on rank
   const confettiColors = isFirstPlace 
@@ -1999,10 +2059,13 @@ export function CelebrationOverlay({
                 initial={{ y: -30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1, type: 'spring', damping: 10 }}
+                className="flex items-center justify-center gap-3 mb-2"
               >
-                <p className="text-xl font-bold text-gradient-gold mb-2">
-                  🎉 NEW HIGH SCORE! 🎉
+                <Sparkles className="w-6 h-6 text-medals-gold" />
+                <p className="text-xl font-bold text-gradient-gold">
+                  NEW HIGH SCORE!
                 </p>
+                <Sparkles className="w-6 h-6 text-medals-gold" />
               </motion.div>
             ) : (
               <motion.p
@@ -2038,17 +2101,23 @@ export function CelebrationOverlay({
               {formattedScore}
             </motion.div>
 
-            {/* Rank badge */}
+            {/* Rank badge with icon */}
             <motion.div
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3, type: 'spring', damping: 12 }}
               className={`
+                flex items-center justify-center gap-2
                 text-lg font-semibold
                 ${rank === 1 ? 'medal-gold' : rank === 2 ? 'medal-silver' : rank === 3 ? 'medal-bronze' : 'text-text-primary'}
               `}
             >
-              {medalEmoji} {getOrdinal(rank)} Place!
+              {isPodium ? (
+                <Medal className={`w-6 h-6 ${getMedalColorClass()}`} fill="currentColor" fillOpacity={0.2} />
+              ) : (
+                <Trophy className="w-6 h-6 text-text-primary" />
+              )}
+              <span>{getOrdinal(rank)} Place!</span>
             </motion.div>
           </motion.div>
 
@@ -2078,8 +2147,8 @@ export { RealtimeScoreAlert } from './RealtimeScoreAlert'
 ```tsx
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap } from 'lucide-react'
-import { formatScore, getMedalEmoji } from '@/lib/utils'
+import { Zap, Medal } from 'lucide-react'
+import { formatScore } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
 import type { ScoreFormat } from '@/lib/types'
 
@@ -2128,8 +2197,18 @@ export function RealtimeScoreAlert({
   }, [isOpen, rank])
 
   const isFirstPlace = rank === 1
-  const medalEmoji = getMedalEmoji(rank)
+  const isPodium = rank <= 3
   const formattedScore = formatScore(score, scoreFormat, scoreUnit)
+
+  // Get medal color class
+  const getMedalColorClass = () => {
+    switch (rank) {
+      case 1: return 'text-medals-gold'
+      case 2: return 'text-medals-silver'
+      case 3: return 'text-medals-bronze'
+      default: return 'text-text-muted'
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -2180,8 +2259,12 @@ export function RealtimeScoreAlert({
                   <span className={`text-base font-bold ${isFirstPlace ? 'text-gradient-gold' : 'text-text-primary'}`}>
                     {isFirstPlace ? 'NEW RECORD!' : 'New Score!'}
                   </span>
-                  {medalEmoji && (
-                    <span className="text-lg">{medalEmoji}</span>
+                  {isPodium && (
+                    <Medal 
+                      className={`w-5 h-5 ${getMedalColorClass()}`} 
+                      fill="currentColor" 
+                      fillOpacity={0.2}
+                    />
                   )}
                 </div>
 
@@ -2261,6 +2344,7 @@ export { useIdleTimer } from './useIdleTimer'
 export { useActiveGameModes } from './useActiveGameModes'
 export { useSoundInit } from './useSoundInit'
 export { useScoreDetails } from './useScoreDetails'
+export { useTheme } from './useTheme'
 export type { RealtimeScoreData } from './useScoreDetails'
 
 // Management hooks
@@ -2444,7 +2528,7 @@ export function useGame(gameId: string | null): UseGameResult {
 
         const { data, error: queryError } = await supabase
           .from('games')
-          .select('id, name, platform, category, icon_url, sort_order')
+          .select('*')
           .eq('id', gameId)
           .single()
 
@@ -4181,6 +4265,33 @@ export function useSubmitScore(): SubmitScoreResult {
 }
 ```
 
+## File: src/hooks/useTheme.ts
+```ts
+import { useEffect } from 'react'
+import { useKioskStore } from '@/stores/kioskStore'
+import { getTheme, applyTheme } from '@/lib/themes'
+
+/**
+ * useTheme - Applies the current theme to the document
+ * 
+ * Should be called once at the app root (App.tsx)
+ * Watches for theme changes in store and updates CSS variables
+ */
+export function useTheme(): void {
+  const themeId = useKioskStore((state) => state.themeId)
+  const textPrimaryOverride = useKioskStore((state) => state.textPrimaryOverride)
+  const accentPrimaryOverride = useKioskStore((state) => state.accentPrimaryOverride)
+
+  useEffect(() => {
+    const theme = getTheme(themeId, {
+      textPrimaryOverride,
+      accentPrimaryOverride,
+    })
+    applyTheme(theme)
+  }, [themeId, textPrimaryOverride, accentPrimaryOverride])
+}
+```
+
 ## File: src/index.css
 ```css
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
@@ -4188,6 +4299,41 @@ export function useSubmitScore(): SubmitScoreResult {
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================================
+   CSS VARIABLES - Default Theme (Dark)
+   These are overwritten by the theme system via JavaScript
+   ============================================================================ */
+:root {
+  /* Backgrounds */
+  --color-bg-primary: #0f0f0f;
+  --color-bg-card: #1a1a1a;
+  --color-bg-elevated: #252525;
+  
+  /* Text */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1a1;
+  --color-text-muted: #6b6b6b;
+  
+  /* Accents */
+  --color-accent-primary: #3b82f6;
+  --color-accent-secondary: #60a5fa;
+  
+  /* Category Colors */
+  --color-category-racing: #ef4444;
+  --color-category-golf: #22c55e;
+  --color-category-party: #f59e0b;
+  --color-category-darts: #3b82f6;
+  --color-category-pinball: #a855f7;
+  --color-category-platformer: #ec4899;
+  --color-category-rpg: #06b6d4;
+  --color-category-other: #6b7280;
+  
+  /* Medal Colors */
+  --color-medal-gold: #ffd700;
+  --color-medal-silver: #c0c0c0;
+  --color-medal-bronze: #cd7f32;
+}
 
 @layer base {
   * {
@@ -4201,13 +4347,20 @@ export function useSubmitScore(): SubmitScoreResult {
   }
 
   body {
-    @apply bg-background-primary text-text-primary font-sans antialiased;
+    @apply font-sans antialiased;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
     font-size: 18px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
     overscroll-behavior: none;
+  }
+
+  /* Ensure html also has the background for full coverage */
+  html {
+    background-color: var(--color-bg-primary);
   }
 
   /* Kiosk-specific: no text selection, no tap highlight */
@@ -4230,106 +4383,111 @@ export function useSubmitScore(): SubmitScoreResult {
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-background-card;
+    background-color: var(--color-bg-card);
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-background-elevated rounded;
+    background-color: var(--color-bg-elevated);
+    @apply rounded;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-text-muted;
+    background-color: var(--color-text-muted);
   }
 }
 
 @layer components {
   /* Card base style with depth */
   .card {
-    @apply bg-background-card rounded-lg;
+    background-color: var(--color-bg-card);
+    @apply rounded-lg;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .card-interactive {
-    @apply bg-background-card rounded-lg transition-all duration-fast;
+    background-color: var(--color-bg-card);
+    @apply rounded-lg transition-all duration-fast;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .card-interactive:active {
+    background-color: var(--color-bg-elevated);
     @apply scale-[0.98];
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2);
-    background-color: #1f1f1f;
   }
 
-  /* Category-specific glow borders */
+  /* Category-specific glow borders - using CSS variables */
   .category-glow-racing {
-    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-racing) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-golf {
-    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-golf) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-party {
-    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-party) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-darts {
-    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-darts) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-pinball {
-    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-pinball) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-platformer {
-    box-shadow: inset 0 0 0 1px rgba(236, 72, 153, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-platformer) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-rpg {
-    box-shadow: inset 0 0 0 1px rgba(6, 182, 212, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-rpg) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
   .category-glow-other {
-    box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-category-other) 30%, transparent), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
-  /* Podium row highlights */
+  /* Podium row highlights - using CSS variables */
   .podium-gold {
-    background: linear-gradient(90deg, rgba(255, 215, 0, 0.08) 0%, transparent 100%);
-    border-left: 3px solid #ffd700;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-medal-gold) 8%, transparent) 0%, transparent 100%);
+    border-left: 3px solid var(--color-medal-gold);
   }
   .podium-silver {
-    background: linear-gradient(90deg, rgba(192, 192, 192, 0.06) 0%, transparent 100%);
-    border-left: 3px solid #c0c0c0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-medal-silver) 6%, transparent) 0%, transparent 100%);
+    border-left: 3px solid var(--color-medal-silver);
   }
   .podium-bronze {
-    background: linear-gradient(90deg, rgba(205, 127, 50, 0.06) 0%, transparent 100%);
-    border-left: 3px solid #cd7f32;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-medal-bronze) 6%, transparent) 0%, transparent 100%);
+    border-left: 3px solid var(--color-medal-bronze);
   }
 
-  /* Medal badge enhancements */
+  /* Medal badge enhancements - using CSS variables */
   .medal-gold {
-    @apply text-medals-gold;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    color: var(--color-medal-gold);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--color-medal-gold) 50%, transparent);
   }
   .medal-silver {
-    @apply text-medals-silver;
-    text-shadow: 0 0 8px rgba(192, 192, 192, 0.4);
+    color: var(--color-medal-silver);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-medal-silver) 40%, transparent);
   }
   .medal-bronze {
-    @apply text-medals-bronze;
-    text-shadow: 0 0 8px rgba(205, 127, 50, 0.4);
+    color: var(--color-medal-bronze);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--color-medal-bronze) 40%, transparent);
   }
 
-  /* Avatar ring for top players */
+  /* Avatar ring for top players - using CSS variables */
   .avatar-ring-gold {
-    box-shadow: 0 0 0 2px #ffd700, 0 0 12px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 0 2px var(--color-medal-gold), 0 0 12px color-mix(in srgb, var(--color-medal-gold) 40%, transparent);
   }
   .avatar-ring-silver {
-    box-shadow: 0 0 0 2px #c0c0c0, 0 0 10px rgba(192, 192, 192, 0.3);
+    box-shadow: 0 0 0 2px var(--color-medal-silver), 0 0 10px color-mix(in srgb, var(--color-medal-silver) 30%, transparent);
   }
   .avatar-ring-bronze {
-    box-shadow: 0 0 0 2px #cd7f32, 0 0 10px rgba(205, 127, 50, 0.3);
+    box-shadow: 0 0 0 2px var(--color-medal-bronze), 0 0 10px color-mix(in srgb, var(--color-medal-bronze) 30%, transparent);
   }
 
   /* Button styles */
   .btn-primary {
-    @apply bg-background-elevated text-text-primary font-semibold rounded-lg px-md;
+    background-color: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    @apply font-semibold rounded-lg px-md;
     @apply transition-all duration-fast;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -4337,7 +4495,6 @@ export function useSubmitScore(): SubmitScoreResult {
   .btn-primary:active {
     @apply scale-[0.98];
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2);
-    background-color: #2a2a2a;
   }
 
   /* Icon badge */
@@ -4367,6 +4524,7 @@ export function useSubmitScore(): SubmitScoreResult {
     max-height: 100vh;
     overflow: hidden;
     position: relative;
+    background-color: var(--color-bg-primary);
   }
   
   /* Smooth transitions */
@@ -4374,12 +4532,21 @@ export function useSubmitScore(): SubmitScoreResult {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Gradient text for special emphasis */
+  /* Gradient text for special emphasis - uses medal gold */
   .text-gradient-gold {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4a 50%, #ffd700 100%);
+    background: linear-gradient(135deg, var(--color-medal-gold) 0%, #ffed4a 50%, var(--color-medal-gold) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Light theme: solid dark gold instead of gradient for readability */
+  [data-theme="light"] .text-gradient-gold {
+    background: none;
+    -webkit-background-clip: unset;
+    -webkit-text-fill-color: #92400e;
+    background-clip: unset;
+    color: #92400e;
   }
 
   /* Subtle inner glow for inputs */
@@ -4393,6 +4560,134 @@ export function useSubmitScore(): SubmitScoreResult {
   .stagger-3 { animation-delay: 0.15s; }
   .stagger-4 { animation-delay: 0.2s; }
   .stagger-5 { animation-delay: 0.25s; }
+}
+
+/* ============================================================================
+   THEME EFFECTS
+   Applied via class on html element
+   ============================================================================ */
+
+/* Scanlines Effect (Retro, Fallout themes) */
+.theme-scanlines::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Glow Effect (Vibrant, Retro, Fallout, Cyberpunk themes) */
+.theme-glow .card {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.4), 
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 20px color-mix(in srgb, var(--color-accent-primary) 10%, transparent);
+}
+
+.theme-glow .text-text-primary {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--color-text-primary) 30%, transparent);
+}
+
+/* Noise Effect (Fallout theme) */
+.theme-noise::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Theme-specific color tweaks */
+[data-theme="light"] .card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .card-interactive:active {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .btn-primary {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .input-glow {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* Light theme: darker medal glows for contrast */
+[data-theme="light"] .medal-gold {
+  color: #92400e;
+  text-shadow: none;
+}
+
+[data-theme="light"] .medal-silver {
+  color: #374151;
+  text-shadow: none;
+}
+
+[data-theme="light"] .medal-bronze {
+  color: #78350f;
+  text-shadow: none;
+}
+
+/* Light theme: darker podium gradients */
+[data-theme="light"] .podium-gold {
+  background: linear-gradient(90deg, rgba(161, 98, 7, 0.15) 0%, transparent 100%);
+  border-left: 3px solid #a16207;
+}
+
+[data-theme="light"] .podium-silver {
+  background: linear-gradient(90deg, rgba(75, 85, 99, 0.1) 0%, transparent 100%);
+  border-left: 3px solid #4b5563;
+}
+
+[data-theme="light"] .podium-bronze {
+  background: linear-gradient(90deg, rgba(146, 64, 14, 0.12) 0%, transparent 100%);
+  border-left: 3px solid #92400e;
+}
+
+/* Light theme: darker avatar rings */
+[data-theme="light"] .avatar-ring-gold {
+  box-shadow: 0 0 0 2px #a16207, 0 0 8px rgba(161, 98, 7, 0.3);
+}
+
+[data-theme="light"] .avatar-ring-silver {
+  box-shadow: 0 0 0 2px #4b5563, 0 0 6px rgba(75, 85, 99, 0.2);
+}
+
+[data-theme="light"] .avatar-ring-bronze {
+  box-shadow: 0 0 0 2px #92400e, 0 0 6px rgba(146, 64, 14, 0.2);
+}
+
+/* Fallout-specific: monochrome green glow on everything */
+[data-theme="fallout"] .medal-gold,
+[data-theme="fallout"] .medal-silver,
+[data-theme="fallout"] .medal-bronze {
+  color: var(--color-text-primary);
+  text-shadow: 0 0 10px var(--color-text-primary);
+}
+
+[data-theme="fallout"] .avatar-ring-gold,
+[data-theme="fallout"] .avatar-ring-silver,
+[data-theme="fallout"] .avatar-ring-bronze {
+  box-shadow: 0 0 0 2px var(--color-text-primary), 0 0 12px var(--color-text-primary);
 }
 ```
 
@@ -4698,6 +4993,318 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 })
 
+```
+
+## File: src/lib/themes.ts
+```ts
+/**
+ * Theme System for Game Room Scoreboard
+ * 
+ * 6 preset themes + customization options
+ */
+
+export interface ThemeColors {
+  // Backgrounds
+  bgPrimary: string
+  bgCard: string
+  bgElevated: string
+  
+  // Text
+  textPrimary: string
+  textSecondary: string
+  textMuted: string
+  
+  // Accents
+  accentPrimary: string
+  accentSecondary: string
+  
+  // Category colors
+  categoryRacing: string
+  categoryGolf: string
+  categoryParty: string
+  categoryDarts: string
+  categoryPinball: string
+  categoryPlatformer: string
+  categoryRpg: string
+  categoryOther: string
+  
+  // Medals
+  medalGold: string
+  medalSilver: string
+  medalBronze: string
+}
+
+export interface Theme {
+  id: string
+  name: string
+  description: string
+  colors: ThemeColors
+  // Optional special effects
+  effects?: {
+    scanlines?: boolean
+    glow?: boolean
+    noise?: boolean
+  }
+}
+
+// ============================================================================
+// THEME DEFINITIONS
+// ============================================================================
+
+export const themes: Record<string, Theme> = {
+  dark: {
+    id: 'dark',
+    name: 'Dark',
+    description: 'Default dark theme',
+    colors: {
+      bgPrimary: '#0f0f0f',
+      bgCard: '#1a1a1a',
+      bgElevated: '#252525',
+      textPrimary: '#ffffff',
+      textSecondary: '#a1a1a1',
+      textMuted: '#6b6b6b',
+      accentPrimary: '#3b82f6',
+      accentSecondary: '#60a5fa',
+      categoryRacing: '#ef4444',
+      categoryGolf: '#22c55e',
+      categoryParty: '#f59e0b',
+      categoryDarts: '#3b82f6',
+      categoryPinball: '#a855f7',
+      categoryPlatformer: '#ec4899',
+      categoryRpg: '#06b6d4',
+      categoryOther: '#6b7280',
+      medalGold: '#ffd700',
+      medalSilver: '#c0c0c0',
+      medalBronze: '#cd7f32',
+    },
+  },
+
+  light: {
+    id: 'light',
+    name: 'Light',
+    description: 'Clean light theme for bright rooms',
+    colors: {
+      bgPrimary: '#f0f0f0',
+      bgCard: '#ffffff',
+      bgElevated: '#e0e0e0',
+      textPrimary: '#111111',
+      textSecondary: '#333333',
+      textMuted: '#666666',
+      accentPrimary: '#1d4ed8',
+      accentSecondary: '#2563eb',
+      categoryRacing: '#b91c1c',
+      categoryGolf: '#15803d',
+      categoryParty: '#b45309',
+      categoryDarts: '#1d4ed8',
+      categoryPinball: '#7e22ce',
+      categoryPlatformer: '#be185d',
+      categoryRpg: '#0e7490',
+      categoryOther: '#374151',
+      medalGold: '#a16207',
+      medalSilver: '#4b5563',
+      medalBronze: '#92400e',
+    },
+  },
+
+  vibrant: {
+    id: 'vibrant',
+    name: 'Vibrant',
+    description: 'Bold and colorful',
+    colors: {
+      bgPrimary: '#0a0a0a',
+      bgCard: '#18181b',
+      bgElevated: '#27272a',
+      textPrimary: '#fafafa',
+      textSecondary: '#d4d4d8',
+      textMuted: '#a1a1aa',
+      accentPrimary: '#f43f5e',
+      accentSecondary: '#fb7185',
+      categoryRacing: '#ff3b30',
+      categoryGolf: '#30d158',
+      categoryParty: '#ff9f0a',
+      categoryDarts: '#007aff',
+      categoryPinball: '#bf5af2',
+      categoryPlatformer: '#ff375f',
+      categoryRpg: '#5ac8fa',
+      categoryOther: '#8e8e93',
+      medalGold: '#ffd60a',
+      medalSilver: '#d1d1d6',
+      medalBronze: '#ff9500',
+    },
+    effects: {
+      glow: true,
+    },
+  },
+
+  retro: {
+    id: 'retro',
+    name: 'Retro',
+    description: 'Classic arcade CRT vibes',
+    colors: {
+      bgPrimary: '#0d0208',
+      bgCard: '#1a0a10',
+      bgElevated: '#2d1520',
+      textPrimary: '#ff6b35',
+      textSecondary: '#f7931e',
+      textMuted: '#c75000',
+      accentPrimary: '#ff6b35',
+      accentSecondary: '#f7931e',
+      categoryRacing: '#ff0000',
+      categoryGolf: '#00ff00',
+      categoryParty: '#ffff00',
+      categoryDarts: '#00ffff',
+      categoryPinball: '#ff00ff',
+      categoryPlatformer: '#ff6b35',
+      categoryRpg: '#00ffff',
+      categoryOther: '#f7931e',
+      medalGold: '#ffd700',
+      medalSilver: '#c0c0c0',
+      medalBronze: '#ff6b35',
+    },
+    effects: {
+      scanlines: true,
+      glow: true,
+    },
+  },
+
+  fallout: {
+    id: 'fallout',
+    name: 'Fallout',
+    description: 'Pip-Boy terminal green',
+    colors: {
+      bgPrimary: '#0a0f0a',
+      bgCard: '#0f1a0f',
+      bgElevated: '#1a2a1a',
+      textPrimary: '#14fe17',
+      textSecondary: '#0fbc10',
+      textMuted: '#0a7d0b',
+      accentPrimary: '#14fe17',
+      accentSecondary: '#0fbc10',
+      categoryRacing: '#14fe17',
+      categoryGolf: '#14fe17',
+      categoryParty: '#14fe17',
+      categoryDarts: '#14fe17',
+      categoryPinball: '#14fe17',
+      categoryPlatformer: '#14fe17',
+      categoryRpg: '#14fe17',
+      categoryOther: '#0fbc10',
+      medalGold: '#14fe17',
+      medalSilver: '#0fbc10',
+      medalBronze: '#0a7d0b',
+    },
+    effects: {
+      scanlines: true,
+      glow: true,
+      noise: true,
+    },
+  },
+
+  cyberpunk: {
+    id: 'cyberpunk',
+    name: 'Cyberpunk',
+    description: 'Neon nights in Night City',
+    colors: {
+      bgPrimary: '#0a0a12',
+      bgCard: '#12121f',
+      bgElevated: '#1a1a2e',
+      textPrimary: '#00f0ff',
+      textSecondary: '#ff00a0',
+      textMuted: '#6b6b8a',
+      accentPrimary: '#ff00a0',
+      accentSecondary: '#00f0ff',
+      categoryRacing: '#ff003c',
+      categoryGolf: '#00ff9f',
+      categoryParty: '#fcee0a',
+      categoryDarts: '#00f0ff',
+      categoryPinball: '#ff00a0',
+      categoryPlatformer: '#ff003c',
+      categoryRpg: '#00f0ff',
+      categoryOther: '#6b6b8a',
+      medalGold: '#fcee0a',
+      medalSilver: '#00f0ff',
+      medalBronze: '#ff00a0',
+    },
+    effects: {
+      glow: true,
+    },
+  },
+}
+
+// ============================================================================
+// CUSTOMIZATION OPTIONS
+// ============================================================================
+
+export interface ThemeCustomization {
+  textPrimaryOverride?: string | null
+  accentPrimaryOverride?: string | null
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get a theme by ID, with optional customizations applied
+ */
+export function getTheme(themeId: string, customization?: ThemeCustomization): Theme {
+  const base = themes[themeId] || themes.dark
+  
+  if (!customization) return base
+  
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      ...(customization.textPrimaryOverride && { textPrimary: customization.textPrimaryOverride }),
+      ...(customization.accentPrimaryOverride && { accentPrimary: customization.accentPrimaryOverride }),
+    },
+  }
+}
+
+/**
+ * Apply a theme to the document root
+ */
+export function applyTheme(theme: Theme): void {
+  const root = document.documentElement
+  const { colors, effects } = theme
+  
+  // Set color variables
+  root.style.setProperty('--color-bg-primary', colors.bgPrimary)
+  root.style.setProperty('--color-bg-card', colors.bgCard)
+  root.style.setProperty('--color-bg-elevated', colors.bgElevated)
+  root.style.setProperty('--color-text-primary', colors.textPrimary)
+  root.style.setProperty('--color-text-secondary', colors.textSecondary)
+  root.style.setProperty('--color-text-muted', colors.textMuted)
+  root.style.setProperty('--color-accent-primary', colors.accentPrimary)
+  root.style.setProperty('--color-accent-secondary', colors.accentSecondary)
+  root.style.setProperty('--color-category-racing', colors.categoryRacing)
+  root.style.setProperty('--color-category-golf', colors.categoryGolf)
+  root.style.setProperty('--color-category-party', colors.categoryParty)
+  root.style.setProperty('--color-category-darts', colors.categoryDarts)
+  root.style.setProperty('--color-category-pinball', colors.categoryPinball)
+  root.style.setProperty('--color-category-platformer', colors.categoryPlatformer)
+  root.style.setProperty('--color-category-rpg', colors.categoryRpg)
+  root.style.setProperty('--color-category-other', colors.categoryOther)
+  root.style.setProperty('--color-medal-gold', colors.medalGold)
+  root.style.setProperty('--color-medal-silver', colors.medalSilver)
+  root.style.setProperty('--color-medal-bronze', colors.medalBronze)
+  
+  // Set effect classes
+  root.classList.remove('theme-scanlines', 'theme-glow', 'theme-noise')
+  if (effects?.scanlines) root.classList.add('theme-scanlines')
+  if (effects?.glow) root.classList.add('theme-glow')
+  if (effects?.noise) root.classList.add('theme-noise')
+  
+  // Set theme ID for CSS targeting
+  root.setAttribute('data-theme', theme.id)
+}
+
+/**
+ * Get list of all available themes for UI
+ */
+export function getThemeList(): { id: string; name: string; description: string }[] {
+  return Object.values(themes).map(({ id, name, description }) => ({ id, name, description }))
+}
 ```
 
 ## File: src/lib/types.ts
@@ -6133,7 +6740,8 @@ function getCategoryColor(category?: string): string {
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, Trophy, QrCode } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { KioskLayout } from '@/components/layout'
 import { ScoreRow } from '@/components/display'
 import { RealtimeScoreAlert } from '@/components/overlays'
@@ -6146,6 +6754,25 @@ import { useKioskStore } from '@/stores/kioskStore'
 import { getInitials, getPlayerColor } from '@/lib/utils'
 import type { HighScore } from '@/lib/types'
 
+// Static URL for the scoreboard - uses mDNS hostname
+const SCOREBOARD_URL = 'http://scoreboard.local:4173'
+
+/**
+ * Format time in 12-hour format with AM/PM
+ */
+function formatTime(date: Date): string {
+  let hours = date.getHours()
+  const minutes = date.getMinutes()
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  
+  hours = hours % 12
+  hours = hours ? hours : 12 // 0 should be 12
+  
+  const minutesStr = minutes < 10 ? `0${minutes}` : minutes
+  
+  return `${hours}:${minutesStr} ${ampm}`
+}
+
 /**
  * IdleDisplay - Auto-cycling carousel of game mode leaderboards
  *
@@ -6155,6 +6782,8 @@ import type { HighScore } from '@/lib/types'
  * - Tap anywhere to navigate to browse mode
  * - Real-time score updates with toast alerts
  * - Smooth slide transitions between modes
+ * - Clock display readable from across the room
+ * - QR code for easy mobile access (tap to show/hide)
  */
 export function IdleDisplay() {
   const navigate = useNavigate()
@@ -6163,6 +6792,20 @@ export function IdleDisplay() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentMode = modes[currentIndex]
+
+  // Clock state - updates every minute
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // QR code visibility state
+  const [showQR, setShowQR] = useState(false)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+
+    return () => clearInterval(timer)
+  }, [])
 
   // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
   const { entries: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
@@ -6212,7 +6855,18 @@ export function IdleDisplay() {
 
   // Handle tap to navigate
   const handleTap = () => {
+    // Don't navigate if QR is showing - tap hides it instead
+    if (showQR) {
+      setShowQR(false)
+      return
+    }
     navigate('/browse')
+  }
+
+  // Toggle QR code visibility
+  const handleQRToggle = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowQR((prev) => !prev)
   }
 
   // Get game icon or generate fallback
@@ -6258,7 +6912,7 @@ export function IdleDisplay() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <p className="text-6xl mb-4">🏆</p>
+            <Trophy className="w-16 h-16 text-medals-gold mx-auto mb-4" strokeWidth={1.5} />
             <p className="text-xl text-text-primary mb-2">No scores yet!</p>
             <p className="text-text-secondary mb-6">Be the first to set a record</p>
             <p className="text-sm text-text-muted">Tap to browse games or add score</p>
@@ -6271,11 +6925,11 @@ export function IdleDisplay() {
   return (
     <KioskLayout>
       <div
-        className="h-full flex flex-col cursor-pointer"
+        className="h-full flex flex-col cursor-pointer relative"
         onClick={handleTap}
       >
-        {/* Header: Game + Mode info */}
-        <div className="h-[72px] px-md flex flex-col justify-center border-b border-background-elevated/50">
+        {/* Header: Game + Mode info + Clock */}
+        <div className="h-[72px] px-md flex items-center justify-between border-b border-background-elevated/50">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentMode?.id}
@@ -6283,6 +6937,7 @@ export function IdleDisplay() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
+              className="flex-1"
             >
               <div className="flex items-center gap-3">
                 {currentMode?.game_icon ? (
@@ -6310,6 +6965,11 @@ export function IdleDisplay() {
               </div>
             </motion.div>
           </AnimatePresence>
+
+          {/* Clock - readable from across the room */}
+          <div className="text-xl font-mono font-bold text-text-secondary">
+            {formatTime(currentTime)}
+          </div>
         </div>
 
         {/* Leaderboard: Score rows */}
@@ -6362,7 +7022,7 @@ export function IdleDisplay() {
           </AnimatePresence>
         </div>
 
-        {/* Footer: Tap hint + progress indicator + settings */}
+        {/* Footer: Settings + hint/dots + QR toggle */}
         <div className="h-[48px] flex items-center justify-between px-md">
           {/* Settings button */}
           <button
@@ -6397,9 +7057,47 @@ export function IdleDisplay() {
             )}
           </div>
 
-          {/* Spacer to balance layout */}
-          <div className="w-10" />
+          {/* QR code toggle button */}
+          <button
+            onClick={handleQRToggle}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+              showQR 
+                ? 'text-text-primary bg-background-elevated' 
+                : 'text-text-muted active:text-text-secondary active:bg-background-elevated'
+            }`}
+          >
+            <QrCode className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* QR Code overlay - shows in bottom right when toggled */}
+        <AnimatePresence>
+          {showQR && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="absolute bottom-16 right-4 p-4 rounded-xl card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white p-3 rounded-lg">
+                <QRCodeSVG 
+                  value={SCOREBOARD_URL}
+                  size={120}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <p className="text-xs text-text-muted text-center mt-2">
+                Scan to add scores
+              </p>
+              <p className="text-xs text-text-secondary text-center font-mono">
+                scoreboard.local
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Realtime score alert */}
@@ -7875,12 +8573,16 @@ import {
   Users,
   ChevronRight,
   ShieldCheck,
-  ShieldOff
+  ShieldOff,
+  Palette,
+  RotateCcw,
+  Check
 } from 'lucide-react'
 import { KioskLayout } from '@/components/layout'
 import { PinModal } from '@/components/management'
 import { useKioskStore } from '@/stores/kioskStore'
 import { sounds } from '@/lib/sounds'
+import { getThemeList, themes } from '@/lib/themes'
 
 // Cycle speed options
 const CYCLE_SPEEDS = [
@@ -7895,6 +8597,17 @@ const CELEBRATION_DURATIONS = [
   { value: 3000, label: '3 seconds' },
   { value: 5000, label: '5 seconds' },
   { value: 7000, label: '7 seconds' },
+]
+
+// Preset color options for text customization
+const TEXT_COLOR_PRESETS = [
+  { value: null, label: 'Theme Default', color: null },
+  { value: '#ffffff', label: 'White', color: '#ffffff' },
+  { value: '#14fe17', label: 'Pip-Boy Green', color: '#14fe17' },
+  { value: '#00f0ff', label: 'Cyan', color: '#00f0ff' },
+  { value: '#ff00a0', label: 'Hot Pink', color: '#ff00a0' },
+  { value: '#ffd700', label: 'Gold', color: '#ffd700' },
+  { value: '#ff6b35', label: 'Orange', color: '#ff6b35' },
 ]
 
 /**
@@ -7913,6 +8626,13 @@ export function Settings() {
   const setSoundVolume = useKioskStore((state) => state.setSoundVolume)
   const setCycleSpeed = useKioskStore((state) => state.setCycleSpeed)
   const setCelebrationDuration = useKioskStore((state) => state.setCelebrationDuration)
+  
+  // Theme state
+  const themeId = useKioskStore((state) => state.themeId)
+  const textPrimaryOverride = useKioskStore((state) => state.textPrimaryOverride)
+  const setTheme = useKioskStore((state) => state.setTheme)
+  const setTextPrimaryOverride = useKioskStore((state) => state.setTextPrimaryOverride)
+  const resetThemeCustomizations = useKioskStore((state) => state.resetThemeCustomizations)
   
   // PIN state
   const adminPin = useKioskStore((state) => state.adminPin)
@@ -7996,6 +8716,10 @@ export function Settings() {
     setPinAction(null)
   }
 
+  // Theme data
+  const themeList = getThemeList()
+  const hasCustomizations = textPrimaryOverride !== null
+
   return (
     <KioskLayout>
       <div className="h-full flex flex-col">
@@ -8015,11 +8739,106 @@ export function Settings() {
 
         {/* Settings content */}
         <div className="flex-1 overflow-y-auto px-md py-4 space-y-4">
-          {/* Sound Section */}
+          {/* Theme Section */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
+          >
+            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
+              Theme
+            </h2>
+            <div className="card p-1 space-y-1">
+              {/* Theme picker */}
+              <div className="px-md py-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <Palette className="w-5 h-5 text-category-pinball" />
+                  <span className="text-base text-text-primary">Color Theme</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {themeList.map((theme) => {
+                    const themeColors = themes[theme.id].colors
+                    return (
+                      <button
+                        key={theme.id}
+                        onClick={() => setTheme(theme.id)}
+                        className={`
+                          h-[48px] rounded-lg text-sm font-medium transition-all relative overflow-hidden
+                          ${themeId === theme.id
+                            ? 'ring-2 ring-accent-primary ring-offset-2 ring-offset-background-primary'
+                            : 'active:scale-95'
+                          }
+                        `}
+                        style={{
+                          backgroundColor: themeColors.bgCard,
+                          color: themeColors.textPrimary,
+                        }}
+                      >
+                        {/* Color preview strip */}
+                        <div 
+                          className="absolute bottom-0 left-0 right-0 h-1"
+                          style={{ backgroundColor: themeColors.accentPrimary }}
+                        />
+                        <span className="relative z-10">{theme.name}</span>
+                        {themeId === theme.id && (
+                          <Check className="absolute top-1 right-1 w-4 h-4" style={{ color: themeColors.accentPrimary }} />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Text color customization */}
+              <div className="px-md py-3 border-t border-background-elevated/50">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-text-secondary">Text Color Override</span>
+                  {hasCustomizations && (
+                    <button
+                      onClick={resetThemeCustomizations}
+                      className="flex items-center gap-1 text-xs text-text-muted active:text-text-secondary"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {TEXT_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value || 'default'}
+                      onClick={() => setTextPrimaryOverride(preset.value)}
+                      className={`
+                        h-[36px] px-3 rounded-lg text-xs font-medium transition-all flex items-center gap-2
+                        ${textPrimaryOverride === preset.value
+                          ? 'ring-2 ring-accent-primary'
+                          : 'bg-background-elevated active:scale-95'
+                        }
+                      `}
+                      style={preset.color ? { 
+                        backgroundColor: `${preset.color}20`,
+                        color: preset.color 
+                      } : undefined}
+                    >
+                      {preset.color && (
+                        <div 
+                          className="w-3 h-3 rounded-full border border-white/20"
+                          style={{ backgroundColor: preset.color }}
+                        />
+                      )}
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Sound Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
             <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
               Sound
@@ -8092,7 +8911,7 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.15 }}
           >
             <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
               Display
@@ -8154,7 +8973,7 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
+            transition={{ delay: 0.2 }}
           >
             <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
               Security
@@ -8207,7 +9026,7 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.25 }}
           >
             <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
               Management
@@ -8230,7 +9049,7 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
+            transition={{ delay: 0.3 }}
           >
             <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
               About
@@ -8285,7 +9104,11 @@ interface PersistedSettings {
   soundVolume: number
   cycleSpeedMs: number
   celebrationDurationMs: number
-  adminPin: string | null // 4-digit PIN for destructive actions
+  adminPin: string | null
+  // Theme settings
+  themeId: string
+  textPrimaryOverride: string | null
+  accentPrimaryOverride: string | null
 }
 
 // UI state for the kiosk application
@@ -8346,6 +9169,12 @@ interface KioskState extends PersistedSettings {
   clearAdminPin: () => void
   verifyPin: (pin: string) => boolean
   isPinSet: () => boolean
+
+  // Theme actions
+  setTheme: (themeId: string) => void
+  setTextPrimaryOverride: (color: string | null) => void
+  setAccentPrimaryOverride: (color: string | null) => void
+  resetThemeCustomizations: () => void
 }
 
 export const useKioskStore = create<KioskState>()(
@@ -8357,6 +9186,11 @@ export const useKioskStore = create<KioskState>()(
       cycleSpeedMs: 10000,
       celebrationDurationMs: 5000,
       adminPin: null,
+      
+      // Theme defaults
+      themeId: 'dark',
+      textPrimaryOverride: null,
+      accentPrimaryOverride: null,
 
       // Non-persisted state
       isIdleMode: true,
@@ -8430,6 +9264,15 @@ export const useKioskStore = create<KioskState>()(
       isPinSet: (): boolean => {
         return get().adminPin !== null
       },
+
+      // Theme actions
+      setTheme: (themeId) => set({ themeId }),
+      setTextPrimaryOverride: (color) => set({ textPrimaryOverride: color }),
+      setAccentPrimaryOverride: (color) => set({ accentPrimaryOverride: color }),
+      resetThemeCustomizations: () => set({ 
+        textPrimaryOverride: null, 
+        accentPrimaryOverride: null 
+      }),
     }),
     {
       name: 'kiosk-settings',
@@ -8440,6 +9283,9 @@ export const useKioskStore = create<KioskState>()(
         cycleSpeedMs: state.cycleSpeedMs,
         celebrationDurationMs: state.celebrationDurationMs,
         adminPin: state.adminPin,
+        themeId: state.themeId,
+        textPrimaryOverride: state.textPrimaryOverride,
+        accentPrimaryOverride: state.accentPrimaryOverride,
       }),
       // Sync sound manager on rehydration
       onRehydrateStorage: () => (state) => {

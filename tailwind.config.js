@@ -65,7 +65,11 @@ export default {
         custom: 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
       screens: {
-        kiosk: '800px',
+        // Mobile-first breakpoints
+        'mobile': { 'max': '639px' },      // Phones (portrait)
+        'tablet': { 'min': '640px', 'max': '1023px' }, // Tablets
+        'desktop': { 'min': '1024px' },    // Desktop
+        'kiosk': '800px',                  // Pi kiosk minimum
       },
     },
   },

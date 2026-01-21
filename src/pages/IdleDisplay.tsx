@@ -45,6 +45,10 @@ function formatTime(date: Date): string {
  * - Smooth slide transitions between modes
  * - Clock display readable from across the room
  * - QR code for easy mobile access (tap to show/hide)
+ * 
+ * Responsive:
+ * - Desktop/Kiosk: Fixed 800×480 layout
+ * - Mobile: Full screen with scrollable content
  */
 export function IdleDisplay() {
   const navigate = useNavigate()
@@ -138,9 +142,9 @@ export function IdleDisplay() {
   if (modesError) {
     return (
       <KioskLayout>
-        <div className="h-full flex flex-col items-center justify-center">
+        <div className="h-full min-h-[480px] flex flex-col items-center justify-center p-md">
           <p className="text-xl text-red-500 mb-2">Connection Error</p>
-          <p className="text-text-secondary text-sm">{modesError.message}</p>
+          <p className="text-text-secondary text-sm text-center">{modesError.message}</p>
         </div>
       </KioskLayout>
     )
@@ -150,7 +154,7 @@ export function IdleDisplay() {
   if (modesLoading) {
     return (
       <KioskLayout>
-        <div className="h-full flex items-center justify-center">
+        <div className="h-full min-h-[480px] flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full border-2 border-text-muted border-t-text-primary animate-spin" />
             <p className="text-text-secondary">Loading game modes...</p>
@@ -165,7 +169,7 @@ export function IdleDisplay() {
     return (
       <KioskLayout>
         <div
-          className="h-full flex flex-col items-center justify-center cursor-pointer"
+          className="h-full min-h-[480px] flex flex-col items-center justify-center cursor-pointer p-md"
           onClick={handleTap}
         >
           <motion.div
@@ -186,11 +190,11 @@ export function IdleDisplay() {
   return (
     <KioskLayout>
       <div
-        className="h-full flex flex-col cursor-pointer relative"
+        className="h-full min-h-[480px] flex flex-col cursor-pointer relative"
         onClick={handleTap}
       >
         {/* Header: Game + Mode info + Clock */}
-        <div className="h-[72px] px-md flex items-center justify-between border-b border-background-elevated/50">
+        <div className="idle-header">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentMode?.id}
@@ -205,21 +209,21 @@ export function IdleDisplay() {
                   <img
                     src={currentMode.game_icon}
                     alt=""
-                    className="w-10 h-10 rounded-lg shadow-card"
+                    className="w-10 h-10 rounded-lg shadow-card flex-shrink-0"
                   />
                 ) : (
                   <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-white shadow-card"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-white shadow-card flex-shrink-0"
                     style={{ backgroundColor: gameColor }}
                   >
                     {gameInitials}
                   </div>
                 )}
-                <div>
-                  <h1 className="text-xl font-bold text-text-primary">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-xl font-bold text-text-primary truncate">
                     {currentMode?.game_name}
                   </h1>
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-sm text-text-secondary truncate">
                     {currentMode?.name}
                   </p>
                 </div>
@@ -228,13 +232,13 @@ export function IdleDisplay() {
           </AnimatePresence>
 
           {/* Clock - readable from across the room */}
-          <div className="text-xl font-mono font-bold text-text-secondary">
+          <div className="text-xl font-mono font-bold text-text-secondary flex-shrink-0">
             {formatTime(currentTime)}
           </div>
         </div>
 
         {/* Leaderboard: Score rows */}
-        <div className="flex-1 flex flex-col justify-center px-md py-4">
+        <div className="flex-1 flex flex-col justify-center px-md py-4 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentMode?.id}
@@ -284,7 +288,7 @@ export function IdleDisplay() {
         </div>
 
         {/* Footer: Settings + hint/dots + QR toggle */}
-        <div className="h-[48px] flex items-center justify-between px-md">
+        <div className="footer-height flex items-center justify-between px-md">
           {/* Settings button */}
           <button
             onClick={(e) => {
@@ -298,7 +302,7 @@ export function IdleDisplay() {
 
           {/* Center content: hint + dots */}
           <div className="flex items-center gap-3">
-            <p className="text-xs text-text-muted">
+            <p className="text-xs text-text-muted hide-mobile">
               Tap to browse
             </p>
             {/* Progress dots */}

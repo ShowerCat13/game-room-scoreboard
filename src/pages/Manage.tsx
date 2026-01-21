@@ -23,7 +23,9 @@ import { useManageGameDetails } from '@/hooks/useManageGameDetails'
 import { useManageScores, type ScoreWithDetails } from '@/hooks/useManageScores'
 import { useKioskStore } from '@/stores/kioskStore'
 import { formatScore } from '@/lib/utils'
+import { AvatarUpload } from '@/components/input'
 import type { Player, Game, GameMode, GameDetail, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
+import { BulkImportModal } from '@/components/management'
 
 type Tab = 'players' | 'games' | 'details' | 'scores'
 
@@ -66,6 +68,7 @@ export function Manage() {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [showPlayerForm, setShowPlayerForm] = useState(false)
   const [playerName, setPlayerName] = useState('')
+  const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null)
   const [deletingPlayer, setDeletingPlayer] = useState<Player | null>(null)
 
   // Games state
@@ -102,9 +105,10 @@ export function Manage() {
   const [detailUnit, setDetailUnit] = useState('')
   const [deletingDetail, setDeletingDetail] = useState<GameDetail | null>(null)
 
-  // Scores state
+// Scores state
   const { scores, loading: scoresLoading, fetchScores, deleteScore } = useManageScores()
   const [deletingScore, setDeletingScore] = useState<ScoreWithDetails | null>(null)
+  const [showBulkImport, setShowBulkImport] = useState(false)
 
   // PIN state
   const { adminPin, setAdminPin, verifyPin } = useKioskStore()
@@ -202,24 +206,26 @@ export function Manage() {
   }
 
   const handleEditPlayer = (player: Player) => {
-    setEditingPlayer(player)
-    setPlayerName(player.name)
-    setShowPlayerForm(true)
-  }
-
+  setEditingPlayer(player)
+  setPlayerName(player.name)
+  setPlayerAvatarUrl(player.avatar_url)
+  setShowPlayerForm(true)
+}
+  
   const handleSavePlayer = async () => {
     if (!playerName.trim()) return
     
     if (editingPlayer) {
-      await updatePlayer(editingPlayer.id, playerName.trim())
+      await updatePlayer(editingPlayer.id, playerName.trim(), playerAvatarUrl)
     } else {
-      await createPlayer(playerName.trim())
+      await createPlayer(playerName.trim(), playerAvatarUrl)
     }
     setShowPlayerForm(false)
     setPlayerName('')
+    setPlayerAvatarUrl(null)
     setEditingPlayer(null)
-  }
-
+}
+   
   const handleConfirmDeletePlayer = () => {
     if (!deletingPlayer) return
     requirePin(async () => {
@@ -759,9 +765,16 @@ export function Manage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="h-full flex flex-col"
               >
-                <div className="px-md py-3">
+                
+              <div className="px-md py-3 flex items-center justify-between">
                   <p className="text-sm text-text-muted">Recent scores — tap to delete</p>
-                </div>
+                  <button
+                    onClick={() => setShowBulkImport(true)}
+                    className="text-sm text-category-golf font-medium active:opacity-70"
+                  >
+                    Bulk Import
+                  </button>
+                </div>  
 
                 <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                   {scoresLoading ? (
@@ -801,6 +814,7 @@ export function Manage() {
       </div>
 
       {/* Player Form Modal */}
+      {/* Player Form Modal */}
       <AnimatePresence>
         {showPlayerForm && (
           <motion.div
@@ -808,7 +822,7 @@ export function Manage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-md"
-            onClick={() => setShowPlayerForm(false)}
+            onClick={() => { setShowPlayerForm(false); setPlayerAvatarUrl(null) }}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -823,12 +837,23 @@ export function Manage() {
                   {editingPlayer ? 'Edit Player' : 'Add Player'}
                 </h2>
                 <button
-                  onClick={() => setShowPlayerForm(false)}
+                  onClick={() => { setShowPlayerForm(false); setPlayerAvatarUrl(null) }}
                   className="w-8 h-8 flex items-center justify-center text-text-muted rounded-lg"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              
+              {/* Avatar upload */}
+              <div className="flex justify-center mb-4">
+                <AvatarUpload
+                  currentUrl={playerAvatarUrl}
+                  playerName={playerName || 'New Player'}
+                  onChange={setPlayerAvatarUrl}
+                  playerId={editingPlayer?.id}
+                />
+              </div>
+
               <input
                 type="text"
                 value={playerName}
@@ -1143,6 +1168,15 @@ export function Manage() {
         onSubmit={handlePinSubmit}
         mode={pinMode}
         error={pinError}
+      />
+
+            {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onSuccess={() => {
+          fetchScores()
+        }}
       />
     </KioskLayout>
   )

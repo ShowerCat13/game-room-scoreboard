@@ -1,7 +1,7 @@
 # Architecture — Game Room Scoreboard
 
 **Version:** 1.0.0-beta  
-**Last Updated:** 2025-01-18
+**Last Updated:** 2025-01-20
 
 ---
 
@@ -475,6 +475,154 @@ Categories → Games → Modes → Details → Leaderboard
 | Touch targets | 56px | 56px |
 
 ---
+
+# ARCHITECTURE.md — New Sections to Add
+
+Add these sections to ARCHITECTURE.md after "Responsive Design" section.
+Also update "Last Updated:" to 2025-01-20
+
+---
+
+## Theme System
+
+The application supports multiple visual themes via CSS custom properties.
+
+### Available Themes
+
+| Theme | Description | Background | Text |
+|-------|-------------|------------|------|
+| Dark (default) | Classic dark mode | #0f0f0f | #ffffff |
+| Light | Clean light mode | #f8fafc | #111111 |
+| OLED | Pure black for OLED | #000000 | #ffffff |
+| Cyberpunk | Neon accents | #0a0a0f | #00fff5 |
+| Retro | Warm arcade tones | #1a0f0a | #ffb347 |
+| Nature | Forest greens | #0a1a0f | #90ee90 |
+
+### Implementation
+
+Themes are applied via `data-theme` attribute on `<html>`:
+
+```tsx
+// In Settings.tsx
+document.documentElement.setAttribute('data-theme', themeName)
+```
+
+CSS custom properties defined in `index.css`:
+
+```css
+:root, [data-theme="dark"] {
+  --color-background-primary: #0f0f0f;
+  --color-background-card: #1a1a1a;
+  --color-text-primary: #ffffff;
+  /* ... */
+}
+
+[data-theme="light"] {
+  --color-background-primary: #f8fafc;
+  --color-text-primary: #111111;
+  /* ... */
+}
+```
+
+### Text Color Override
+
+For themes where automatic text color doesn't provide enough contrast, users can override:
+- Auto (default) — Uses theme's defined text colors
+- Light — Forces light text (#ffffff)
+- Dark — Forces dark text (#111111)
+
+### Persistence
+
+Theme settings stored in Zustand with localStorage persistence:
+- `theme`: Theme name string
+- `textColorOverride`: 'auto' | 'light' | 'dark'
+
+---
+
+## Testing
+
+### E2E Testing with Playwright
+
+The project uses Playwright for end-to-end testing with 104 tests covering all major functionality.
+
+### Test Structure
+
+```
+tests/
+├── navigation.spec.ts      # Routing, back buttons, browse hierarchy
+├── settings.spec.ts        # Theme switching, sound, display settings
+├── score-submission.spec.ts # Form elements, validation
+├── score-flow.spec.ts      # End-to-end submission flows
+├── crud-operations.spec.ts # Create, Read, Update, Delete
+├── realtime-edge-cases.spec.ts # Error handling, persistence
+├── management.spec.ts      # Tab navigation, structure
+└── visual-accessibility.spec.ts # Touch targets, fonts
+```
+
+### Running Tests
+
+```bash
+npm run test:e2e         # Run all tests
+npm run test:e2e:ui      # Interactive test UI
+npm run test:e2e:headed  # Watch tests in browser
+npm run test:e2e:report  # View HTML report
+```
+
+### Configuration
+
+Tests run at 800×480 viewport to match Pi kiosk. See `playwright.config.ts`.
+
+---
+
+## QR Code & mDNS
+
+### QR Code Popup
+
+The idle display shows a QR code button in the footer. When tapped:
+- Displays scannable QR code with device URL
+- Shows hostname hint (scoreboard.local)
+- Dismisses on tap outside
+
+### mDNS Setup (Optional)
+
+For friendly hostname access (`http://scoreboard.local:4173`):
+
+```bash
+# Install Avahi (mDNS daemon)
+sudo apt-get install avahi-daemon
+
+# Enable and start
+sudo systemctl enable avahi-daemon
+sudo systemctl start avahi-daemon
+```
+
+The Pi will advertise itself as `scoreboard.local` on the network.
+
+---
+
+## Updated File Structure
+
+```
+├── src/
+│   ├── components/
+│   │   ├── cards/         # CategoryButton, GameCard, ModeCard
+│   │   ├── display/       # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
+│   │   ├── input/         # SelectField, PickerModal, TimeInput, NumericInput
+│   │   ├── layout/        # KioskLayout, BrowseHeader
+│   │   ├── management/    # ConfirmDialog, PinModal
+│   │   └── overlays/      # CelebrationOverlay, RealtimeScoreAlert
+│   ├── hooks/             # Data fetching + subscriptions
+│   ├── lib/               # Utilities, Supabase client, types
+│   ├── pages/             # Route components
+│   └── stores/            # Zustand state management
+├── tests/                 # Playwright E2E tests (NEW)
+├── public/
+│   └── sounds/            # Audio files
+└── supabase/
+    ├── schema.sql         # Database schema
+    ├── clear_data.sql     # Wipe existing data
+    └── seed.sql           # Comprehensive seed data
+```
 
 ## Pi Deployment
 

@@ -1,28 +1,28 @@
 # Project Status — Game Room Scoreboard
 
 **Last Updated:** 2025-01-20  
-**Current Version:** 0.9.7 (Beta in progress)  
-**Target Version:** 1.0.0 (Beta Release)
+**Current Version:** 1.0.0-beta  
+**Status:** Beta Release Ready
 
 ---
 
 ## Executive Summary
 
-Beta development is progressing well. Core functionality is complete and tested. The application now has a comprehensive theme system, E2E test coverage, and improved UX features (clock, QR code for mobile access).
+🎉 **Beta release complete!** All planned features implemented and tested. The application is ready for real-world testing on the Raspberry Pi kiosk.
 
-**Recent Completions (2025-01-20):**
-- ✅ Replaced all emoji icons with Lucide React icons (cross-platform)
-- ✅ Added clock display on idle screen
-- ✅ Added QR code for mobile access + mDNS support
-- ✅ Implemented 6-theme system with customization
-- ✅ Playwright E2E test suite (104 tests passing)
+**v1.0.0-beta Completions (2025-01-20):**
+- ✅ ALPHA-006: Responsive CSS for mobile devices
+- ✅ ALPHA-003: CRUD discoverability (+Add action sheet)
+- ✅ ALPHA-009: Avatar upload with camera icon affordance
+- ✅ ALPHA-014: Bulk CSV/JSON import with score format parsing
+- ✅ ALPHA-015: Score editing UI
 
-**Remaining for Beta:**
-- 🔲 Responsive CSS for mobile devices
-- 🔲 CRUD discoverability improvements
-- 🔲 Avatar upload UX improvements
-- 🔲 Bulk import functionality
-- 🔲 Score editing UI
+**Previous Completions:**
+- ✅ Lucide React icons (cross-platform)
+- ✅ Clock display on idle screen
+- ✅ QR code for mobile access + mDNS
+- ✅ 6-theme system with customization
+- ✅ Playwright E2E test suite (104 tests)
 
 ---
 
@@ -41,13 +41,17 @@ Beta development is progressing well. Core functionality is complete and tested.
 - [x] 3-level hierarchy (Game → Mode → Detail)
 - [x] Golf relative scoring (+3, E, -2)
 
-### New Features ✅
+### New in v1.0.0-beta ✅
+- [x] Responsive CSS (mobile-friendly layouts)
+- [x] Action sheet menu (+Add → Add Score / Add Player / Manage)
+- [x] Avatar upload with camera icon overlay
+- [x] Bulk import (CSV/JSON with smart score parsing)
+- [x] Score editing modal
 - [x] Lucide React icons (replaces emojis)
 - [x] Clock display on idle screen (12-hour format)
 - [x] QR code popup for mobile access
 - [x] mDNS hostname (scoreboard.local)
 - [x] Theme system (6 presets + customization)
-- [x] Text color override for light themes
 - [x] E2E test suite (Playwright)
 
 ### Infrastructure ✅
@@ -59,68 +63,25 @@ Beta development is progressing well. Core functionality is complete and tested.
 
 ---
 
-## Remaining Tickets
-
-### 🟡 P1: High Priority
-
-#### ALPHA-006: Mobile Layout Is Broken
-- **Status:** 🔲 PENDING
-- **Symptom:** App renders 800×480 box centered on phone screen
-- **Issues Found:**
-  - Huge empty space above/below content
-  - Text truncated on smaller screens
-  - Player names cut off
-- **Impact:** Cannot effectively use phone to add scores
-- **Solution:** Add responsive CSS with mobile breakpoints
-- **Effort:** 4 hours
-
-#### ALPHA-003: CRUD Operations Not Discoverable
-- **Status:** 🔲 PENDING
-- **Symptom:** Users cannot find how to add/edit/delete players, games, scores
-- **Current Flow:** Must navigate to Settings → Manage
-- **Impact:** Core functionality is hidden
-- **Solution:** 
-  - Add submenu to "+Add" button: "Add Score", "Add Player"
-  - More prominent "Manage" entry point
-- **Effort:** 2 hours
-
-### 🟢 P2: Medium Priority
-
-#### ALPHA-009: Player Avatar Upload Not Discoverable
-- **Status:** 🔲 PENDING
-- **Symptom:** Users don't know avatars can be uploaded
-- **Current:** Avatar upload exists in NewPlayerModal
-- **Solution:** Make avatar upload prominent in edit flow
-- **Effort:** 1 hour
-
-#### ALPHA-014: Bulk Score Upload
-- **Status:** 🔲 PENDING
-- **Request:** CSV/JSON import for existing scores
-- **Solution:** Import UI + validation + batch insert
-- **Effort:** 3 hours
-
-#### ALPHA-015: Score Editing UI
-- **Status:** 🔲 PENDING
-- **Current:** Hook exists (`updateScore`) but UI not wired
-- **Solution:** Add edit button/modal in Scores management tab
-- **Effort:** 1 hour
-
----
-
 ## Completed Tickets
 
 | Ticket | Description | Completed |
 |--------|-------------|-----------|
 | ALPHA-001 | pm2 + serve server stability | 2025-01-17 |
 | ALPHA-002 | On-screen keyboard | 2025-01-17 |
+| ALPHA-003 | CRUD discoverability (action sheet) | 2025-01-20 |
 | ALPHA-004 | 3-level hierarchy schema | 2025-01-18 |
 | ALPHA-005 | Lucide icons (replace emojis) | 2025-01-20 |
+| ALPHA-006 | Responsive CSS for mobile | 2025-01-20 |
 | ALPHA-007 | Golf relative scoring | 2025-01-18 |
 | ALPHA-008 | Comprehensive seed data | 2025-01-18 |
+| ALPHA-009 | Avatar upload discoverability | 2025-01-20 |
 | ALPHA-010 | Clock on idle screen | 2025-01-20 |
 | ALPHA-011 | QR code + mDNS | 2025-01-20 |
 | ALPHA-012 | Theme system | 2025-01-20 |
 | ALPHA-013 | E2E testing | 2025-01-20 |
+| ALPHA-014 | Bulk CSV/JSON import | 2025-01-20 |
+| ALPHA-015 | Score editing UI | 2025-01-20 |
 
 ---
 
@@ -162,6 +123,45 @@ Run tests: `npm run test:e2e`
 
 ---
 
+## New Components in v1.0.0-beta
+
+### Action Sheet
+- Bottom sheet menu triggered by +Add button
+- Options: Add Score, Add Player, Manage...
+- Swipe/tap to dismiss
+
+### Avatar Upload
+- Camera icon overlay on player avatars
+- Tap to upload from device
+- Supabase Storage integration
+- X button to remove
+
+### Bulk Import
+- Smart paste box (auto-detects CSV vs JSON)
+- Fuzzy matching for player/game/mode names
+- Score format parsing based on game/mode settings
+- Validation preview before import
+
+### Edit Score Modal
+- Smart input selection based on score_format
+- TimeInput for race times
+- NumericInput for points/golf scores
+
+---
+
+## Score Format Reference
+
+| Format | User Enters | Examples |
+|--------|-------------|----------|
+| `integer` | Whole number | `1000`, `47` |
+| `time_ms` | `M:SS.mmm` or `SS.mmm` | `1:23.456`, `83.456` |
+| `time_seconds` | `M:SS` or seconds | `4:56`, `296` |
+| `golf_relative` | Relative to par | `-6`, `+2`, `0`, `E` |
+| `decimal_2` | Decimal | `98.45` |
+| `level` | `X-Y` format | `8-4` |
+
+---
+
 ## File Structure
 
 ```
@@ -169,12 +169,13 @@ Run tests: `npm run test:e2e`
 │   ├── components/
 │   │   ├── cards/         # CategoryButton, GameCard, ModeCard
 │   │   ├── display/       # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
-│   │   ├── input/         # SelectField, PickerModal, TimeInput, NumericInput
+│   │   ├── input/         # SelectField, PickerModal, TimeInput, NumericInput, AvatarUpload
 │   │   ├── layout/        # KioskLayout, BrowseHeader
-│   │   ├── management/    # ConfirmDialog, PinModal
-│   │   └── overlays/      # CelebrationOverlay, RealtimeScoreAlert
-│   ├── hooks/             # Data fetching + subscriptions
-│   ├── lib/               # Utilities, Supabase client, types
+│   │   ├── management/    # ConfirmDialog, PinModal, EditScoreModal, BulkImportModal
+│   │   ├── overlays/      # CelebrationOverlay, RealtimeScoreAlert, ActionSheet
+│   │   └── ui/            # BottomSheet
+│   ├── hooks/             # Data fetching + subscriptions + useBulkImport, useAvatarUpload
+│   ├── lib/               # Utilities, Supabase client, types, scoreParser
 │   ├── pages/             # Route components
 │   └── stores/            # Zustand state management
 ├── tests/                 # Playwright E2E tests
@@ -216,15 +217,33 @@ npx tsc --noEmit
 
 ---
 
-## Next Steps
+## Beta Testing Checklist
 
-1. 🔲 Complete ALPHA-006 (Responsive CSS)
-2. 🔲 Complete ALPHA-003 (CRUD discoverability)
-3. 🔲 Complete remaining tickets
-4. 🔲 Update documentation
-5. 🔲 Git push
-6. 🔲 Deploy to Pi
-7. 🔲 Manual testing
-8. 🔲 Beta release
+### On Kiosk (800×480)
+- [ ] Idle carousel cycles correctly
+- [ ] Touch targets are easy to hit
+- [ ] Fonts readable from across room
+- [ ] Themes display correctly
+- [ ] Sound effects work
 
-**Estimated remaining effort:** ~11 hours
+### On Mobile
+- [ ] QR code scans and loads app
+- [ ] Responsive layout fits screen
+- [ ] Can add scores successfully
+- [ ] Action sheet works
+- [ ] Avatar upload works
+
+### Data Operations
+- [ ] Bulk import parses correctly
+- [ ] Score editing saves correctly
+- [ ] Realtime updates work
+- [ ] Celebrations trigger
+
+---
+
+## Next Steps (Post-Beta)
+
+1. 🔲 Beta testing on Pi
+2. 🔲 Gather user feedback
+3. 🔲 Bug fixes
+4. 🔲 v1.0.0 stable release
