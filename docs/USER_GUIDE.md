@@ -1,4 +1,4 @@
-# Game Room Scoreboard — User Guide
+# Game Room Scoreboard - User Guide
 
 Welcome to Game Room Scoreboard! This guide will help you get the most out of your kiosk display and mobile score entry.
 
@@ -40,30 +40,30 @@ The app runs on a Raspberry Pi with a 7" touchscreen, but you can also add score
 When no one is interacting with the scoreboard, it shows the **Idle Display**:
 
 ```
-┌─────────────────────────────────────┐
-│  🏆 Game Room        12:34 PM   ⚙️  │
-├─────────────────────────────────────┤
-│                                     │
-│     MARIO KART 8 — Rainbow Road     │
-│                                     │
-│  🥇  Mike      1:58.234             │
-│  🥈  Sarah     2:01.456             │
-│  🥉  Emma      2:03.789             │
-│      Andrew    2:05.123             │
-│      James     2:08.456             │
-│                                     │
-│         ● ○ ○ ○ ○  (1/5)           │
-├─────────────────────────────────────┤
-│  [  Browse  ]         [  +Add  ]    │
-└─────────────────────────────────────┘
++-------------------------------------+
+|  Game Room          12:34 PM  [Gear]|
++-------------------------------------+
+|                                     |
+|     MARIO KART 8 - Rainbow Road     |
+|                                     |
+|  1st  Mike      1:58.234            |
+|  2nd  Sarah     2:01.456            |
+|  3rd  Emma      2:03.789            |
+|       Andrew    2:05.123            |
+|       James     2:08.456            |
+|                                     |
+|         * o o o o  (1/5)            |
++-------------------------------------+
+|  [  Browse  ]         [  +Add  ]    |
++-------------------------------------+
 ```
 
 ### What You'll See
 
-- **Clock** — Current time in the corner
-- **Leaderboard** — Auto-cycles through different games every few seconds
-- **Dots** — Shows which leaderboard you're viewing (1 of 5, etc.)
-- **QR Code button** — Tap the title area to show a QR code for phone access
+- **Clock** - Current time in the corner
+- **Leaderboard** - Auto-cycles through different games every few seconds
+- **Dots** - Shows which leaderboard you're viewing (1 of 5, etc.)
+- **QR Code button** - Tap the title area to show a QR code for phone access
 
 ### Buttons
 
@@ -71,7 +71,7 @@ When no one is interacting with the scoreboard, it shows the **Idle Display**:
 |--------|--------------|
 | **Browse** | Explore leaderboards by category |
 | **+Add** | Add a new score (or player, or go to Manage) |
-| **⚙️ (gear)** | Open Settings |
+| **Gear icon** | Open Settings |
 
 ---
 
@@ -81,9 +81,9 @@ When no one is interacting with the scoreboard, it shows the **Idle Display**:
 
 1. Tap **+Add** on the idle screen
 2. A menu appears with three options:
-   - **Add Score** — Record a new high score
-   - **Add Player** — Create a new player
-   - **Manage...** — Go to data management
+   - **Add Score** - Record a new high score
+   - **Add Player** - Create a new player
+   - **Manage...** - Go to data management
 3. Tap **Add Score**
 4. Select the **Player** who achieved the score
 5. Select the **Game** (e.g., Mario Kart 8)
@@ -94,7 +94,7 @@ When no one is interacting with the scoreboard, it shows the **Idle Display**:
    - For points: Use the number pad
    - For golf: Enter relative to par (-3, +2, etc.)
 9. Tap **Submit**
-10. 🎉 Celebration animation plays!
+10. Celebration animation plays!
 
 ### Score Formats
 
@@ -133,12 +133,12 @@ When no one is interacting with the scoreboard, it shows the **Idle Display**:
 Tap **Browse** to explore scores by category:
 
 ```
-Categories → Games → Modes → Tracks → Leaderboard
+Categories -> Games -> Modes -> Tracks -> Leaderboard
 ```
 
 ### Example Flow
 
-1. Tap **Racing** 🏎️
+1. Tap **Racing**
 2. Tap **Mario Kart 8**
 3. Tap **150cc Time Trial**
 4. Tap **Rainbow Road**
@@ -146,7 +146,7 @@ Categories → Games → Modes → Tracks → Leaderboard
 
 ### Navigation
 
-- Tap the **← back arrow** to go up one level
+- Tap the **back arrow** to go up one level
 - Tap **Home** (house icon) to return to idle display
 - Use **+Add** from any screen to quickly add a score
 
@@ -177,7 +177,7 @@ The mobile interface is fully responsive:
 
 ## Managing Data
 
-Tap **+Add** → **Manage...** (or **⚙️** → **Manage**) to access:
+Tap **+Add** -> **Manage...** (or **Settings** -> **Manage**) to access:
 
 ### Tabs
 
@@ -190,22 +190,22 @@ Tap **+Add** → **Manage...** (or **⚙️** → **Manage**) to access:
 
 ### Editing a Score
 
-1. Go to **Manage** → **Scores** tab
+1. Go to **Manage** -> **Scores** tab
 2. Find the score you want to edit
-3. Tap the **✏️ pencil** icon
+3. Tap the **pencil icon**
 4. Update the score value
 5. Tap **Save**
 
 ### Deleting Data
 
-1. Tap the **🗑️ trash** icon next to any item
+1. Tap the **trash icon** next to any item
 2. Confirm the deletion
 3. If PIN protection is enabled, enter the PIN
 
 ### PIN Protection
 
 Destructive actions (delete) can be protected with a 4-digit PIN:
-1. Go to **Settings** → **Admin PIN**
+1. Go to **Settings** -> **Admin PIN**
 2. Set a PIN
 3. You'll need to enter it when deleting items
 
@@ -213,7 +213,7 @@ Destructive actions (delete) can be protected with a 4-digit PIN:
 
 ## Settings & Themes
 
-Tap the **⚙️ gear** icon to access Settings:
+Tap the **gear icon** to access Settings:
 
 ### Display Settings
 
@@ -224,7 +224,7 @@ Tap the **⚙️ gear** icon to access Settings:
 
 ### Sound
 
-- **Sound Effects** — Toggle on/off
+- **Sound Effects** - Toggle on/off
 - Includes: Button taps, celebrations, new high score fanfare
 
 ### Themes
@@ -250,7 +250,7 @@ Have a spreadsheet of old scores? Import them all at once!
 
 ### How to Import
 
-1. Go to **Manage** → **Scores** tab
+1. Go to **Manage** -> **Scores** tab
 2. Tap **Bulk Import**
 3. Paste your CSV or JSON data
 4. Tap **Preview Import**
@@ -282,35 +282,35 @@ Emma,Darts,501,12
 ### Fuzzy Matching
 
 The importer is smart! It will match:
-- `mario kart` → **Mario Kart 8**
-- `rainbow` → **Rainbow Road**
-- `mike` → **Mike** (case insensitive)
+- `mario kart` -> **Mario Kart 8**
+- `rainbow` -> **Rainbow Road**
+- `mike` -> **Mike** (case insensitive)
 
-Warnings appear if it had to guess — review them before importing.
+Warnings appear if it had to guess - review them before importing.
 
 ---
 
 ## Tips & Tricks
 
-### 🎯 Quick Score Entry
-From the idle screen: **+Add** → **Add Score** is the fastest path.
+### Quick Score Entry
+From the idle screen: **+Add** -> **Add Score** is the fastest path.
 
-### 📱 Couch Mode
+### Couch Mode
 Scan the QR code once and bookmark it on your phone. Add scores without getting up!
 
-### 🏆 Celebrations
+### Celebrations
 First place scores get a special gold celebration with fanfare. Other placements get a standard chime.
 
-### 🔄 Real-time Updates
+### Real-time Updates
 Scores update instantly! If someone adds a score from their phone, the kiosk display updates automatically.
 
-### 🌙 OLED Theme
+### OLED Theme
 If your display is OLED, use the OLED theme to prevent burn-in and save power.
 
-### 📊 Bulk Import Tip
+### Bulk Import Tip
 Export from a spreadsheet app (Excel, Google Sheets) as CSV, then paste directly into the import box.
 
-### 🎮 Game Categories
+### Game Categories
 Games are organized by category (Racing, Golf, Party, etc.) for easy browsing. Set the category when adding a game in Manage.
 
 ---
@@ -331,7 +331,7 @@ Games are organized by category (Racing, Golf, Party, etc.) for easy browsing. S
 - Check your internet connection to Supabase
 
 ### Forgot admin PIN
-- PINs are stored locally — clear browser data to reset
+- PINs are stored locally - clear browser data to reset
 - Or access Settings from a different device
 
 ---
@@ -342,4 +342,4 @@ Games are organized by category (Racing, Golf, Party, etc.) for easy browsing. S
 - **README:** Technical setup and deployment info
 - **CHANGELOG:** See what's new in each version
 
-Enjoy tracking your high scores! 🎮🏆
+Enjoy tracking your high scores!

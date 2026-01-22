@@ -1,12 +1,12 @@
 -- ============================================================================
--- GAME ROOM SCOREBOARD — DATABASE SCHEMA
--- Version: 1.0.0-beta
+-- GAME ROOM SCOREBOARD - DATABASE SCHEMA
+-- Version: 0.9.9
 -- ============================================================================
 -- 
 -- This schema implements a flexible 3-level hierarchy for game scoring:
---   GAME → MODE (optional) → DETAIL (optional) → SCORE
+--   GAME -> MODE (optional) -> DETAIL (optional) -> SCORE
 --
--- Run this in Supabase SQL Editor: https://supabase.com/dashboard → SQL Editor
+-- Run this in Supabase SQL Editor: https://supabase.com/dashboard -> SQL Editor
 -- 
 -- IMPORTANT: This is a FRESH START schema. If upgrading from alpha,
 -- drop all existing tables first (alpha data will be lost).
@@ -15,7 +15,7 @@
 
 
 -- ============================================================================
--- CLEAN UP (Only for fresh installs or alpha → beta migration)
+-- CLEAN UP (Only for fresh installs or alpha -> beta migration)
 -- ============================================================================
 
 -- Uncomment these lines to drop existing alpha tables:
@@ -43,12 +43,12 @@ CREATE TYPE score_direction AS ENUM (
 
 -- How to display score values in the UI
 CREATE TYPE score_format AS ENUM (
-  'integer',        -- 47 (points, throws, kills) → "47 pts"
-  'time_ms',        -- Milliseconds → "2:22.567"
-  'time_seconds',   -- Seconds → "4:56"  
-  'decimal_2',      -- Value × 100 → "12.20 in" or "98.45%"
-  'golf_relative',  -- Relative to par → "-4", "E", "+3"
-  'level'           -- Encoded digits → "World 8-4"
+  'integer',        -- 47 (points, throws, kills) -> "47 pts"
+  'time_ms',        -- Milliseconds -> "2:22.567"
+  'time_seconds',   -- Seconds -> "4:56"  
+  'decimal_2',      -- Value x 100 -> "12.20 in" or "98.45%"
+  'golf_relative',  -- Relative to par -> "-4", "E", "+3"
+  'level'           -- Encoded digits -> "World 8-4"
 );
 
 -- Category for browse filtering
@@ -187,9 +187,9 @@ CREATE TABLE high_scores (
   --   integer: raw value (47)
   --   time_ms: milliseconds (142567 = 2:22.567)
   --   time_seconds: seconds (296 = 4:56)
-  --   decimal_2: value × 100 (1220 = 12.20)
+  --   decimal_2: value x 100 (1220 = 12.20)
   --   golf_relative: strokes relative to par (-4, 0, +3)
-  --   level: encoded digits (84 = World 8-4)
+  --   level: encoded digits (804 = World 8-4)
   score BIGINT NOT NULL,
   
   metadata JSONB DEFAULT '{}',            -- Optional extra data
@@ -273,7 +273,7 @@ CREATE TRIGGER game_details_updated_at
 -- ============================================================================
 -- GET EFFECTIVE SCORE SETTINGS
 -- Returns the score format/direction/unit for a game/mode/detail combination
--- Uses inheritance: detail → mode → game defaults
+-- Uses inheritance: detail -> mode -> game defaults
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION get_score_settings(
@@ -447,7 +447,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE game_details;
 -- STORAGE BUCKETS (Manual Setup Required)
 -- ============================================================================
 -- 
--- Create these buckets in Supabase Dashboard → Storage:
+-- Create these buckets in Supabase Dashboard -> Storage:
 --
 -- 1. Bucket: "avatars" (public)
 --    - For player avatar images

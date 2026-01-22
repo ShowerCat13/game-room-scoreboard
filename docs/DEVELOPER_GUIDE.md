@@ -1,38 +1,38 @@
-# Game Room Scoreboard — Developer's Guide
+# Game Room Scoreboard - Developer Guide
 
 A modern, touch-friendly high score tracker for home game rooms, built for Raspberry Pi kiosks.
 
-![Version](https://img.shields.io/badge/version-0.9.8-blue)
+![Version](https://img.shields.io/badge/version-0.9.9-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![React](https://img.shields.io/badge/React-18-blue)
 
 ---
 
-## 🎮 Project Overview
+## Project Overview
 
-**Game Room Scoreboard** is a kiosk application designed for a 7" touchscreen (800x480) that displays and tracks high scores for various games — racing, golf, darts, pinball, RPGs, and more.
+**Game Room Scoreboard** is a kiosk application designed for a 7" touchscreen (800x480) that displays and tracks high scores for various games - racing, golf, darts, pinball, RPGs, and more.
 
 ### Why This Exists
 
-- **Physical presence** — A dedicated scoreboard in the game room creates friendly competition
-- **Touch-first** — Big buttons, readable fonts, no keyboard needed
-- **Real-time** — Scores sync instantly across all devices
-- **Flexible** — Supports any game with a 3-level hierarchy (Game → Mode → Detail)
+- **Physical presence** - A dedicated scoreboard in the game room creates friendly competition
+- **Touch-first** - Big buttons, readable fonts, no keyboard needed
+- **Real-time** - Scores sync instantly across all devices
+- **Flexible** - Supports any game with a 3-level hierarchy (Game -> Mode -> Detail)
 
 ### Key Features
 
-- 🏆 Auto-cycling leaderboard carousel
-- 📱 Mobile-responsive for phone score entry
-- 🎉 Celebration animations for new high scores
-- 🔊 Sound effects (Web Audio API)
-- 🎨 6 theme presets with customization
-- 📊 Bulk CSV/JSON import
-- 🔄 Real-time sync via Supabase
+- Auto-cycling leaderboard carousel
+- Mobile-responsive for phone score entry
+- Celebration animations for new high scores
+- Sound effects (Web Audio API)
+- 6 theme presets with customization
+- Bulk CSV/JSON import
+- Real-time sync via Supabase
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 
@@ -52,15 +52,15 @@ A modern, touch-friendly high score tracker for home game rooms, built for Raspb
 The core insight is a flexible 3-level hierarchy:
 
 ```
-GAME → MODE (optional) → DETAIL (optional) → SCORE
+GAME -> MODE (optional) -> DETAIL (optional) -> SCORE
 ```
 
 **Examples:**
 ```
-Mario Kart 8 → 150cc Time Trial → Rainbow Road → 1:58.234
-Mario Golf → Standard → (none) → -3
-Darts → 501 → (none) → 12 darts
-Fallout 4 → Eliminations → Super Mutants → 847
+Mario Kart 8 -> 150cc Time Trial -> Rainbow Road -> 1:58.234
+Mario Golf -> Standard -> (none) -> -3
+Darts -> 501 -> (none) -> 12 darts
+Fallout 4 -> Eliminations -> Super Mutants -> 847
 ```
 
 ### Score Formats
@@ -74,14 +74,14 @@ Scores are stored as `BIGINT` and interpreted based on `score_format`:
 | `time_seconds` | Seconds | `4:56` | lower_better |
 | `decimal_2` | Value x 100 | `98.45%` | higher_better |
 | `golf_relative` | Raw value | `-3`, `E`, `+2` | lower_better |
-| `level` | Encoded | `8-4` | higher_better |
+| `level` | Encoded (x100) | `World 8-4` | higher_better |
 
 ### Database Schema
 
 See `schema.sql` for the complete schema. Key tables:
 
 ```sql
-players         -- id, name, avatar_url, is_active
+players         -- id, name, avatar_url
 games           -- id, name, category, platform, default_score_format
 game_modes      -- id, game_id, name, score_format, score_direction
 game_details    -- id, game_id, mode_id, name, score_format (optional override)
@@ -90,7 +90,7 @@ high_scores     -- id, player_id, game_id, mode_id, detail_id, score, achieved_a
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -130,7 +130,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 npm run dev
 ```
 
-Open `http://localhost:5173` — use browser DevTools to emulate 800x480.
+Open `http://localhost:5173` - use browser DevTools to emulate 800x480.
 
 ### 5. Run Tests
 
@@ -142,32 +142,32 @@ npm run test:e2e:headed # Watch in browser
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
-├── components/
-│   ├── cards/           # CategoryButton, GameCard, ModeCard
-│   ├── display/         # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
-│   ├── input/           # SelectField, PickerModal, TimeInput, NumericInput, AvatarUpload
-│   ├── layout/          # KioskLayout, BrowseHeader
-│   ├── management/      # ConfirmDialog, PinModal, EditScoreModal, BulkImportModal
-│   ├── overlays/        # CelebrationOverlay, RealtimeScoreAlert, ActionSheet
-│   └── ui/              # BottomSheet
-├── hooks/               # Custom React hooks (data fetching, subscriptions)
-├── lib/
-│   ├── supabase.ts      # Supabase client
-│   ├── types.ts         # TypeScript types
-│   ├── utils.ts         # Formatting utilities
-│   └── scoreParser.ts   # Score parsing for all formats
-├── pages/               # Route components
-├── stores/              # Zustand stores
-└── index.css            # Tailwind + custom CSS
+|-- components/
+|   |-- cards/           # CategoryButton, GameCard, ModeCard
+|   |-- display/         # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
+|   |-- input/           # SelectField, PickerModal, TimeInput, NumericInput, AvatarUpload
+|   |-- layout/          # KioskLayout, BrowseHeader
+|   |-- management/      # ConfirmDialog, PinModal, EditScoreModal, BulkImportModal
+|   |-- overlays/        # CelebrationOverlay, RealtimeScoreAlert, ActionSheet
+|   |-- ui/              # BottomSheet
+|-- hooks/               # Custom React hooks (data fetching, subscriptions)
+|-- lib/
+|   |-- supabase.ts      # Supabase client
+|   |-- types.ts         # TypeScript types
+|   |-- utils.ts         # Formatting utilities
+|   |-- scoreParser.ts   # Score parsing for all formats
+|-- pages/               # Route components
+|-- stores/              # Zustand stores
+|-- index.css            # Tailwind + custom CSS
 ```
 
 ---
 
-## 🎨 Design System
+## Design System
 
 ### Constraints
 
@@ -176,7 +176,7 @@ The kiosk has strict constraints that drive all design decisions:
 | Constraint | Value | Reason |
 |------------|-------|--------|
 | **Display size** | 800x480px | 7" Raspberry Pi touchscreen |
-| **Touch targets** | ≥56px | Finger-friendly |
+| **Touch targets** | >=56px | Finger-friendly |
 | **Base font** | 18px | Readable from across room |
 | **Max rows** | 4-5 | Limited vertical space |
 
@@ -218,7 +218,19 @@ Themes are applied via CSS custom properties and `data-theme` attribute:
 
 ---
 
-## 🔌 Key Hooks
+## Build-Time Constants
+
+The app injects constants at build time via `vite.config.ts`:
+
+| Constant | Purpose | Usage |
+|----------|---------|-------|
+| `__LOCAL_IP__` | Local network IP for QR code | `getQrUrl()` in IdleDisplay |
+
+The IP is detected using `os.networkInterfaces()` and injected via Vite's `define` option. The type declaration is in `src/vite-env.d.ts`.
+
+---
+
+## Key Hooks
 
 ### Data Fetching
 
@@ -249,7 +261,7 @@ Themes are applied via CSS custom properties and `data-theme` attribute:
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### E2E Tests (Playwright)
 
@@ -284,7 +296,7 @@ use: {
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Raspberry Pi Setup
 
@@ -322,11 +334,69 @@ sudo reboot
 
 ---
 
-## 🤝 Contributing
+## Extending the App
 
-We welcome contributions! Here's how:
+### Adding a New Score Format
 
-### Getting Started
+1. Add the format to `schema.sql` enum:
+   ```sql
+   ALTER TYPE score_format ADD VALUE 'new_format';
+   ```
+
+2. Update TypeScript types in `src/lib/types.ts`:
+   ```typescript
+   export type ScoreFormat = ... | 'new_format'
+   ```
+
+3. Add formatter in `src/lib/utils.ts` `formatScore()`:
+   ```typescript
+   case 'new_format': {
+     // Your display logic
+     return formattedString
+   }
+   ```
+
+4. Add parser in `src/lib/scoreParser.ts` `parseScore()`:
+   ```typescript
+   case 'new_format':
+     return parseNewFormat(input)
+   ```
+
+5. Add help text in `scoreParser.ts` `getFormatHelpText()`
+
+6. Add input component if needed in `src/components/input/`
+
+### Adding a New Game Category
+
+1. Add to `schema.sql` enum:
+   ```sql
+   ALTER TYPE game_category ADD VALUE 'new_category';
+   ```
+
+2. Update `src/lib/types.ts`:
+   ```typescript
+   export type GameCategory = ... | 'new_category'
+   ```
+
+3. Add category config in `src/components/cards/CategoryButton.tsx`:
+   ```typescript
+   new_category: {
+     color: 'text-category-newcategory',
+     bgGradient: 'from-color-500/10 to-transparent',
+     glowClass: 'category-glow-newcategory',
+     Icon: SomeIcon,
+   }
+   ```
+
+4. Add CSS variables in `src/index.css` for the theme color
+
+---
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+### Quick Start
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
@@ -357,7 +427,7 @@ test: Add E2E tests for settings
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 See [FUTURE_ENHANCEMENTS.md](FUTURE_ENHANCEMENTS.md) for the complete roadmap.
 
@@ -369,25 +439,25 @@ See [FUTURE_ENHANCEMENTS.md](FUTURE_ENHANCEMENTS.md) for the complete roadmap.
 
 ---
 
-## 📄 License
+## License
 
-MIT License — feel free to use, modify, and distribute.
-
----
-
-## 🙏 Acknowledgments
-
-- [Supabase](https://supabase.com) — Backend infrastructure
-- [Tailwind CSS](https://tailwindcss.com) — Styling
-- [Framer Motion](https://framer.com/motion) — Animations
-- [Lucide](https://lucide.dev) — Icons
-- [Playwright](https://playwright.dev) — Testing
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 📞 Support
+## Acknowledgments
+
+- [Supabase](https://supabase.com) - Backend infrastructure
+- [Tailwind CSS](https://tailwindcss.com) - Styling
+- [Framer Motion](https://framer.com/motion) - Animations
+- [Lucide](https://lucide.dev) - Icons
+- [Playwright](https://playwright.dev) - Testing
+
+---
+
+## Support
 
 - **Issues:** GitHub Issues for bugs and feature requests
 - **Discussions:** GitHub Discussions for questions
 
-Happy coding! 🎮
+Happy coding!

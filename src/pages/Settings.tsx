@@ -500,7 +500,7 @@ export function Settings() {
                 </div>
                 <div>
                   <p className="text-base font-semibold text-text-primary">Game Room Scoreboard</p>
-                  <p className="text-sm text-text-muted">Version 1.0.0</p>
+                  <p className="text-sm text-text-muted">Version 0.9.9</p>
                 </div>
               </div>
               <div className="mt-3 pt-3 border-t border-background-elevated/50">

@@ -36,8 +36,8 @@ export function formatScore(
 
         case 'level': {
       // Display as World X-Y (e.g., 84 -> "World 8-4")
-      const world = Math.floor(value / 10)
-      const level = value % 10
+      const world = Math.floor(value / 100)
+      const level = value % 100
       return `World ${world}-${level}`
     }
 
@@ -82,7 +82,7 @@ export function parseDecimal(value: number): number {
  * Parse level input (World X-Y) to integer storage format
  */
 export function parseLevel(world: number, level: number): number {
-  return (world * 10) + level
+  return (world * 100) + level
 }
 
 /**

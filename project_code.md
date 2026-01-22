@@ -102,6 +102,23 @@ export default {
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import os from 'os'
+
+// Detect local network IP address for QR code feature
+function getLocalIP(): string {
+  const interfaces = os.networkInterfaces()
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      // Skip internal and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address
+      }
+    }
+  }
+  return 'localhost'
+}
+
+const localIP = getLocalIP()
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -110,6 +127,10 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  define: {
+    // Inject the local IP address at build time for QR code
+    __LOCAL_IP__: JSON.stringify(localIP),
   },
   server: {
     port: 5173,
@@ -120,7 +141,6 @@ export default defineConfig({
     host: true,
   },
 })
-
 ```
 
 ## File: package.json
@@ -128,7 +148,7 @@ export default defineConfig({
 {
   "name": "game-room-scoreboard",
   "private": true,
-  "version": "0.9.6",
+  "version": "0.9.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -780,109 +800,6 @@ export function ScoreRow({
     </div>
   )
 }
-```
-
-## File: src/components/display/ScoreRowDemo.tsx
-```tsx
-import { ScoreRow } from './ScoreRow'
-
-/**
- * ScoreRowDemo - Demonstrates the ScoreRow component with sample data
- * Used for testing and development
- */
-export function ScoreRowDemo() {
-  return (
-    <div className="space-y-2 p-4 bg-background-card rounded-lg">
-      <h2 className="text-lg font-bold text-text-primary mb-4">
-        Score Row Component Demo
-      </h2>
-
-      {/* Time format (race times) */}
-      <div className="space-y-2">
-        <h3 className="text-sm text-text-secondary">Time Format (ms)</h3>
-        <ScoreRow
-          rank={1}
-          playerName="Alice Johnson"
-          score={142567}
-          scoreFormat="time_ms"
-          className="bg-background-primary rounded"
-        />
-        <ScoreRow
-          rank={2}
-          playerName="Bob Smith"
-          score={144891}
-          scoreFormat="time_ms"
-          className="bg-background-primary rounded"
-        />
-        <ScoreRow
-          rank={3}
-          playerName="Charlie Brown"
-          score={151044}
-          scoreFormat="time_ms"
-          className="bg-background-primary rounded"
-        />
-        <ScoreRow
-          rank={4}
-          playerName="Diana Prince"
-          score={155220}
-          scoreFormat="time_ms"
-          className="bg-background-primary rounded"
-        />
-      </div>
-
-      {/* Integer format (points, throws, etc.) */}
-      <div className="space-y-2 mt-6">
-        <h3 className="text-sm text-text-secondary">Integer Format</h3>
-        <ScoreRow
-          rank={1}
-          playerName="Emma Wilson"
-          score={15}
-          scoreFormat="integer"
-          scoreUnit="darts"
-          className="bg-background-primary rounded"
-        />
-        <ScoreRow
-          rank={2}
-          playerName="Frank Miller"
-          score={18}
-          scoreFormat="integer"
-          scoreUnit="darts"
-          className="bg-background-primary rounded"
-        />
-        <ScoreRow
-          rank={3}
-          playerName="Grace Lee"
-          score={21}
-          scoreFormat="integer"
-          scoreUnit="darts"
-          className="bg-background-primary rounded"
-        />
-      </div>
-
-      {/* Decimal format (percentages) */}
-      <div className="space-y-2 mt-6">
-        <h3 className="text-sm text-text-secondary">Decimal Format</h3>
-        <ScoreRow
-          rank={1}
-          playerName="Henry Taylor"
-          score={9845}
-          scoreFormat="decimal_2"
-          scoreUnit="%"
-          className="bg-background-primary rounded"
-        />
-        <ScoreRow
-          rank={2}
-          playerName="Iris Chen"
-          score={9567}
-          scoreFormat="decimal_2"
-          scoreUnit="%"
-          className="bg-background-primary rounded"
-        />
-      </div>
-    </div>
-  )
-}
-
 ```
 
 ## File: src/components/display/ScoreValue.tsx
@@ -3286,93 +3203,6 @@ export function RealtimeScoreAlert({
 }
 ```
 
-## File: src/components/ui/BottomSheet.tsx
-```tsx
-import { ReactNode } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-
-interface BottomSheetProps {
-  isOpen: boolean
-  onClose: () => void
-  children: ReactNode
-  title?: string
-}
-
-/**
- * BottomSheet - Touch-friendly modal that slides up from bottom
- * 
- * Features:
- * - Slides up from bottom of screen
- * - Tap outside or swipe down to dismiss
- * - Large touch targets (56px minimum)
- * - Works on both kiosk and mobile
- */
-export function BottomSheet({ isOpen, onClose, children, title }: BottomSheetProps) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60"
-          />
-          
-          {/* Sheet */}
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl overflow-hidden"
-            style={{ backgroundColor: 'var(--color-bg-elevated)' }}
-          >
-            {/* Handle bar */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div 
-                className="w-10 h-1 rounded-full"
-                style={{ backgroundColor: 'var(--color-text-muted)' }}
-              />
-            </div>
-            
-            {/* Title (optional) */}
-            {title && (
-              <div className="px-md pb-2">
-                <h2 className="text-lg font-bold text-text-primary">{title}</h2>
-              </div>
-            )}
-            
-            {/* Content */}
-            <div className="px-md pb-md safe-area-bottom">
-              {children}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  )
-}
-```
-
-## File: src/components/ui/index.ts
-```ts
-// Reusable UI components
-// Export components from this directory for easy imports
-
-export { BottomSheet } from './BottomSheet'
-
-
-
-
-
-
-
-```
-
 ## File: src/hooks/index.ts
 ```ts
 // src/hooks/index.ts
@@ -3389,7 +3219,6 @@ export { usePlayers } from './usePlayers'
 export { useRealtimeScores } from './useRealtimeScores'
 export { useSubmitScore } from './useSubmitScore'
 export { useIdleTimer } from './useIdleTimer'
-export { useActiveGameModes } from './useActiveGameModes'
 export { useCarouselItems } from './useCarouselItems'
 export type { CarouselItem } from './useCarouselItems'
 export { useSoundInit } from './useSoundInit'
@@ -3404,138 +3233,6 @@ export { useManageGameModes } from './useManageGameModes'
 export { useManageGameDetails } from './useManageGameDetails'
 export { useManageScores } from './useManageScores'
 export type { ScoreWithDetails } from './useManageScores'
-```
-
-## File: src/hooks/useActiveGameModes.ts
-```ts
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import type { GameMode } from '@/lib/types'
-
-interface GameModeWithGame extends GameMode {
-  game_name: string
-  game_icon: string | null
-  game_category: string
-  game_sort_order?: number
-}
-
-interface UseActiveGameModesResult {
-  modes: GameModeWithGame[]
-  loading: boolean
-  error: Error | null
-}
-
-// Type for the Supabase query response with nested relations
-interface GameModeQueryResult extends GameMode {
-  games: {
-    name: string
-    icon_url: string | null
-    category: string
-    sort_order: number
-    is_active: boolean
-  }
-  high_scores: { id: string }[]
-}
-
-/**
- * useActiveGameModes - Fetches all game modes that have at least one score
- * Used by the carousel to know which modes to cycle through
- *
- * Returns modes with associated game data for display
- */
-export function useActiveGameModes(): UseActiveGameModesResult {
-  const [modes, setModes] = useState<GameModeWithGame[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    let isMounted = true
-
-    async function fetchActiveGameModes() {
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Query game_modes that have at least one high_score
-        // Join with games to get game info, and use inner join to ensure scores exist
-        // Note: PostgREST doesn't support filtering/ordering on joined tables with dot notation
-        // so we fetch the data and filter/sort client-side
-        const { data: modesData, error: queryError } = await supabase
-          .from('game_modes')
-          .select(`
-            *,
-            games!inner (
-              name,
-              icon_url,
-              category,
-              sort_order,
-              is_active
-            ),
-            high_scores!inner (
-              id
-            )
-          `)
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true })
-
-        if (queryError) throw queryError
-
-        if (isMounted && modesData) {
-          // Filter out inactive games client-side
-          const activeGameModes = modesData.filter(
-            (mode: GameModeQueryResult) => mode.games.is_active
-          )
-
-          // Remove duplicates (since join with high_scores creates multiple rows)
-          const uniqueModes = Array.from(
-            new Map(
-              activeGameModes.map((mode: GameModeQueryResult) => [
-                mode.id,
-                {
-                  ...mode,
-                  game_name: mode.games.name,
-                  game_icon: mode.games.icon_url,
-                  game_category: mode.games.category,
-                  game_sort_order: mode.games.sort_order,
-                  games: undefined, // Remove nested games object
-                  high_scores: undefined, // Remove nested high_scores array
-                },
-              ])
-            ).values()
-          ) as GameModeWithGame[]
-
-          // Sort by game order first, then mode order
-          uniqueModes.sort((a, b) => {
-            const gameOrder = (a.game_sort_order ?? 0) - (b.game_sort_order ?? 0)
-            if (gameOrder !== 0) return gameOrder
-            return (a.sort_order ?? 0) - (b.sort_order ?? 0)
-          })
-
-          setModes(uniqueModes)
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(
-            err instanceof Error ? err : new Error('Failed to fetch active game modes')
-          )
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchActiveGameModes()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  return { modes, loading, error }
-}
-
 ```
 
 ## File: src/hooks/useAvatarUpload.ts
@@ -9012,8 +8709,11 @@ import { useKioskStore } from '@/stores/kioskStore'
 import { getInitials, getPlayerColor } from '@/lib/utils'
 import type { HighScore } from '@/lib/types'
 
-// Static URL for the scoreboard - uses mDNS hostname
-const SCOREBOARD_URL = 'http://scoreboard.local:4173'
+// Declare the global constant injected by Vite at build time
+declare const __LOCAL_IP__: string
+
+// Build QR URL using the IP address detected by Vite at startup
+const getQrUrl = () => `http://${__LOCAL_IP__}:${window.location.port || '4173'}`
 
 /**
  * Format time in 12-hour format with AM/PM
@@ -9046,7 +8746,7 @@ function buildSubtitle(item: CarouselItem): string {
     parts.push(item.detail_name)
   }
   
-  return parts.join(' — ')
+  return parts.join(' - ')
 }
 
 /**
@@ -9101,7 +8801,6 @@ export function IdleDisplay() {
 
   // Handle realtime score events
   const handleNewScore = useCallback(async (newScore: HighScore) => {
-    console.log('New score received:', newScore)
     
     // Fetch full details for the alert
     const details = await fetchScoreDetails(newScore.id)
@@ -9225,7 +8924,7 @@ export function IdleDisplay() {
         onClick={handleTap}
       >
         {/* Header: Game + Mode/Detail info + Clock */}
-        <div className="h-[72px] px-md flex items-center justify-between border-b border-background-elevated/50">
+        <div className="idle-header">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentItem?.key}
@@ -9376,7 +9075,7 @@ export function IdleDisplay() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <QRCodeSVG
-                  value={SCOREBOARD_URL}
+                  value={getQrUrl()}
                   size={200}
                   level="M"
                   includeMargin={false}
@@ -9385,7 +9084,7 @@ export function IdleDisplay() {
                   Scan to access on your phone
                 </p>
                 <p className="text-center text-gray-500 text-xs mt-1">
-                  {SCOREBOARD_URL}
+                  {getQrUrl()}
                 </p>
               </motion.div>
             </motion.div>
