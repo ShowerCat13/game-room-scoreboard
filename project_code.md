@@ -85,7 +85,11 @@ export default {
         custom: 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
       screens: {
-        kiosk: '800px',
+        // Mobile-first breakpoints
+        'mobile': { 'max': '639px' },      // Phones (portrait)
+        'tablet': { 'min': '640px', 'max': '1023px' }, // Tablets
+        'desktop': { 'min': '1024px' },    // Desktop
+        'kiosk': '800px',                  // Pi kiosk minimum
       },
     },
   },
@@ -689,10 +693,19 @@ interface ScoreRowProps {
 
 /**
  * ScoreRow - Individual leaderboard entry
- * Height: 72px, padding: 0 16px
- * Layout: flex row, align center, justify space-between
- * Contains: RankBadge (40px) | PlayerInfo (avatar 48px + name) | ScoreValue
- * Features: Podium highlighting for top 3, avatar rings for medals
+ * 
+ * Desktop (≥640px):
+ *   Height: 72px, horizontal layout
+ *   Layout: RankBadge (40px) | Avatar + Name | Score
+ * 
+ * Mobile (<640px):
+ *   Height: auto (min 80px), stacked layout
+ *   Layout: [Rank + Avatar + Name] row, then [Score] row
+ * 
+ * Features:
+ * - Podium highlighting for top 3
+ * - Avatar rings for medals
+ * - Responsive layout adapts to screen size
  */
 export function ScoreRow({
   rank,
@@ -725,7 +738,7 @@ export function ScoreRow({
   return (
     <div
       className={`
-        h-[72px] px-md flex flex-row items-center justify-between
+        score-row-layout
         rounded-lg
         ${podiumClass}
         ${className}
@@ -736,29 +749,34 @@ export function ScoreRow({
         opacity: 0
       } : undefined}
     >
-      {/* Rank badge */}
-      <RankBadge rank={rank} />
+      {/* Top row: Rank + Player info */}
+      <div className="flex flex-row items-center flex-1 min-w-0 w-full">
+        {/* Rank badge */}
+        <RankBadge rank={rank} />
 
-      {/* Player info: avatar + name */}
-      <div className="flex flex-row items-center gap-3 flex-1 ml-3 min-w-0">
-        <PlayerAvatar 
-          name={playerName} 
-          avatarUrl={playerAvatar} 
-          size={48}
-          ringClass={avatarRingClass}
-        />
-        <div className={`text-lg truncate ${rank <= 3 ? 'font-semibold' : 'font-normal'} text-text-primary`}>
-          {playerName}
+        {/* Player info: avatar + name */}
+        <div className="score-row-player">
+          <PlayerAvatar 
+            name={playerName} 
+            avatarUrl={playerAvatar} 
+            size={48}
+            ringClass={avatarRingClass}
+          />
+          <div className={`text-lg truncate ${rank <= 3 ? 'font-semibold' : 'font-normal'} text-text-primary`}>
+            {playerName}
+          </div>
         </div>
       </div>
 
-      {/* Score value */}
-      <ScoreValue 
-        value={score} 
-        format={scoreFormat} 
-        unit={scoreUnit}
-        highlight={rank === 1}
-      />
+      {/* Score value - right side on desktop, below on mobile */}
+      <div className="score-row-value">
+        <ScoreValue 
+          value={score} 
+          format={scoreFormat} 
+          unit={scoreUnit}
+          highlight={rank === 1}
+        />
+      </div>
     </div>
   )
 }
@@ -909,6 +927,179 @@ export function ScoreValue({
 }
 ```
 
+## File: src/components/input/AvatarUpload.tsx
+```tsx
+import { useRef, useState } from 'react'
+import { Camera, Loader2, X } from 'lucide-react'
+import { useAvatarUpload } from '@/hooks/useAvatarUpload'
+import { getInitials, getPlayerColor } from '@/lib/utils'
+
+interface AvatarUploadProps {
+  /** Current avatar URL (if any) */
+  currentUrl: string | null
+  /** Player name (for initials fallback) */
+  playerName: string
+  /** Called when avatar URL changes (upload or remove) */
+  onChange: (url: string | null) => void
+  /** Size in pixels (default 80) */
+  size?: number
+  /** Player ID (optional, for naming uploaded files) */
+  playerId?: string
+}
+
+/**
+ * AvatarUpload - Tappable avatar with camera overlay
+ * 
+ * Features:
+ * - Shows current avatar or initials fallback
+ * - Camera icon overlay indicates it's tappable
+ * - Hidden file input triggers on tap
+ * - Handles upload to Supabase Storage
+ * - Loading state during upload
+ * - X button to remove avatar
+ * 
+ * Touch targets: 80px default (≥56px minimum)
+ */
+export function AvatarUpload({
+  currentUrl,
+  playerName,
+  onChange,
+  size = 80,
+  playerId,
+}: AvatarUploadProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { uploading, error, uploadAvatar } = useAvatarUpload()
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  const handleClick = () => {
+    if (!uploading) {
+      fileInputRef.current?.click()
+    }
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Show preview immediately
+    const preview = URL.createObjectURL(file)
+    setPreviewUrl(preview)
+
+    // Upload to storage
+    const url = await uploadAvatar(file, playerId)
+    
+    // Clean up preview
+    URL.revokeObjectURL(preview)
+    setPreviewUrl(null)
+    
+    if (url) {
+      onChange(url)
+    }
+
+    // Reset input so same file can be selected again
+    e.target.value = ''
+  }
+
+  const handleRemove = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onChange(null)
+  }
+
+  // Determine what to show
+  const displayUrl = previewUrl || currentUrl
+  const initials = getInitials(playerName)
+  const bgColor = getPlayerColor(playerName)
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {/* Avatar container */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={uploading}
+          className="relative rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-category-golf focus:ring-offset-2 focus:ring-offset-background-card disabled:cursor-wait"
+          style={{ width: size, height: size }}
+        >
+          {/* Avatar image or fallback */}
+          {displayUrl ? (
+            <img
+              src={displayUrl}
+              alt={playerName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center text-white font-bold"
+              style={{ 
+                backgroundColor: bgColor,
+                fontSize: size * 0.35,
+              }}
+            >
+              {initials}
+            </div>
+          )}
+
+          {/* Camera overlay (always visible, stronger when no image) */}
+          <div 
+            className={`
+              absolute inset-0 flex items-center justify-center
+              transition-opacity
+              ${displayUrl 
+                ? 'bg-black/40 opacity-0 hover:opacity-100' 
+                : 'bg-black/30'
+              }
+            `}
+          >
+            {uploading ? (
+              <Loader2 
+                className="text-white animate-spin" 
+                style={{ width: size * 0.35, height: size * 0.35 }}
+              />
+            ) : (
+              <Camera 
+                className="text-white" 
+                style={{ width: size * 0.35, height: size * 0.35 }}
+              />
+            )}
+          </div>
+        </button>
+
+        {/* Remove button (only when there's an image and not uploading) */}
+        {currentUrl && !uploading && (
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:bg-red-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {/* Helper text */}
+      <p className="text-xs text-text-muted">
+        {uploading ? 'Uploading...' : 'Tap to change photo'}
+      </p>
+
+      {/* Error message */}
+      {error && (
+        <p className="text-xs text-red-500">{error}</p>
+      )}
+    </div>
+  )
+}
+```
+
 ## File: src/components/input/index.ts
 ```ts
 export { SelectField } from './SelectField'
@@ -916,7 +1107,7 @@ export { PickerModal } from './PickerModal'
 export { TimeInput } from './TimeInput'
 export { NumericInput } from './NumericInput'
 export { NewPlayerModal } from './NewPlayerModal'
-
+export { AvatarUpload } from './AvatarUpload'
 ```
 
 ## File: src/components/input/NewPlayerModal.tsx
@@ -1463,53 +1654,122 @@ export function TimeInput({ value, onChange, showMilliseconds = true }: TimeInpu
 
 ## File: src/components/layout/BrowseHeader.tsx
 ```tsx
-import { ChevronLeft, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, Plus, PlusCircle, UserPlus, Settings } from 'lucide-react'
+import { ActionSheet, type ActionSheetOption } from '@/components/overlays'
 
 interface BrowseHeaderProps {
   backLabel: string
   onBack: () => void
+  /** Called when "Add Score" is selected from the action sheet */
   onAddScore?: () => void
+  /** Called when "Add Player" is selected from the action sheet */
+  onAddPlayer?: () => void
+  /** Called when "Manage..." is selected from the action sheet */
+  onManage?: () => void
   title?: string
 }
 
 /**
  * BrowseHeader - Shared header for browse interface pages
- * Height: 56px, with back button, optional title, and optional add score button
- * Features: Icon buttons, better touch feedback
+ * 
+ * Height: 56px (52px on mobile)
+ * Touch targets: ≥48px
+ * 
+ * Features:
+ * - Back button with label
+ * - Optional centered title
+ * - + button that opens action sheet with:
+ *   - Add Score
+ *   - Add Player
+ *   - Manage...
+ * - Responsive sizing for mobile
  */
-export function BrowseHeader({ backLabel, onBack, onAddScore, title }: BrowseHeaderProps) {
+export function BrowseHeader({ 
+  backLabel, 
+  onBack, 
+  onAddScore,
+  onAddPlayer,
+  onManage,
+  title 
+}: BrowseHeaderProps) {
+  const [showActionSheet, setShowActionSheet] = useState(false)
+
+  // Only show + button if at least one action is provided
+  const hasActions = onAddScore || onAddPlayer || onManage
+
+  // Build action options based on provided callbacks
+  const actionOptions: ActionSheetOption[] = []
+  
+  if (onAddScore) {
+    actionOptions.push({
+      id: 'add-score',
+      label: 'Add Score',
+      icon: <PlusCircle className="w-5 h-5" />,
+      onClick: onAddScore,
+      variant: 'primary',
+    })
+  }
+  
+  if (onAddPlayer) {
+    actionOptions.push({
+      id: 'add-player',
+      label: 'Add Player',
+      icon: <UserPlus className="w-5 h-5" />,
+      onClick: onAddPlayer,
+    })
+  }
+  
+  if (onManage) {
+    actionOptions.push({
+      id: 'manage',
+      label: 'Manage...',
+      icon: <Settings className="w-5 h-5" />,
+      onClick: onManage,
+    })
+  }
+
   return (
-    <div className="h-[56px] px-sm flex items-center justify-between border-b border-background-elevated/50">
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="min-h-[48px] px-sm flex items-center gap-1 text-text-secondary active:text-text-primary transition-colors rounded-lg active:bg-background-elevated"
-      >
-        <ChevronLeft className="w-5 h-5" />
-        <span className="text-base truncate max-w-[150px]">{backLabel}</span>
-      </button>
-
-      {/* Title (optional) */}
-      {title && (
-        <div className="flex-1 text-center px-2">
-          <h1 className="text-lg font-bold text-text-primary truncate">{title}</h1>
-        </div>
-      )}
-
-      {/* Add Score button (optional) */}
-      {onAddScore ? (
+    <>
+      <div className="header-height px-sm flex items-center justify-between border-b" style={{ borderColor: 'color-mix(in srgb, var(--color-bg-elevated) 50%, transparent)' }}>
+        {/* Back button */}
         <button
-          onClick={onAddScore}
-          className="min-h-[48px] px-sm flex items-center gap-1 text-category-golf active:text-green-400 transition-colors rounded-lg active:bg-background-elevated"
+          onClick={onBack}
+          className="min-h-[48px] px-sm flex items-center gap-1 text-text-secondary active:text-text-primary transition-colors rounded-lg active:bg-background-elevated"
         >
-          <Plus className="w-5 h-5" />
-          <span className="text-base font-medium">Add</span>
+          <ChevronLeft className="w-5 h-5 flex-shrink-0" />
+          <span className="text-base truncate max-w-[120px] sm:max-w-[150px]">{backLabel}</span>
         </button>
-      ) : (
-        // Spacer to keep back button left-aligned when no add score button
-        title && <div className="min-w-[56px]" />
-      )}
-    </div>
+
+        {/* Title (optional) */}
+        {title && (
+          <div className="flex-1 text-center px-2 min-w-0">
+            <h1 className="text-lg font-bold text-text-primary truncate">{title}</h1>
+          </div>
+        )}
+
+        {/* Add button - opens action sheet */}
+        {hasActions ? (
+          <button
+            onClick={() => setShowActionSheet(true)}
+            className="min-h-[48px] px-sm flex items-center gap-1 text-category-golf active:text-green-400 transition-colors rounded-lg active:bg-background-elevated"
+          >
+            <Plus className="w-5 h-5 flex-shrink-0" />
+            <span className="text-base font-medium hide-mobile">Add</span>
+          </button>
+        ) : (
+          // Spacer to keep back button left-aligned when no actions
+          title && <div className="min-w-[48px]" />
+        )}
+      </div>
+
+      {/* Action Sheet */}
+      <ActionSheet
+        isOpen={showActionSheet}
+        onClose={() => setShowActionSheet(false)}
+        options={actionOptions}
+      />
+    </>
   )
 }
 ```
@@ -1534,13 +1794,22 @@ interface KioskLayoutProps {
 }
 
 /**
- * KioskLayout - 800x480 fixed container for Raspberry Pi touchscreen
- * Centers content on screen with themed background
+ * KioskLayout - Responsive container for all app content
+ * 
+ * Behavior:
+ * - Pi Kiosk (800×480): Fixed dimensions, centered on screen
+ * - Mobile (<640px): Full viewport with vertical scrolling
+ * - Tablet/Desktop: Adapts to available space
+ * 
+ * Features:
+ * - Safe area insets for notched phones
+ * - Themed background
+ * - Overflow handling per device type
  */
 export function KioskLayout({ children, className = '' }: KioskLayoutProps) {
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center"
+      className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center safe-area-top safe-area-bottom safe-area-x"
       style={{ backgroundColor: 'var(--color-bg-primary)' }}
     >
       <div 
@@ -1550,6 +1819,331 @@ export function KioskLayout({ children, className = '' }: KioskLayoutProps) {
         {children}
       </div>
     </div>
+  )
+}
+```
+
+## File: src/components/management/BulkImportModal.tsx
+```tsx
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Upload, AlertCircle, CheckCircle, AlertTriangle, FileText, HelpCircle } from 'lucide-react'
+import { useBulkImport } from '@/hooks/useBulkImport'
+
+interface BulkImportModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSuccess?: (count: number) => void
+}
+
+/**
+ * BulkImportModal - Smart paste box for CSV/JSON score import
+ * 
+ * Features:
+ * - Accepts CSV or JSON format
+ * - Auto-detects format
+ * - Fuzzy matches player/game/mode names
+ * - Shows validation preview
+ * - Batch imports valid rows
+ */
+export function BulkImportModal({ isOpen, onClose, onSuccess }: BulkImportModalProps) {
+  const [input, setInput] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
+  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null)
+  
+  const {
+    rows,
+    summary,
+    parsing,
+    importing,
+    error,
+    parseInput,
+    importRows,
+    clearRows,
+  } = useBulkImport()
+
+  const handleParse = async () => {
+    setImportResult(null)
+    await parseInput(input)
+  }
+
+  const handleImport = async () => {
+    const result = await importRows()
+    setImportResult(result)
+    if (result.success > 0) {
+      onSuccess?.(result.success)
+    }
+  }
+
+  const handleClose = () => {
+    setInput('')
+    setImportResult(null)
+    clearRows()
+    setShowHelp(false)
+    onClose()
+  }
+
+  const handleClear = () => {
+    setInput('')
+    setImportResult(null)
+    clearRows()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm p-md overflow-y-auto"
+          onClick={handleClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[700px] bg-background-card rounded-xl my-4 overflow-hidden"
+            style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' }}
+          >
+            {/* Header */}
+            <div className="h-[56px] px-md flex items-center justify-between border-b border-background-elevated">
+              <div className="flex items-center gap-3">
+                <Upload className="w-5 h-5 text-category-golf" />
+                <h2 className="text-lg font-bold text-text-primary">Bulk Import Scores</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowHelp(!showHelp)}
+                  className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleClose}
+                  className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Help Panel */}
+            <AnimatePresence>
+              {showHelp && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden border-b border-background-elevated"
+                >
+                  <div className="p-md bg-background-elevated/50 text-sm space-y-3">
+                    <p className="font-medium text-text-primary">Required CSV columns: player, game, mode, score</p>
+                    <p className="text-text-secondary">Optional: detail (or track/course)</p>
+                    
+                    <div className="space-y-2">
+                      <p className="font-medium text-text-primary">Score formats by game type:</p>
+                      <div className="grid grid-cols-2 gap-2 text-text-secondary">
+                        <div>
+                          <span className="text-text-muted">Race times (ms):</span> 1:23.456 or 83.456
+                        </div>
+                        <div>
+                          <span className="text-text-muted">Race times (s):</span> 4:56 or 296
+                        </div>
+                        <div>
+                          <span className="text-text-muted">Golf:</span> -6, +2, 0, E
+                        </div>
+                        <div>
+                          <span className="text-text-muted">Points:</span> 1000, 47
+                        </div>
+                        <div>
+                          <span className="text-text-muted">Percentage:</span> 98.45
+                        </div>
+                        <div>
+                          <span className="text-text-muted">Level:</span> 8-4
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-background-card rounded-lg font-mono text-xs">
+                      player,game,mode,score<br/>
+                      Mike,Mario Kart 8,Rainbow Road,1:23.456<br/>
+                      Sarah,Mario Golf,Standard,-3<br/>
+                      Emma,Darts,501,12
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Content */}
+            <div className="p-md space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Import result message */}
+              {importResult && (
+                <div className={`p-3 rounded-lg flex items-center gap-3 ${
+                  importResult.failed === 0 ? 'bg-green-500/20' : 'bg-yellow-500/20'
+                }`}>
+                  {importResult.failed === 0 ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  )}
+                  <p className="text-text-primary">
+                    Imported {importResult.success} score{importResult.success !== 1 ? 's' : ''}
+                    {importResult.failed > 0 && ` (${importResult.failed} failed)`}
+                  </p>
+                </div>
+              )}
+
+              {/* Input area */}
+              {rows.length === 0 && (
+                <>
+                  <div>
+                    <label className="block text-sm text-text-secondary mb-2">
+                      Paste CSV or JSON data
+                    </label>
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder={`player,game,mode,score\nMike,Mario Kart 8,Rainbow Road,1:23.456\nSarah,Mario Golf,Standard,-3`}
+                      className="w-full h-[200px] p-md bg-background-elevated text-text-primary rounded-lg font-mono text-sm resize-none outline-none focus:ring-2 focus:ring-category-golf"
+                    />
+                  </div>
+
+                  {/* Error message */}
+                  {error && (
+                    <div className="p-3 bg-red-500/20 rounded-lg flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-red-400 text-sm">{error}</p>
+                    </div>
+                  )}
+
+                  {/* Parse button */}
+                  <button
+                    onClick={handleParse}
+                    disabled={!input.trim() || parsing}
+                    className="w-full h-[56px] bg-category-golf text-white font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-5 h-5" />
+                    {parsing ? 'Parsing...' : 'Preview Import'}
+                  </button>
+                </>
+              )}
+
+              {/* Preview table */}
+              {rows.length > 0 && (
+                <>
+                  {/* Summary */}
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-text-secondary">
+                      {summary.total} row{summary.total !== 1 ? 's' : ''}
+                    </span>
+                    <span className="flex items-center gap-1 text-green-500">
+                      <CheckCircle className="w-4 h-4" />
+                      {summary.valid} valid
+                    </span>
+                    {summary.invalid > 0 && (
+                      <span className="flex items-center gap-1 text-red-500">
+                        <AlertCircle className="w-4 h-4" />
+                        {summary.invalid} invalid
+                      </span>
+                    )}
+                    {summary.warnings > 0 && (
+                      <span className="flex items-center gap-1 text-yellow-500">
+                        <AlertTriangle className="w-4 h-4" />
+                        {summary.warnings} warnings
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto border border-background-elevated rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-background-elevated">
+                          <th className="px-3 py-2 text-left text-text-muted font-medium w-8">#</th>
+                          <th className="px-3 py-2 text-left text-text-muted font-medium">Player</th>
+                          <th className="px-3 py-2 text-left text-text-muted font-medium">Game</th>
+                          <th className="px-3 py-2 text-left text-text-muted font-medium">Mode</th>
+                          <th className="px-3 py-2 text-left text-text-muted font-medium">Score</th>
+                          <th className="px-3 py-2 text-left text-text-muted font-medium w-8">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.slice(0, 50).map((row) => (
+                          <tr 
+                            key={row.rowNumber} 
+                            className={`border-t border-background-elevated ${
+                              !row.isValid ? 'bg-red-500/10' : row.warnings.length > 0 ? 'bg-yellow-500/10' : ''
+                            }`}
+                          >
+                            <td className="px-3 py-2 text-text-muted">{row.rowNumber}</td>
+                            <td className="px-3 py-2 text-text-primary">{row.player}</td>
+                            <td className="px-3 py-2 text-text-primary">{row.game}</td>
+                            <td className="px-3 py-2 text-text-primary">{row.mode}</td>
+                            <td className="px-3 py-2 text-text-primary font-mono">{row.scoreRaw}</td>
+                            <td className="px-3 py-2">
+                              {row.isValid ? (
+                                row.warnings.length > 0 ? (
+                                  <div className="group relative">
+                                    <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                                    <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-background-card rounded shadow-lg text-xs z-10">
+                                      {row.warnings.map((w, i) => (
+                                        <p key={i} className="text-yellow-400">{w}</p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                )
+                              ) : (
+                                <div className="group relative">
+                                  <AlertCircle className="w-4 h-4 text-red-500" />
+                                  <div className="absolute right-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-background-card rounded shadow-lg text-xs z-10">
+                                    {row.errors.map((e, i) => (
+                                      <p key={i} className="text-red-400">{e}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {rows.length > 50 && (
+                      <div className="px-3 py-2 bg-background-elevated text-text-muted text-sm">
+                        Showing first 50 of {rows.length} rows
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleClear}
+                      disabled={importing}
+                      className="flex-1 h-[56px] bg-background-elevated text-text-primary font-semibold rounded-lg disabled:opacity-50"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleImport}
+                      disabled={importing || summary.valid === 0}
+                      className="flex-1 h-[56px] bg-category-golf text-white font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <Upload className="w-5 h-5" />
+                      {importing ? 'Importing...' : `Import ${summary.valid} Score${summary.valid !== 1 ? 's' : ''}`}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 ```
@@ -1658,11 +2252,245 @@ export function ConfirmDialog({
 }
 ```
 
+## File: src/components/management/EditScoreModal.tsx
+```tsx
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X } from 'lucide-react'
+import { TimeInput, NumericInput } from '@/components/input'
+import { formatScore } from '@/lib/utils'
+import type { ScoreFormat } from '@/lib/types'
+
+interface EditScoreModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSave: (newScore: number) => Promise<boolean>
+  currentScore: number
+  scoreFormat: ScoreFormat
+  scoreUnit: string | null
+  playerName: string
+  gameName: string
+  modeName?: string | null
+  detailName?: string | null
+}
+
+/**
+ * EditScoreModal - Modal for editing an existing score
+ * 
+ * Features:
+ * - Displays appropriate input based on score_format (time, numeric, etc.)
+ * - Shows current score value
+ * - Context info (player, game, mode, detail)
+ * - Save/Cancel buttons with 56px touch targets
+ */
+export function EditScoreModal({
+  isOpen,
+  onClose,
+  onSave,
+  currentScore,
+  scoreFormat,
+  scoreUnit,
+  playerName,
+  gameName,
+  modeName,
+  detailName,
+}: EditScoreModalProps) {
+  const [newScore, setNewScore] = useState<number | null>(currentScore)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Reset score when modal opens with new data
+  useEffect(() => {
+    if (isOpen) {
+      setNewScore(currentScore)
+      setError(null)
+    }
+  }, [isOpen, currentScore])
+
+  const handleSave = async () => {
+    if (newScore === null) {
+      setError('Please enter a score')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    const success = await onSave(newScore)
+    
+    if (success) {
+      onClose()
+    } else {
+      setError('Failed to save score')
+    }
+    
+    setSaving(false)
+  }
+
+  const handleClose = () => {
+    if (!saving) {
+      onClose()
+    }
+  }
+
+  // Render the appropriate input based on score format
+  const renderScoreInput = () => {
+    switch (scoreFormat) {
+      case 'time_ms':
+        return (
+          <TimeInput
+            value={newScore}
+            onChange={setNewScore}
+            showMilliseconds={true}
+          />
+        )
+
+      case 'time_seconds':
+        return (
+          <TimeInput
+            value={newScore}
+            onChange={setNewScore}
+            showMilliseconds={false}
+          />
+        )
+
+      case 'decimal_2':
+        return (
+          <NumericInput
+            value={newScore}
+            onChange={setNewScore}
+            unit={scoreUnit}
+            isDecimal={true}
+          />
+        )
+
+      case 'golf_relative':
+        return (
+          <NumericInput
+            value={newScore}
+            onChange={setNewScore}
+            unit={scoreUnit}
+            isDecimal={false}
+            allowNegative={true}
+          />
+        )
+
+      case 'integer':
+      case 'level':
+      default:
+        return (
+          <NumericInput
+            value={newScore}
+            onChange={setNewScore}
+            unit={scoreUnit}
+            isDecimal={false}
+          />
+        )
+    }
+  }
+
+  // Build context string
+  const contextParts = [gameName]
+  if (modeName) contextParts.push(modeName)
+  if (detailName) contextParts.push(detailName)
+  const contextString = contextParts.join(' • ')
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-md"
+          onClick={handleClose}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[400px] bg-background-card rounded-xl overflow-hidden"
+            style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' }}
+          >
+            {/* Header */}
+            <div className="h-[56px] px-md flex items-center justify-between border-b border-background-elevated">
+              <h2 className="text-lg font-bold text-text-primary">Edit Score</h2>
+              <button
+                onClick={handleClose}
+                disabled={saving}
+                className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary rounded-lg disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-md space-y-4">
+              {/* Context info */}
+              <div className="text-center">
+                <p className="text-base font-semibold text-text-primary">{playerName}</p>
+                <p className="text-sm text-text-muted">{contextString}</p>
+              </div>
+
+              {/* Current score display */}
+              <div className="text-center py-2">
+                <p className="text-xs text-text-muted mb-1">Current Score</p>
+                <p className="text-lg font-mono text-text-secondary">
+                  {formatScore(currentScore, scoreFormat, scoreUnit)}
+                </p>
+              </div>
+
+              {/* Score input */}
+              <div>
+                <p className="text-sm text-text-secondary mb-3 text-center">
+                  {scoreFormat.includes('time') ? 'Enter new time' : 'Enter new score'}
+                </p>
+                {renderScoreInput()}
+              </div>
+
+              {/* Error display */}
+              {error && (
+                <div className="p-3 bg-red-500/10 rounded-lg">
+                  <p className="text-red-500 text-center text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleClose}
+                  disabled={saving}
+                  className="flex-1 h-[56px] bg-background-elevated text-text-primary font-semibold rounded-lg disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || newScore === null}
+                  className="flex-1 h-[56px] bg-category-golf text-white font-semibold rounded-lg disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+```
+
 ## File: src/components/management/index.ts
 ```ts
 // src/components/management/index.ts
 export { ConfirmDialog } from './ConfirmDialog'
 export { PinModal } from './PinModal'
+export { EditScoreModal } from './EditScoreModal'
+
+// Management UI components
+export { BulkImportModal } from './BulkImportModal'
 ```
 
 ## File: src/components/management/PinModal.tsx
@@ -1879,6 +2707,129 @@ export function PinModal({
             </div>
           </motion.div>
         </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+```
+
+## File: src/components/overlays/ActionSheet.tsx
+```tsx
+import { motion, AnimatePresence } from 'framer-motion'
+import type { ReactNode } from 'react'
+
+export interface ActionSheetOption {
+  id: string
+  label: string
+  icon?: ReactNode
+  onClick: () => void
+  variant?: 'default' | 'primary' | 'danger'
+}
+
+interface ActionSheetProps {
+  isOpen: boolean
+  onClose: () => void
+  options: ActionSheetOption[]
+  title?: string
+}
+
+/**
+ * ActionSheet - Touch-friendly bottom sheet for action selection
+ * 
+ * Features:
+ * - Slides up from bottom
+ * - Tap outside or swipe down to dismiss
+ * - 56px minimum touch targets
+ * - Optional title
+ * - Variant styling (default, primary, danger)
+ */
+export function ActionSheet({ isOpen, onClose, options, title }: ActionSheetProps) {
+  const getVariantClasses = (variant: ActionSheetOption['variant'] = 'default') => {
+    switch (variant) {
+      case 'primary':
+        return 'text-category-golf'
+      case 'danger':
+        return 'text-red-500'
+      default:
+        return 'text-text-primary'
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 bg-black/60"
+          />
+
+          {/* Sheet */}
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 z-50 safe-area-bottom"
+          >
+            <div 
+              className="mx-2 mb-2 rounded-2xl overflow-hidden"
+              style={{ backgroundColor: 'var(--color-bg-elevated)' }}
+            >
+              {/* Title (optional) */}
+              {title && (
+                <div className="px-md py-3 border-b border-background-card">
+                  <p className="text-sm text-text-secondary text-center">{title}</p>
+                </div>
+              )}
+
+              {/* Options */}
+              <div className="py-1">
+                {options.map((option, index) => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      option.onClick()
+                      onClose()
+                    }}
+                    className={`
+                      w-full min-h-[56px] px-md
+                      flex items-center gap-4
+                      active:bg-background-card
+                      transition-colors
+                      ${index > 0 ? 'border-t border-background-card' : ''}
+                    `}
+                  >
+                    {option.icon && (
+                      <span className={`flex-shrink-0 ${getVariantClasses(option.variant)}`}>
+                        {option.icon}
+                      </span>
+                    )}
+                    <span className={`text-base font-medium ${getVariantClasses(option.variant)}`}>
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cancel button */}
+            <div className="mx-2 mb-2">
+              <button
+                onClick={onClose}
+                className="w-full min-h-[56px] rounded-2xl text-base font-semibold text-text-primary active:opacity-80 transition-opacity"
+                style={{ backgroundColor: 'var(--color-bg-card)' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   )
@@ -2141,10 +3092,13 @@ export function CelebrationOverlay({
 ```ts
 export { CelebrationOverlay } from './CelebrationOverlay'
 export { RealtimeScoreAlert } from './RealtimeScoreAlert'
+export { ActionSheet } from './ActionSheet'
+export type { ActionSheetOption } from './ActionSheet'
 ```
 
 ## File: src/components/overlays/RealtimeScoreAlert.tsx
 ```tsx
+// src/components/overlays/RealtimeScoreAlert.tsx
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Medal } from 'lucide-react'
@@ -2161,8 +3115,26 @@ interface RealtimeScoreAlertProps {
   scoreUnit?: string | null
   gameName: string
   modeName: string
+  detailName?: string | null  // NEW: Optional detail name
   rank: number
   autoCloseMs?: number
+}
+
+/**
+ * Build the context string for the alert (Game — Mode — Detail)
+ */
+function buildContextString(gameName: string, modeName: string, detailName?: string | null): string {
+  const parts = [gameName]
+  
+  if (modeName) {
+    parts.push(modeName)
+  }
+  
+  if (detailName) {
+    parts.push(detailName)
+  }
+  
+  return parts.join(' — ')
 }
 
 /**
@@ -2179,6 +3151,7 @@ export function RealtimeScoreAlert({
   scoreUnit,
   gameName,
   modeName,
+  detailName,
   rank,
   autoCloseMs = 5000,
 }: RealtimeScoreAlertProps) {
@@ -2199,6 +3172,7 @@ export function RealtimeScoreAlert({
   const isFirstPlace = rank === 1
   const isPodium = rank <= 3
   const formattedScore = formatScore(score, scoreFormat, scoreUnit)
+  const contextString = buildContextString(gameName, modeName, detailName)
 
   // Get medal color class
   const getMedalColorClass = () => {
@@ -2247,44 +3221,43 @@ export function RealtimeScoreAlert({
               {/* Icon */}
               <div className={`
                 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0
-                ${isFirstPlace ? 'bg-yellow-500/20' : 'bg-blue-500/20'}
+                ${isFirstPlace 
+                  ? 'bg-gradient-to-br from-yellow-500/30 to-yellow-600/20' 
+                  : isPodium 
+                    ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10'
+                    : 'bg-background-elevated'
+                }
               `}>
-                <Zap className={`w-6 h-6 ${isFirstPlace ? 'text-yellow-400' : 'text-blue-400'}`} />
+                {isPodium ? (
+                  <Medal className={`w-6 h-6 ${getMedalColorClass()}`} />
+                ) : (
+                  <Zap className="w-6 h-6 text-category-party" />
+                )}
               </div>
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                {/* Title */}
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-base font-bold ${isFirstPlace ? 'text-gradient-gold' : 'text-text-primary'}`}>
-                    {isFirstPlace ? 'NEW RECORD!' : 'New Score!'}
-                  </span>
-                  {isPodium && (
-                    <Medal 
-                      className={`w-5 h-5 ${getMedalColorClass()}`} 
-                      fill="currentColor" 
-                      fillOpacity={0.2}
-                    />
-                  )}
-                </div>
-
                 {/* Player and score */}
-                <p className="text-sm text-text-primary truncate">
-                  <span className="font-semibold">{playerName}</span>
-                  <span className="text-text-secondary"> scored </span>
-                  <span className="font-mono font-semibold">{formattedScore}</span>
-                </p>
-
-                {/* Game context */}
-                <p className="text-xs text-text-muted truncate mt-0.5">
-                  {gameName} — {modeName}
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-text-primary truncate">
+                    {playerName}
+                  </span>
+                  <span className="text-text-muted">scored</span>
+                  <span className="font-mono font-bold text-lg text-text-primary">
+                    {formattedScore}
+                  </span>
+                </div>
+                
+                {/* Game/Mode/Detail context */}
+                <p className="text-sm text-text-secondary truncate mt-0.5">
+                  {contextString}
                 </p>
               </div>
 
               {/* Rank badge */}
               <div className={`
-                px-3 py-1 rounded-full text-sm font-bold flex-shrink-0
-                ${rank === 1 ? 'bg-yellow-500/20 text-yellow-400' : 
+                w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-lg
+                ${isFirstPlace ? 'bg-yellow-500/20 text-yellow-400' :
                   rank === 2 ? 'bg-gray-400/20 text-gray-300' :
                   rank === 3 ? 'bg-orange-600/20 text-orange-400' :
                   'bg-background-elevated text-text-secondary'}
@@ -2313,15 +3286,90 @@ export function RealtimeScoreAlert({
 }
 ```
 
+## File: src/components/ui/BottomSheet.tsx
+```tsx
+import { ReactNode } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+interface BottomSheetProps {
+  isOpen: boolean
+  onClose: () => void
+  children: ReactNode
+  title?: string
+}
+
+/**
+ * BottomSheet - Touch-friendly modal that slides up from bottom
+ * 
+ * Features:
+ * - Slides up from bottom of screen
+ * - Tap outside or swipe down to dismiss
+ * - Large touch targets (56px minimum)
+ * - Works on both kiosk and mobile
+ */
+export function BottomSheet({ isOpen, onClose, children, title }: BottomSheetProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60"
+          />
+          
+          {/* Sheet */}
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl overflow-hidden"
+            style={{ backgroundColor: 'var(--color-bg-elevated)' }}
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div 
+                className="w-10 h-1 rounded-full"
+                style={{ backgroundColor: 'var(--color-text-muted)' }}
+              />
+            </div>
+            
+            {/* Title (optional) */}
+            {title && (
+              <div className="px-md pb-2">
+                <h2 className="text-lg font-bold text-text-primary">{title}</h2>
+              </div>
+            )}
+            
+            {/* Content */}
+            <div className="px-md pb-md safe-area-bottom">
+              {children}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
+```
+
 ## File: src/components/ui/index.ts
 ```ts
 // Reusable UI components
 // Export components from this directory for easy imports
 
-// export { Button } from './Button'
-// export { Modal } from './Modal'
-// export { TouchRipple } from './TouchRipple'
-// export { LoadingSpinner } from './LoadingSpinner'
+export { BottomSheet } from './BottomSheet'
+
+
+
+
+
+
 
 ```
 
@@ -2342,6 +3390,8 @@ export { useRealtimeScores } from './useRealtimeScores'
 export { useSubmitScore } from './useSubmitScore'
 export { useIdleTimer } from './useIdleTimer'
 export { useActiveGameModes } from './useActiveGameModes'
+export { useCarouselItems } from './useCarouselItems'
+export type { CarouselItem } from './useCarouselItems'
 export { useSoundInit } from './useSoundInit'
 export { useScoreDetails } from './useScoreDetails'
 export { useTheme } from './useTheme'
@@ -2486,6 +3536,772 @@ export function useActiveGameModes(): UseActiveGameModesResult {
   return { modes, loading, error }
 }
 
+```
+
+## File: src/hooks/useAvatarUpload.ts
+```ts
+import { useState, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+
+interface UseAvatarUploadResult {
+  uploading: boolean
+  error: string | null
+  uploadAvatar: (file: File, playerId?: string) => Promise<string | null>
+  deleteAvatar: (url: string) => Promise<boolean>
+}
+
+/**
+ * useAvatarUpload - Handle avatar uploads to Supabase Storage
+ * 
+ * Uploads to the 'avatars' bucket with unique filenames.
+ * Returns the public URL on success.
+ */
+export function useAvatarUpload(): UseAvatarUploadResult {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const uploadAvatar = useCallback(async (file: File, playerId?: string): Promise<string | null> => {
+    setUploading(true)
+    setError(null)
+
+    try {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please select an image file')
+      }
+
+      // Validate file size (max 2MB)
+      const maxSize = 2 * 1024 * 1024
+      if (file.size > maxSize) {
+        throw new Error('Image must be less than 2MB')
+      }
+
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const timestamp = Date.now()
+      const randomId = Math.random().toString(36).substring(2, 8)
+      const fileName = playerId 
+        ? `${playerId}-${timestamp}.${fileExt}`
+        : `new-${timestamp}-${randomId}.${fileExt}`
+
+      // Upload to Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true, // Overwrite if exists
+        })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(data.path)
+
+      return urlData.publicUrl
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to upload avatar'
+      setError(message)
+      console.error('Avatar upload error:', err)
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }, [])
+
+  const deleteAvatar = useCallback(async (url: string): Promise<boolean> => {
+    try {
+      // Extract filename from URL
+      const urlParts = url.split('/avatars/')
+      if (urlParts.length < 2) return false
+      
+      const fileName = urlParts[1]
+      
+      const { error: deleteError } = await supabase.storage
+        .from('avatars')
+        .remove([fileName])
+
+      if (deleteError) {
+        throw deleteError
+      }
+
+      return true
+    } catch (err) {
+      console.error('Avatar delete error:', err)
+      return false
+    }
+  }, [])
+
+  return {
+    uploading,
+    error,
+    uploadAvatar,
+    deleteAvatar,
+  }
+}
+```
+
+## File: src/hooks/useBulkImport.ts
+```ts
+import { useState, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+import { parseScore } from '@/lib/scoreParser'
+import type { ScoreFormat } from '@/lib/types'
+
+// Types for the import process
+export interface ImportRow {
+  rowNumber: number
+  player: string
+  game: string
+  mode: string
+  detail?: string
+  scoreRaw: string
+  playerId?: string
+  gameId?: string
+  modeId?: string
+  detailId?: string
+  scoreParsed?: number
+  scoreFormat?: ScoreFormat
+  errors: string[]
+  warnings: string[]
+  isValid: boolean
+}
+
+export interface ImportSummary {
+  total: number
+  valid: number
+  invalid: number
+  warnings: number
+}
+
+// Lookup types for matching
+interface PlayerLookup {
+  id: string
+  name: string
+  nameLower: string
+}
+
+interface GameLookup {
+  id: string
+  name: string
+  nameLower: string
+  default_score_format: ScoreFormat
+}
+
+interface ModeLookup {
+  id: string
+  name: string
+  nameLower: string
+  game_id: string
+  score_format: ScoreFormat | null
+}
+
+interface DetailLookup {
+  id: string
+  name: string
+  nameLower: string
+  game_id: string
+  mode_id: string | null
+  score_format: ScoreFormat | null
+}
+
+interface UseBulkImportResult {
+  rows: ImportRow[]
+  summary: ImportSummary
+  parsing: boolean
+  importing: boolean
+  error: string | null
+  parseInput: (input: string) => Promise<void>
+  importRows: () => Promise<{ success: number; failed: number }>
+  clearRows: () => void
+}
+
+/**
+ * Fuzzy match a name against a list of options
+ */
+function fuzzyMatch<T extends { nameLower: string }>(
+  input: string,
+  options: T[]
+): T | null {
+  const inputLower = input.toLowerCase().trim()
+  
+  const exact = options.find(o => o.nameLower === inputLower)
+  if (exact) return exact
+  
+  const contains = options.find(o => 
+    o.nameLower.includes(inputLower) || inputLower.includes(o.nameLower)
+  )
+  if (contains) return contains
+  
+  const inputWords = inputLower.split(/\s+/)
+  for (const option of options) {
+    const optionWords = option.nameLower.split(/\s+/)
+    if (inputWords.some(w => optionWords.some(ow => ow.includes(w) || w.includes(ow)))) {
+      return option
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Parse CSV string into rows
+ */
+function parseCSV(input: string): Record<string, string>[] {
+  const lines = input.trim().split(/\r?\n/)
+  if (lines.length < 2) return []
+  
+  const headerLine = lines[0]
+  const headers = headerLine.split(',').map(h => h.trim().toLowerCase())
+  
+  const rows: Record<string, string>[] = []
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    
+    const values = line.split(',').map(v => v.trim())
+    
+    const row: Record<string, string> = {}
+    headers.forEach((header, index) => {
+      row[header] = values[index] || ''
+    })
+    rows.push(row)
+  }
+  
+  return rows
+}
+
+/**
+ * Parse JSON string into rows
+ */
+function parseJSON(input: string): Record<string, string>[] {
+  const data = JSON.parse(input)
+  
+  if (!Array.isArray(data)) {
+    throw new Error('JSON must be an array of objects')
+  }
+  
+  return data.map(item => {
+    const row: Record<string, string> = {}
+    for (const [key, value] of Object.entries(item)) {
+      row[key.toLowerCase()] = String(value)
+    }
+    return row
+  })
+}
+
+/**
+ * Detect if input is JSON or CSV
+ */
+function detectFormat(input: string): 'json' | 'csv' {
+  const trimmed = input.trim()
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    return 'json'
+  }
+  return 'csv'
+}
+
+/**
+ * useBulkImport - Parse, validate, and import scores in bulk
+ */
+export function useBulkImport(): UseBulkImportResult {
+  const [rows, setRows] = useState<ImportRow[]>([])
+  const [summary, setSummary] = useState<ImportSummary>({ total: 0, valid: 0, invalid: 0, warnings: 0 })
+  const [parsing, setParsing] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const parseInput = useCallback(async (input: string) => {
+    setParsing(true)
+    setError(null)
+    setRows([])
+    
+    try {
+      const format = detectFormat(input)
+      let rawRows: Record<string, string>[]
+      
+      try {
+        rawRows = format === 'json' ? parseJSON(input) : parseCSV(input)
+      } catch (e) {
+        throw new Error(`Failed to parse ${format.toUpperCase()}: ${e instanceof Error ? e.message : 'Invalid format'}`)
+      }
+      
+      if (rawRows.length === 0) {
+        throw new Error('No data rows found')
+      }
+      
+      const firstRow = rawRows[0]
+      const hasPlayer = 'player' in firstRow
+      const hasGame = 'game' in firstRow
+      const hasMode = 'mode' in firstRow
+      const hasScore = 'score' in firstRow
+      
+      if (!hasPlayer || !hasGame || !hasMode || !hasScore) {
+        const missing = []
+        if (!hasPlayer) missing.push('player')
+        if (!hasGame) missing.push('game')
+        if (!hasMode) missing.push('mode')
+        if (!hasScore) missing.push('score')
+        throw new Error(`Missing required columns: ${missing.join(', ')}`)
+      }
+      
+      // Fetch lookup data using (supabase as any) pattern from existing codebase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      
+      const playersRes = await sb.from('players').select('id, name').eq('is_active', true)
+      const gamesRes = await sb.from('games').select('id, name, default_score_format').eq('is_active', true)
+      const modesRes = await sb.from('game_modes').select('id, name, game_id, score_format').eq('is_active', true)
+      const detailsRes = await sb.from('game_details').select('id, name, game_id, mode_id, score_format').eq('is_active', true)
+      
+      // Build lookup arrays
+      const players: PlayerLookup[] = []
+      const playersData = playersRes.data || []
+      for (let i = 0; i < playersData.length; i++) {
+        const p = playersData[i]
+        players.push({
+          id: p.id,
+          name: p.name,
+          nameLower: p.name.toLowerCase(),
+        })
+      }
+      
+      const games: GameLookup[] = []
+      const gameFormats: Record<string, ScoreFormat> = {}
+      const gamesData = gamesRes.data || []
+      for (let i = 0; i < gamesData.length; i++) {
+        const g = gamesData[i]
+        games.push({
+          id: g.id,
+          name: g.name,
+          nameLower: g.name.toLowerCase(),
+          default_score_format: g.default_score_format,
+        })
+        gameFormats[g.id] = g.default_score_format
+      }
+      
+      const modes: ModeLookup[] = []
+      const modesData = modesRes.data || []
+      for (let i = 0; i < modesData.length; i++) {
+        const m = modesData[i]
+        modes.push({
+          id: m.id,
+          name: m.name,
+          nameLower: m.name.toLowerCase(),
+          game_id: m.game_id,
+          score_format: m.score_format,
+        })
+      }
+      
+      const details: DetailLookup[] = []
+      const detailsData = detailsRes.data || []
+      for (let i = 0; i < detailsData.length; i++) {
+        const d = detailsData[i]
+        details.push({
+          id: d.id,
+          name: d.name,
+          nameLower: d.name.toLowerCase(),
+          game_id: d.game_id,
+          mode_id: d.mode_id,
+          score_format: d.score_format,
+        })
+      }
+      
+      // Process each row
+      const processedRows: ImportRow[] = []
+      for (let index = 0; index < rawRows.length; index++) {
+        const raw = rawRows[index]
+        const row: ImportRow = {
+          rowNumber: index + 2,
+          player: raw.player || '',
+          game: raw.game || '',
+          mode: raw.mode || '',
+          detail: raw.detail || raw.track || raw.course || '',
+          scoreRaw: raw.score || '',
+          errors: [],
+          warnings: [],
+          isValid: true,
+        }
+        
+        // Match player
+        const playerMatch = fuzzyMatch(row.player, players)
+        if (playerMatch) {
+          row.playerId = playerMatch.id
+          if (playerMatch.nameLower !== row.player.toLowerCase()) {
+            row.warnings.push(`Player matched to "${playerMatch.name}"`)
+          }
+        } else {
+          row.errors.push(`Player "${row.player}" not found`)
+          row.isValid = false
+        }
+        
+        // Match game
+        const gameMatch = fuzzyMatch(row.game, games)
+        if (gameMatch) {
+          row.gameId = gameMatch.id
+          if (gameMatch.nameLower !== row.game.toLowerCase()) {
+            row.warnings.push(`Game matched to "${gameMatch.name}"`)
+          }
+        } else {
+          row.errors.push(`Game "${row.game}" not found`)
+          row.isValid = false
+        }
+        
+        // Match mode (filtered by game)
+        if (row.gameId) {
+          const gameModes = modes.filter(m => m.game_id === row.gameId)
+          const modeMatch = fuzzyMatch(row.mode, gameModes)
+          if (modeMatch) {
+            row.modeId = modeMatch.id
+            row.scoreFormat = modeMatch.score_format || gameFormats[row.gameId] || 'integer'
+            if (modeMatch.nameLower !== row.mode.toLowerCase()) {
+              row.warnings.push(`Mode matched to "${modeMatch.name}"`)
+            }
+          } else {
+            row.errors.push(`Mode "${row.mode}" not found for this game`)
+            row.isValid = false
+          }
+        }
+        
+        // Match detail (optional)
+        if (row.detail && row.gameId) {
+          const gameDetails = details.filter(d => 
+            d.game_id === row.gameId && 
+            (d.mode_id === null || d.mode_id === row.modeId)
+          )
+          const detailMatch = fuzzyMatch(row.detail, gameDetails)
+          if (detailMatch) {
+            row.detailId = detailMatch.id
+            if (detailMatch.score_format) {
+              row.scoreFormat = detailMatch.score_format
+            }
+            if (detailMatch.nameLower !== row.detail.toLowerCase()) {
+              row.warnings.push(`Detail matched to "${detailMatch.name}"`)
+            }
+          } else {
+            row.warnings.push(`Detail "${row.detail}" not found (will be ignored)`)
+          }
+        }
+        
+        // Parse score
+        if (row.scoreFormat) {
+          const parseResult = parseScore(row.scoreRaw, row.scoreFormat)
+          if (parseResult.success && parseResult.value !== null) {
+            row.scoreParsed = parseResult.value
+          } else {
+            row.errors.push(parseResult.error || 'Invalid score')
+            row.isValid = false
+          }
+        } else if (row.isValid) {
+          const parseResult = parseScore(row.scoreRaw, 'integer')
+          if (parseResult.success && parseResult.value !== null) {
+            row.scoreParsed = parseResult.value
+            row.scoreFormat = 'integer'
+          } else {
+            row.errors.push('Could not parse score')
+            row.isValid = false
+          }
+        }
+        
+        processedRows.push(row)
+      }
+      
+      const validCount = processedRows.filter(r => r.isValid).length
+      const warningCount = processedRows.filter(r => r.warnings.length > 0).length
+      
+      setRows(processedRows)
+      setSummary({
+        total: processedRows.length,
+        valid: validCount,
+        invalid: processedRows.length - validCount,
+        warnings: warningCount,
+      })
+      
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to parse input')
+      setRows([])
+      setSummary({ total: 0, valid: 0, invalid: 0, warnings: 0 })
+    } finally {
+      setParsing(false)
+    }
+  }, [])
+
+  const importRows = useCallback(async (): Promise<{ success: number; failed: number }> => {
+    setImporting(true)
+    
+    const validRows = rows.filter(r => r.isValid)
+    let success = 0
+    let failed = 0
+    
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      
+      const chunkSize = 50
+      for (let i = 0; i < validRows.length; i += chunkSize) {
+        const chunk = validRows.slice(i, i + chunkSize)
+        
+        const inserts = []
+        for (let j = 0; j < chunk.length; j++) {
+          const row = chunk[j]
+          inserts.push({
+            player_id: row.playerId,
+            game_id: row.gameId,
+            mode_id: row.modeId,
+            detail_id: row.detailId || null,
+            score: row.scoreParsed,
+            achieved_at: new Date().toISOString(),
+          })
+        }
+        
+        const { error: insertError } = await sb
+          .from('high_scores')
+          .insert(inserts)
+        
+        if (insertError) {
+          console.error('Batch insert error:', insertError)
+          failed += chunk.length
+        } else {
+          success += chunk.length
+        }
+      }
+    } catch (e) {
+      console.error('Import error:', e)
+    } finally {
+      setImporting(false)
+    }
+    
+    return { success, failed }
+  }, [rows])
+
+  const clearRows = useCallback(() => {
+    setRows([])
+    setSummary({ total: 0, valid: 0, invalid: 0, warnings: 0 })
+    setError(null)
+  }, [])
+
+  return {
+    rows,
+    summary,
+    parsing,
+    importing,
+    error,
+    parseInput,
+    importRows,
+    clearRows,
+  }
+}
+```
+
+## File: src/hooks/useCarouselItems.ts
+```ts
+// src/hooks/useCarouselItems.ts
+import { useEffect, useState, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+
+/**
+ * Represents a single item in the idle carousel.
+ * For games WITH details: one item per (mode, detail) combination
+ * For games WITHOUT details: one item per mode
+ */
+export interface CarouselItem {
+  // Unique key for React and deduplication
+  key: string
+  
+  // Game info
+  game_id: string
+  game_name: string
+  game_icon: string | null
+  game_category: string
+  game_has_details: boolean
+  game_sort_order: number
+  
+  // Mode info (may be null for games without modes)
+  mode_id: string | null
+  mode_name: string | null
+  mode_sort_order: number
+  
+  // Detail info (only populated for games with has_details=true)
+  detail_id: string | null
+  detail_name: string | null
+  detail_sort_order: number
+}
+
+interface UseCarouselItemsResult {
+  items: CarouselItem[]
+  loading: boolean
+  error: Error | null
+  refetch: () => Promise<void>
+}
+
+// Type for the raw Supabase query response
+interface ScoreQueryResult {
+  game_id: string
+  mode_id: string | null
+  detail_id: string | null
+  games: {
+    name: string
+    icon_url: string | null
+    category: string
+    has_details: boolean
+    sort_order: number
+    is_active: boolean
+  }
+  game_modes: {
+    name: string
+    sort_order: number
+    is_active: boolean
+  } | null
+  game_details: {
+    name: string
+    sort_order: number
+    is_active: boolean
+  } | null
+}
+
+/**
+ * useCarouselItems - Fetches unique carousel entries based on scores
+ * 
+ * Groups scores appropriately:
+ * - Games WITH has_details=true: one entry per (game, mode, detail)
+ * - Games WITHOUT details: one entry per (game, mode)
+ * 
+ * Used by IdleDisplay for the auto-cycling carousel.
+ */
+export function useCarouselItems(): UseCarouselItemsResult {
+  const [items, setItems] = useState<CarouselItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchItems = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Query all high scores with their related game/mode/detail data
+      // We'll deduplicate and group client-side for flexibility
+      const { data, error: queryError } = await supabase
+        .from('high_scores')
+        .select(`
+          game_id,
+          mode_id,
+          detail_id,
+          games!inner (
+            name,
+            icon_url,
+            category,
+            has_details,
+            sort_order,
+            is_active
+          ),
+          game_modes (
+            name,
+            sort_order,
+            is_active
+          ),
+          game_details (
+            name,
+            sort_order,
+            is_active
+          )
+        `)
+
+      if (queryError) throw queryError
+
+      // Build unique carousel items using a Map for deduplication
+      const itemMap = new Map<string, CarouselItem>()
+
+      for (const score of (data as ScoreQueryResult[]) || []) {
+        const game = score.games
+        const mode = score.game_modes
+        const detail = score.game_details
+
+        // Skip if game is inactive
+        if (!game?.is_active) continue
+        
+        // Skip if mode exists but is inactive
+        if (mode && !mode.is_active) continue
+        
+        // Skip if detail exists but is inactive
+        if (detail && !detail.is_active) continue
+
+        // Determine the grouping key based on game configuration
+        // For games WITH details: include detail_id in key
+        // For games WITHOUT details: only use game_id and mode_id
+        let key: string
+        let effectiveDetailId: string | null = null
+        let effectiveDetailName: string | null = null
+        let effectiveDetailSortOrder = 0
+
+        if (game.has_details && score.detail_id) {
+          // Game has details - create separate entry for each detail
+          key = `${score.game_id}::${score.mode_id || 'null'}::${score.detail_id}`
+          effectiveDetailId = score.detail_id
+          effectiveDetailName = detail?.name || null
+          effectiveDetailSortOrder = detail?.sort_order ?? 0
+        } else {
+          // Game doesn't have details - group all scores under mode
+          key = `${score.game_id}::${score.mode_id || 'null'}::null`
+        }
+
+        // Only add if we haven't seen this combination yet
+        if (!itemMap.has(key)) {
+          itemMap.set(key, {
+            key,
+            game_id: score.game_id,
+            game_name: game.name,
+            game_icon: game.icon_url,
+            game_category: game.category,
+            game_has_details: game.has_details,
+            game_sort_order: game.sort_order ?? 0,
+            mode_id: score.mode_id,
+            mode_name: mode?.name || null,
+            mode_sort_order: mode?.sort_order ?? 0,
+            detail_id: effectiveDetailId,
+            detail_name: effectiveDetailName,
+            detail_sort_order: effectiveDetailSortOrder,
+          })
+        }
+      }
+
+      // Sort by game order → mode order → detail order
+      const sortedItems = Array.from(itemMap.values()).sort((a, b) => {
+        // First by game sort order
+        const gameOrder = a.game_sort_order - b.game_sort_order
+        if (gameOrder !== 0) return gameOrder
+        
+        // Then by mode sort order
+        const modeOrder = a.mode_sort_order - b.mode_sort_order
+        if (modeOrder !== 0) return modeOrder
+        
+        // Finally by detail sort order
+        return a.detail_sort_order - b.detail_sort_order
+      })
+
+      setItems(sortedItems)
+    } catch (err) {
+      console.error('Failed to fetch carousel items:', err)
+      setError(err instanceof Error ? err : new Error('Failed to fetch carousel items'))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchItems()
+  }, [fetchItems])
+
+  return { 
+    items, 
+    loading, 
+    error, 
+    refetch: fetchItems 
+  }
+}
 ```
 
 ## File: src/hooks/useGame.ts
@@ -4516,7 +6332,11 @@ export function useTheme(): void {
     @apply min-h-[56px] min-w-[56px];
   }
 
-  /* Kiosk container constraint */
+  /* ============================================================================
+     KIOSK CONTAINER - RESPONSIVE
+     Desktop/Kiosk: Fixed 800×480 centered
+     Mobile: Full viewport with scrolling
+     ============================================================================ */
   .kiosk-container {
     width: 800px;
     height: 480px;
@@ -4527,6 +6347,150 @@ export function useTheme(): void {
     background-color: var(--color-bg-primary);
   }
   
+  /* Mobile: Full screen with scrolling */
+  @media (max-width: 639px) {
+    .kiosk-container {
+      width: 100%;
+      height: auto;
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
+      max-height: none;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+  }
+  
+  /* Small tablets in portrait */
+  @media (min-width: 640px) and (max-width: 799px) {
+    .kiosk-container {
+      width: 100%;
+      height: 100vh;
+      max-width: none;
+    }
+  }
+
+  /* ============================================================================
+     MOBILE-SPECIFIC UTILITIES
+     ============================================================================ */
+  
+  /* Hide on mobile */
+  .hide-mobile {
+    display: block;
+  }
+  @media (max-width: 639px) {
+    .hide-mobile {
+      display: none !important;
+    }
+  }
+  
+  /* Show only on mobile */
+  .show-mobile {
+    display: none;
+  }
+  @media (max-width: 639px) {
+    .show-mobile {
+      display: block;
+    }
+  }
+  
+  /* Flex variant */
+  .show-mobile-flex {
+    display: none;
+  }
+  @media (max-width: 639px) {
+    .show-mobile-flex {
+      display: flex;
+    }
+  }
+  
+  /* Score row - horizontal on desktop, stacked on mobile */
+  .score-row-layout {
+    @apply flex flex-row items-center justify-between;
+    @apply h-[72px] px-md;
+  }
+  @media (max-width: 639px) {
+    .score-row-layout {
+      @apply flex-col items-stretch justify-start;
+      @apply h-auto py-3 px-md gap-2;
+      min-height: 80px;
+    }
+  }
+  
+  /* Score row player info - adapts on mobile */
+  .score-row-player {
+    @apply flex flex-row items-center gap-3 flex-1 ml-3 min-w-0;
+  }
+  @media (max-width: 639px) {
+    .score-row-player {
+      @apply ml-0 flex-initial w-full;
+    }
+  }
+  
+  /* Score row value - right aligned on desktop, full width on mobile */
+  .score-row-value {
+    @apply flex-shrink-0;
+  }
+  @media (max-width: 639px) {
+    .score-row-value {
+      @apply w-full text-center pl-[52px]; /* Align with player name (40px badge + 12px gap) */
+    }
+  }
+  
+  /* Category grid - 4 cols on desktop, 2 cols on mobile */
+  .category-grid {
+    @apply grid grid-cols-4 grid-rows-2 gap-3 h-full;
+  }
+  @media (max-width: 639px) {
+    .category-grid {
+      @apply grid-cols-2 grid-rows-4 gap-3;
+      height: auto;
+      min-height: 400px;
+    }
+  }
+  
+  /* Header height - slightly smaller on mobile */
+  .header-height {
+    @apply h-[56px];
+  }
+  @media (max-width: 639px) {
+    .header-height {
+      @apply h-[52px];
+    }
+  }
+  
+  /* Footer height */
+  .footer-height {
+    @apply h-[48px];
+  }
+  @media (max-width: 639px) {
+    .footer-height {
+      @apply h-[56px]; /* Larger touch targets on mobile */
+    }
+  }
+  
+  /* Idle display header - responsive */
+  .idle-header {
+    @apply h-[72px] px-md flex items-center justify-between border-b;
+    border-color: color-mix(in srgb, var(--color-bg-elevated) 50%, transparent);
+  }
+  @media (max-width: 639px) {
+    .idle-header {
+      @apply h-auto py-3 px-md flex-col items-start gap-2;
+    }
+  }
+  
+  /* Mobile-safe area padding (for notch phones) */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .safe-area-x {
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+  }
+
   /* Smooth transitions */
   .transition-smooth {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -4598,7 +6562,7 @@ export function useTheme(): void {
   text-shadow: 0 0 8px color-mix(in srgb, var(--color-text-primary) 30%, transparent);
 }
 
-/* Noise Effect (Fallout theme) */
+/* Noise/CRT Effect (Fallout theme) */
 .theme-noise::before {
   content: '';
   position: fixed;
@@ -4606,88 +6570,295 @@ export function useTheme(): void {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   opacity: 0.03;
   pointer-events: none;
   z-index: 9998;
 }
 
-/* Theme-specific color tweaks */
-[data-theme="light"] .card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+/* Animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-[data-theme="light"] .card-interactive:active {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-[data-theme="light"] .btn-primary {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+```
+
+## File: src/lib/scoreParser.ts
+```ts
+import type { ScoreFormat } from '@/lib/types'
+
+interface ParseResult {
+  success: boolean
+  value: number | null
+  error?: string
 }
 
-[data-theme="light"] .input-glow {
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.08);
+/**
+ * Parse a time string into milliseconds
+ * Accepts: "1:23.456", "83.456", "83456" (raw ms), "1:23" (no ms)
+ */
+function parseTimeMs(input: string): ParseResult {
+  const trimmed = input.trim()
+  
+  // Try M:SS.mmm or M:SS format
+  const colonMatch = trimmed.match(/^(\d+):(\d{1,2})(?:\.(\d{1,3}))?$/)
+  if (colonMatch) {
+    const minutes = parseInt(colonMatch[1], 10)
+    const seconds = parseInt(colonMatch[2], 10)
+    const ms = colonMatch[3] ? parseInt(colonMatch[3].padEnd(3, '0'), 10) : 0
+    
+    if (seconds >= 60) {
+      return { success: false, value: null, error: 'Seconds must be < 60' }
+    }
+    
+    const totalMs = (minutes * 60 * 1000) + (seconds * 1000) + ms
+    return { success: true, value: totalMs }
+  }
+  
+  // Try SS.mmm format (seconds with decimal)
+  const decimalMatch = trimmed.match(/^(\d+)\.(\d{1,3})$/)
+  if (decimalMatch) {
+    const seconds = parseInt(decimalMatch[1], 10)
+    const ms = parseInt(decimalMatch[2].padEnd(3, '0'), 10)
+    const totalMs = (seconds * 1000) + ms
+    return { success: true, value: totalMs }
+  }
+  
+  // Try raw milliseconds (integer)
+  const rawMs = parseInt(trimmed, 10)
+  if (!isNaN(rawMs) && trimmed === rawMs.toString()) {
+    return { success: true, value: rawMs }
+  }
+  
+  return { 
+    success: false, 
+    value: null, 
+    error: 'Expected format: M:SS.mmm, SS.mmm, or milliseconds' 
+  }
 }
 
-/* Light theme: darker medal glows for contrast */
-[data-theme="light"] .medal-gold {
-  color: #92400e;
-  text-shadow: none;
+/**
+ * Parse a time string into seconds
+ * Accepts: "4:56", "296", "4:56.5" (rounds to seconds)
+ */
+function parseTimeSeconds(input: string): ParseResult {
+  const trimmed = input.trim()
+  
+  // Try M:SS format
+  const colonMatch = trimmed.match(/^(\d+):(\d{1,2})(?:\.\d+)?$/)
+  if (colonMatch) {
+    const minutes = parseInt(colonMatch[1], 10)
+    const seconds = parseInt(colonMatch[2], 10)
+    
+    if (seconds >= 60) {
+      return { success: false, value: null, error: 'Seconds must be < 60' }
+    }
+    
+    const totalSeconds = (minutes * 60) + seconds
+    return { success: true, value: totalSeconds }
+  }
+  
+  // Try raw seconds (integer)
+  const rawSeconds = parseInt(trimmed, 10)
+  if (!isNaN(rawSeconds)) {
+    return { success: true, value: rawSeconds }
+  }
+  
+  return { 
+    success: false, 
+    value: null, 
+    error: 'Expected format: M:SS or seconds' 
+  }
 }
 
-[data-theme="light"] .medal-silver {
-  color: #374151;
-  text-shadow: none;
+/**
+ * Parse a golf score (relative to par)
+ * Accepts: "-6", "+2", "0", "E" (even = 0)
+ */
+function parseGolfRelative(input: string): ParseResult {
+  const trimmed = input.trim().toUpperCase()
+  
+  // E or EVEN = 0
+  if (trimmed === 'E' || trimmed === 'EVEN' || trimmed === 'PAR') {
+    return { success: true, value: 0 }
+  }
+  
+  // Parse signed integer
+  const value = parseInt(trimmed, 10)
+  if (!isNaN(value)) {
+    return { success: true, value }
+  }
+  
+  return { 
+    success: false, 
+    value: null, 
+    error: 'Expected: -6, +2, 0, or E' 
+  }
 }
 
-[data-theme="light"] .medal-bronze {
-  color: #78350f;
-  text-shadow: none;
+/**
+ * Parse a decimal score (stored as integer × 100)
+ * Accepts: "98.45", "100", "78.5"
+ */
+function parseDecimal2(input: string): ParseResult {
+  const trimmed = input.trim()
+  
+  // Remove % sign if present
+  const cleaned = trimmed.replace(/%$/, '')
+  
+  const value = parseFloat(cleaned)
+  if (!isNaN(value)) {
+    // Multiply by 100 and round to avoid floating point issues
+    const stored = Math.round(value * 100)
+    return { success: true, value: stored }
+  }
+  
+  return { 
+    success: false, 
+    value: null, 
+    error: 'Expected decimal number (e.g., 98.45)' 
+  }
 }
 
-/* Light theme: darker podium gradients */
-[data-theme="light"] .podium-gold {
-  background: linear-gradient(90deg, rgba(161, 98, 7, 0.15) 0%, transparent 100%);
-  border-left: 3px solid #a16207;
+/**
+ * Parse an integer score
+ * Accepts: "1000", "47", "-5"
+ */
+function parseInteger(input: string): ParseResult {
+  const trimmed = input.trim()
+  
+  // Remove common suffixes
+  const cleaned = trimmed.replace(/\s*(pts?|points?|kills?|elims?)\.?$/i, '')
+  
+  const value = parseInt(cleaned, 10)
+  if (!isNaN(value) && cleaned === value.toString()) {
+    return { success: true, value }
+  }
+  
+  return { 
+    success: false, 
+    value: null, 
+    error: 'Expected integer' 
+  }
 }
 
-[data-theme="light"] .podium-silver {
-  background: linear-gradient(90deg, rgba(75, 85, 99, 0.1) 0%, transparent 100%);
-  border-left: 3px solid #4b5563;
+/**
+ * Parse a level score (World X-Y format)
+ * Accepts: "8-4", "World 8-4", "8-4"
+ * Stored as: world * 100 + level (e.g., 8-4 = 804)
+ */
+function parseLevel(input: string): ParseResult {
+  const trimmed = input.trim()
+  
+  // Try X-Y format
+  const match = trimmed.match(/(?:world\s*)?(\d+)-(\d+)/i)
+  if (match) {
+    const world = parseInt(match[1], 10)
+    const level = parseInt(match[2], 10)
+    
+    if (world > 99 || level > 99) {
+      return { success: false, value: null, error: 'World/level must be < 100' }
+    }
+    
+    const stored = (world * 100) + level
+    return { success: true, value: stored }
+  }
+  
+  // Try raw encoded value
+  const raw = parseInt(trimmed, 10)
+  if (!isNaN(raw) && raw > 0) {
+    return { success: true, value: raw }
+  }
+  
+  return { 
+    success: false, 
+    value: null, 
+    error: 'Expected format: X-Y or World X-Y' 
+  }
 }
 
-[data-theme="light"] .podium-bronze {
-  background: linear-gradient(90deg, rgba(146, 64, 14, 0.12) 0%, transparent 100%);
-  border-left: 3px solid #92400e;
+/**
+ * Parse a score string based on the score format
+ */
+export function parseScore(input: string, format: ScoreFormat): ParseResult {
+  if (!input || input.trim() === '') {
+    return { success: false, value: null, error: 'Score is required' }
+  }
+  
+  switch (format) {
+    case 'time_ms':
+      return parseTimeMs(input)
+    case 'time_seconds':
+      return parseTimeSeconds(input)
+    case 'golf_relative':
+      return parseGolfRelative(input)
+    case 'decimal_2':
+      return parseDecimal2(input)
+    case 'level':
+      return parseLevel(input)
+    case 'integer':
+    default:
+      return parseInteger(input)
+  }
 }
 
-/* Light theme: darker avatar rings */
-[data-theme="light"] .avatar-ring-gold {
-  box-shadow: 0 0 0 2px #a16207, 0 0 8px rgba(161, 98, 7, 0.3);
+/**
+ * Get help text for a score format
+ */
+export function getFormatHelpText(format: ScoreFormat): string {
+  switch (format) {
+    case 'time_ms':
+      return 'Enter as M:SS.mmm (e.g., 1:23.456) or total milliseconds'
+    case 'time_seconds':
+      return 'Enter as M:SS (e.g., 4:56) or total seconds'
+    case 'golf_relative':
+      return 'Enter relative to par (e.g., -6, +2, 0, or E for even)'
+    case 'decimal_2':
+      return 'Enter as decimal (e.g., 98.45)'
+    case 'level':
+      return 'Enter as X-Y (e.g., 8-4 or World 8-4)'
+    case 'integer':
+    default:
+      return 'Enter as whole number'
+  }
 }
 
-[data-theme="light"] .avatar-ring-silver {
-  box-shadow: 0 0 0 2px #4b5563, 0 0 6px rgba(75, 85, 99, 0.2);
-}
-
-[data-theme="light"] .avatar-ring-bronze {
-  box-shadow: 0 0 0 2px #92400e, 0 0 6px rgba(146, 64, 14, 0.2);
-}
-
-/* Fallout-specific: monochrome green glow on everything */
-[data-theme="fallout"] .medal-gold,
-[data-theme="fallout"] .medal-silver,
-[data-theme="fallout"] .medal-bronze {
-  color: var(--color-text-primary);
-  text-shadow: 0 0 10px var(--color-text-primary);
-}
-
-[data-theme="fallout"] .avatar-ring-gold,
-[data-theme="fallout"] .avatar-ring-silver,
-[data-theme="fallout"] .avatar-ring-bronze {
-  box-shadow: 0 0 0 2px var(--color-text-primary), 0 0 12px var(--color-text-primary);
+/**
+ * Format examples for documentation
+ */
+export const SCORE_FORMAT_EXAMPLES: Record<ScoreFormat, string[]> = {
+  integer: ['1000', '47', '250'],
+  time_ms: ['1:23.456', '83.456', '83456'],
+  time_seconds: ['4:56', '296'],
+  decimal_2: ['98.45', '100', '78.5'],
+  golf_relative: ['-6', '+2', '0', 'E'],
+  level: ['8-4', 'World 8-4'],
 }
 ```
 
@@ -6398,12 +8569,14 @@ export function AddScore() {
 
 ## File: src/pages/CategorySelection.tsx
 ```tsx
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { CategoryButton } from '@/components/cards/CategoryButton'
+import { NewPlayerModal } from '@/components/input'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
+import { usePlayers } from '@/hooks/usePlayers'
 import type { GameCategory } from '@/lib/types'
 
 const CATEGORIES: GameCategory[] = [
@@ -6420,11 +8593,21 @@ const CATEGORIES: GameCategory[] = [
 /**
  * CategorySelection - Grid of game categories
  * Route: /browse
+ * 
+ * Responsive:
+ * - Desktop/Kiosk: 4 columns × 2 rows
+ * - Mobile: 2 columns × 4 rows (scrollable)
+ * 
  * Auto-returns to idle display after 30s inactivity
  */
 export function CategorySelection() {
   const navigate = useNavigate()
   const { isIdle, resetTimer } = useIdleTimer(30000)
+  const { createPlayer } = usePlayers()
+  
+  // New Player modal state
+  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -6447,45 +8630,76 @@ export function CategorySelection() {
     navigate('/add-score')
   }
 
+  const handleAddPlayer = () => {
+    resetTimer()
+    setShowNewPlayerModal(true)
+  }
+
+  const handleManage = () => {
+    resetTimer()
+    navigate('/manage')
+  }
+
+  const handleCreatePlayer = async (name: string) => {
+    setIsCreatingPlayer(true)
+    try {
+      await createPlayer(name)
+      setShowNewPlayerModal(false)
+    } finally {
+      setIsCreatingPlayer(false)
+    }
+  }
+
   return (
     <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
+      <div className="h-full flex flex-col min-h-[480px]">
+        {/* Header with action sheet */}
         <BrowseHeader
           backLabel="Back"
           onBack={handleBack}
           onAddScore={handleAddScore}
+          onAddPlayer={handleAddPlayer}
+          onManage={handleManage}
           title="CATEGORIES"
         />
 
-        {/* Category grid */}
-        <div className="flex-1 p-md">
-          <div className="grid grid-cols-4 grid-rows-2 gap-3 h-full">
-            {CATEGORIES.map((category) => (
+        {/* Category grid - responsive: 4×2 on desktop, 2×4 on mobile */}
+        <div className="flex-1 p-md overflow-y-auto">
+          <div className="category-grid">
+            {CATEGORIES.map((category, index) => (
               <CategoryButton
                 key={category}
                 category={category}
                 onClick={() => handleCategoryClick(category)}
+                index={index}
               />
             ))}
           </div>
         </div>
 
-        {/* Footer hint */}
-        <div className="h-[56px] flex items-center justify-center border-t border-background-elevated">
+        {/* Footer hint - hidden on mobile to save space */}
+        <div className="footer-height flex items-center justify-center border-t border-background-elevated hide-mobile">
           <p className="text-sm text-text-muted">
             30s idle → returns to auto mode
           </p>
         </div>
       </div>
+
+      {/* New Player Modal */}
+      <NewPlayerModal
+        isOpen={showNewPlayerModal}
+        onClose={() => setShowNewPlayerModal(false)}
+        onCreate={handleCreatePlayer}
+        isCreating={isCreatingPlayer}
+      />
     </KioskLayout>
   )
 }
-
 ```
 
 ## File: src/pages/DetailSelection.tsx
 ```tsx
+// src/pages/DetailSelection.tsx
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
@@ -6541,8 +8755,10 @@ export function DetailSelection() {
     navigate(`/browse/${category}/${gameId}/${modeId}/all`)
   }
 
+  // FIX: Use browser history instead of relying on async data
   const handleBack = () => {
-    navigate(`/browse/${category}/${gameId}`)
+    resetTimer()
+    navigate(-1)
   }
 
   const handleAddScore = () => {
@@ -6626,24 +8842,35 @@ export function DetailSelection() {
 
 ## File: src/pages/GameSelection.tsx
 ```tsx
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { GameCard } from '@/components/cards/GameCard'
+import { NewPlayerModal } from '@/components/input'
 import { useGames } from '@/hooks/useGames'
+import { usePlayers } from '@/hooks/usePlayers'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 import type { GameCategory } from '@/lib/types'
 
 /**
  * GameSelection - List of games in a category
  * Route: /browse/:category
+ * 
+ * Responsive:
+ * - Desktop/Kiosk: Fixed height, scrollable list
+ * - Mobile: Full height with scrolling
  */
 export function GameSelection() {
   const navigate = useNavigate()
   const { category } = useParams<{ category: GameCategory }>()
   const { games, loading, error } = useGames(category)
+  const { createPlayer } = usePlayers()
   const { isIdle, resetTimer } = useIdleTimer(30000)
+
+  // New Player modal state
+  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -6666,6 +8893,26 @@ export function GameSelection() {
     navigate('/add-score')
   }
 
+  const handleAddPlayer = () => {
+    resetTimer()
+    setShowNewPlayerModal(true)
+  }
+
+  const handleManage = () => {
+    resetTimer()
+    navigate('/manage')
+  }
+
+  const handleCreatePlayer = async (name: string) => {
+    setIsCreatingPlayer(true)
+    try {
+      await createPlayer(name)
+      setShowNewPlayerModal(false)
+    } finally {
+      setIsCreatingPlayer(false)
+    }
+  }
+
   // Category display name
   const categoryName = category
     ? category.charAt(0).toUpperCase() + category.slice(1)
@@ -6673,16 +8920,18 @@ export function GameSelection() {
 
   return (
     <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
+      <div className="h-full min-h-[480px] flex flex-col">
+        {/* Header with action sheet */}
         <BrowseHeader
           backLabel="Categories"
           onBack={handleBack}
           onAddScore={handleAddScore}
+          onAddPlayer={handleAddPlayer}
+          onManage={handleManage}
         />
 
         {/* Category title */}
-        <div className="h-[40px] px-md flex items-center">
+        <div className="h-[40px] px-md flex items-center flex-shrink-0">
           <h2 className="text-lg font-bold" style={{ color: getCategoryColor(category) }}>
             {categoryName.toUpperCase()}
           </h2>
@@ -6691,16 +8940,16 @@ export function GameSelection() {
         {/* Games list */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-3">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">Loading games...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
               <p className="text-red-500 mb-2">Error loading games</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
           ) : games.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">No games in this category</p>
             </div>
           ) : (
@@ -6714,6 +8963,14 @@ export function GameSelection() {
           )}
         </div>
       </div>
+
+      {/* New Player Modal */}
+      <NewPlayerModal
+        isOpen={showNewPlayerModal}
+        onClose={() => setShowNewPlayerModal(false)}
+        onCreate={handleCreatePlayer}
+        isCreating={isCreatingPlayer}
+      />
     </KioskLayout>
   )
 }
@@ -6732,11 +8989,11 @@ function getCategoryColor(category?: string): string {
   }
   return colors[category || 'other'] || colors.other
 }
-
 ```
 
 ## File: src/pages/IdleDisplay.tsx
 ```tsx
+// src/pages/IdleDisplay.tsx
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -6745,7 +9002,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { KioskLayout } from '@/components/layout'
 import { ScoreRow } from '@/components/display'
 import { RealtimeScoreAlert } from '@/components/overlays'
-import { useActiveGameModes } from '@/hooks/useActiveGameModes'
+import { useCarouselItems } from '@/hooks/useCarouselItems'
+import type { CarouselItem } from '@/hooks/useCarouselItems'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { useRealtimeScores } from '@/hooks/useRealtimeScores'
 import { useScoreDetails } from '@/hooks/useScoreDetails'
@@ -6774,24 +9032,44 @@ function formatTime(date: Date): string {
 }
 
 /**
- * IdleDisplay - Auto-cycling carousel of game mode leaderboards
+ * Build the subtitle for a carousel item
+ * Shows mode name, and detail name if applicable
+ */
+function buildSubtitle(item: CarouselItem): string {
+  const parts: string[] = []
+  
+  if (item.mode_name) {
+    parts.push(item.mode_name)
+  }
+  
+  if (item.detail_name) {
+    parts.push(item.detail_name)
+  }
+  
+  return parts.join(' — ')
+}
+
+/**
+ * IdleDisplay - Auto-cycling carousel of game leaderboards
  *
  * Features:
- * - Auto-cycles through game modes with scores every 10 seconds
- * - Shows top 4 scores per mode
+ * - Auto-cycles through game/mode/detail combinations with scores every 10 seconds
+ * - For games WITH details: shows separate entries per detail (e.g., each golf course)
+ * - For games WITHOUT details: shows one entry per mode
+ * - Shows top 4 scores per entry
  * - Tap anywhere to navigate to browse mode
  * - Real-time score updates with toast alerts
- * - Smooth slide transitions between modes
+ * - Smooth slide transitions between entries
  * - Clock display readable from across the room
  * - QR code for easy mobile access (tap to show/hide)
  */
 export function IdleDisplay() {
   const navigate = useNavigate()
-  const { modes, loading: modesLoading, error: modesError } = useActiveGameModes()
+  const { items, loading: itemsLoading, error: itemsError, refetch } = useCarouselItems()
   const cycleSpeedMs = useKioskStore((state) => state.cycleSpeedMs)
 
   const [currentIndex, setCurrentIndex] = useState(0)
-  const currentMode = modes[currentIndex]
+  const currentItem = items[currentIndex]
 
   // Clock state - updates every minute
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -6807,12 +9085,13 @@ export function IdleDisplay() {
     return () => clearInterval(timer)
   }, [])
 
-  // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
+  // Fetch leaderboard for current carousel item
+  // Now includes detail_id for proper filtering
   const { entries: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
-    currentMode?.game_id || null,
-    currentMode?.id || null,
-    null, // detailId - not applicable in idle display
-    4     // limit - show top 4
+    currentItem?.game_id || null,
+    currentItem?.mode_id || null,
+    currentItem?.detail_id || null,
+    4 // limit - show top 4
   )
 
   // Realtime alert state
@@ -6831,7 +9110,11 @@ export function IdleDisplay() {
       setAlertData(details)
       setShowAlert(true)
     }
-  }, [fetchScoreDetails])
+
+    // Refetch carousel items to include any new game/mode/detail combinations
+    // and to ensure the leaderboard reflects the new score
+    refetch()
+  }, [fetchScoreDetails, refetch])
 
   useRealtimeScores(handleNewScore)
 
@@ -6842,16 +9125,23 @@ export function IdleDisplay() {
     setTimeout(() => setAlertData(null), 300)
   }, [])
 
-  // Auto-cycle through modes
+  // Auto-cycle through items
   useEffect(() => {
-    if (modes.length === 0) return
+    if (items.length === 0) return
 
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % modes.length)
+      setCurrentIndex((prev) => (prev + 1) % items.length)
     }, cycleSpeedMs)
 
     return () => clearInterval(timer)
-  }, [modes.length, cycleSpeedMs])
+  }, [items.length, cycleSpeedMs])
+
+  // Reset index if it's out of bounds after refetch
+  useEffect(() => {
+    if (currentIndex >= items.length && items.length > 0) {
+      setCurrentIndex(0)
+    }
+  }, [items.length, currentIndex])
 
   // Handle tap to navigate
   const handleTap = () => {
@@ -6869,38 +9159,44 @@ export function IdleDisplay() {
     setShowQR((prev) => !prev)
   }
 
-  // Get game icon or generate fallback
-  const gameInitials = currentMode?.game_name ? getInitials(currentMode.game_name) : ''
-  const gameColor = currentMode?.game_name ? getPlayerColor(currentMode.game_name) : '#6b7280'
+  // Navigate to settings
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigate('/settings')
+  }
 
-  // Error state for modes loading
-  if (modesError) {
+  // Get game icon or generate fallback
+  const gameInitials = currentItem?.game_name ? getInitials(currentItem.game_name) : ''
+  const gameColor = currentItem?.game_name ? getPlayerColor(currentItem.game_name) : '#6b7280'
+
+  // Error state for items loading
+  if (itemsError) {
     return (
       <KioskLayout>
         <div className="h-full flex flex-col items-center justify-center">
           <p className="text-xl text-red-500 mb-2">Connection Error</p>
-          <p className="text-text-secondary text-sm">{modesError.message}</p>
+          <p className="text-text-secondary text-sm">{itemsError.message}</p>
         </div>
       </KioskLayout>
     )
   }
 
   // Loading state
-  if (modesLoading) {
+  if (itemsLoading) {
     return (
       <KioskLayout>
         <div className="h-full flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full border-2 border-text-muted border-t-text-primary animate-spin" />
-            <p className="text-text-secondary">Loading game modes...</p>
+            <p className="text-text-secondary">Loading leaderboards...</p>
           </div>
         </div>
       </KioskLayout>
     )
   }
 
-  // Empty state - no modes with scores
-  if (modes.length === 0) {
+  // Empty state - no items with scores
+  if (items.length === 0) {
     return (
       <KioskLayout>
         <div
@@ -6928,11 +9224,11 @@ export function IdleDisplay() {
         className="h-full flex flex-col cursor-pointer relative"
         onClick={handleTap}
       >
-        {/* Header: Game + Mode info + Clock */}
+        {/* Header: Game + Mode/Detail info + Clock */}
         <div className="h-[72px] px-md flex items-center justify-between border-b border-background-elevated/50">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentMode?.id}
+              key={currentItem?.key}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -6940,9 +9236,9 @@ export function IdleDisplay() {
               className="flex-1"
             >
               <div className="flex items-center gap-3">
-                {currentMode?.game_icon ? (
+                {currentItem?.game_icon ? (
                   <img
-                    src={currentMode.game_icon}
+                    src={currentItem.game_icon}
                     alt=""
                     className="w-10 h-10 rounded-lg shadow-card"
                   />
@@ -6956,18 +9252,18 @@ export function IdleDisplay() {
                 )}
                 <div>
                   <h1 className="text-xl font-bold text-text-primary">
-                    {currentMode?.game_name}
+                    {currentItem?.game_name}
                   </h1>
                   <p className="text-sm text-text-secondary">
-                    {currentMode?.name}
+                    {buildSubtitle(currentItem)}
                   </p>
                 </div>
               </div>
             </motion.div>
           </AnimatePresence>
 
-          {/* Clock - readable from across the room */}
-          <div className="text-xl font-mono font-bold text-text-secondary">
+          {/* Clock - ENLARGED for readability from across the room */}
+          <div className="font-mono font-bold text-text-secondary" style={{ fontSize: '48px' }}>
             {formatTime(currentTime)}
           </div>
         </div>
@@ -6976,7 +9272,7 @@ export function IdleDisplay() {
         <div className="flex-1 flex flex-col justify-center px-md py-4">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentMode?.id}
+              key={currentItem?.key}
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
@@ -6995,11 +9291,13 @@ export function IdleDisplay() {
                   </p>
                 </div>
               ) : scores.length === 0 ? (
-                <div className="flex items-center justify-center h-[288px]">
-                  <p className="text-text-secondary">No scores yet for this mode</p>
+                <div className="flex flex-col items-center justify-center h-[288px]">
+                  <Trophy className="w-12 h-12 text-text-muted mb-3" strokeWidth={1.5} />
+                  <p className="text-text-secondary">No scores for this leaderboard</p>
+                  <p className="text-sm text-text-muted mt-1">Tap to add the first score!</p>
                 </div>
               ) : (
-                scores.slice(0, 4).map((entry, index) => (
+                scores.map((entry, index) => (
                   <motion.div
                     key={entry.score_id}
                     initial={{ opacity: 0, y: 10 }}
@@ -7012,7 +9310,7 @@ export function IdleDisplay() {
                       playerAvatar={entry.player_avatar}
                       score={entry.score}
                       scoreFormat={entry.effective_format}
-                      scoreUnit={entry.effective_unit}
+                      scoreUnit={entry.effective_unit || undefined}
                       className="card"
                     />
                   </motion.div>
@@ -7022,79 +9320,74 @@ export function IdleDisplay() {
           </AnimatePresence>
         </div>
 
-        {/* Footer: Settings + hint/dots + QR toggle */}
-        <div className="h-[48px] flex items-center justify-between px-md">
+        {/* Footer: Settings + Tap hint + QR toggle */}
+        <div className="h-[40px] px-md flex items-center justify-between border-t border-background-elevated/50">
           {/* Settings button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate('/settings')
-            }}
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-text-muted active:text-text-secondary active:bg-background-elevated transition-colors"
+            onClick={handleSettingsClick}
+            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary transition-colors"
           >
             <SettingsIcon className="w-5 h-5" />
           </button>
 
-          {/* Center content: hint + dots */}
-          <div className="flex items-center gap-3">
-            <p className="text-xs text-text-muted">
-              Tap to browse
-            </p>
-            {/* Progress dots */}
-            {modes.length > 1 && (
-              <div className="flex gap-1">
-                {modes.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      idx === currentIndex 
-                        ? 'bg-text-secondary w-4' 
-                        : 'bg-background-elevated'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Tap hint */}
+          <p className="text-sm text-text-muted">Tap to browse</p>
 
-          {/* QR code toggle button */}
+          {/* QR code toggle */}
           <button
             onClick={handleQRToggle}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-              showQR 
-                ? 'text-text-primary bg-background-elevated' 
-                : 'text-text-muted active:text-text-secondary active:bg-background-elevated'
-            }`}
+            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary transition-colors"
           >
             <QrCode className="w-5 h-5" />
           </button>
         </div>
 
-        {/* QR Code overlay - shows in bottom right when toggled */}
+        {/* Carousel indicator dots */}
+        {items.length > 1 && (
+          <div className="absolute bottom-[48px] left-0 right-0 flex justify-center gap-1.5">
+            {items.map((item, index) => (
+              <div
+                key={item.key}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  index === currentIndex
+                    ? 'bg-text-primary w-3'
+                    : 'bg-text-muted'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* QR Code overlay */}
         <AnimatePresence>
           {showQR && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="absolute bottom-16 right-4 p-4 rounded-xl card"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 flex items-center justify-center"
+              onClick={() => setShowQR(false)}
             >
-              <div className="bg-white p-3 rounded-lg">
-                <QRCodeSVG 
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                className="bg-white p-6 rounded-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <QRCodeSVG
                   value={SCOREBOARD_URL}
-                  size={120}
+                  size={200}
                   level="M"
                   includeMargin={false}
                 />
-              </div>
-              <p className="text-xs text-text-muted text-center mt-2">
-                Scan to add scores
-              </p>
-              <p className="text-xs text-text-secondary text-center font-mono">
-                scoreboard.local
-              </p>
+                <p className="text-center text-black text-sm mt-4 font-medium">
+                  Scan to access on your phone
+                </p>
+                <p className="text-center text-gray-500 text-xs mt-1">
+                  {SCOREBOARD_URL}
+                </p>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -7108,9 +9401,10 @@ export function IdleDisplay() {
           playerName={alertData.playerName}
           score={alertData.score}
           scoreFormat={alertData.scoreFormat}
-          scoreUnit={alertData.scoreUnit}
+          scoreUnit={alertData.scoreUnit ?? ''}
           gameName={alertData.gameName}
           modeName={alertData.modeName ?? ''}
+          detailName={alertData.detailName ?? ''}
           rank={alertData.rank}
         />
       )}
@@ -7138,6 +9432,7 @@ export { Manage } from './Manage'
 
 ## File: src/pages/LeaderboardView.tsx
 ```tsx
+// src/pages/LeaderboardView.tsx
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -7160,7 +9455,7 @@ import { useIdleTimer } from '@/hooks/useIdleTimer'
  */
 export function LeaderboardView() {
   const navigate = useNavigate()
-  const { category, gameId, modeId, detailId } = useParams<{
+  const { gameId, modeId, detailId } = useParams<{
     category: string
     gameId: string
     modeId: string
@@ -7189,14 +9484,10 @@ export function LeaderboardView() {
     }
   }, [isIdle, navigate])
 
+  // FIX: Use browser history instead of relying on async data that may not be loaded
   const handleBack = () => {
     resetTimer()
-    // Go back to detail selection if game has details, otherwise mode selection
-    if (currentGame?.has_details) {
-      navigate(`/browse/${category}/${gameId}/${modeId}`)
-    } else {
-      navigate(`/browse/${category}/${gameId}`)
-    }
+    navigate(-1)
   }
 
   const handleAddScore = () => {
@@ -7210,12 +9501,19 @@ export function LeaderboardView() {
     return currentMode.name
   }
 
+  // Build back label - use mode name or game name, fallback to "Back"
+  const buildBackLabel = () => {
+    if (currentMode?.name) return currentMode.name
+    if (currentGame?.name) return currentGame.name
+    return 'Back'
+  }
+
   return (
     <KioskLayout>
       <div className="h-full flex flex-col">
         {/* Header */}
         <BrowseHeader
-          backLabel={currentGame?.has_details ? (currentGame?.detail_label || 'Back') : (currentGame?.name || 'Back')}
+          backLabel={buildBackLabel()}
           onBack={handleBack}
           onAddScore={handleAddScore}
         />
@@ -7313,7 +9611,9 @@ import { useManageGameDetails } from '@/hooks/useManageGameDetails'
 import { useManageScores, type ScoreWithDetails } from '@/hooks/useManageScores'
 import { useKioskStore } from '@/stores/kioskStore'
 import { formatScore } from '@/lib/utils'
+import { AvatarUpload } from '@/components/input'
 import type { Player, Game, GameMode, GameDetail, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
+import { BulkImportModal } from '@/components/management'
 
 type Tab = 'players' | 'games' | 'details' | 'scores'
 
@@ -7356,6 +9656,7 @@ export function Manage() {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [showPlayerForm, setShowPlayerForm] = useState(false)
   const [playerName, setPlayerName] = useState('')
+  const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null)
   const [deletingPlayer, setDeletingPlayer] = useState<Player | null>(null)
 
   // Games state
@@ -7392,9 +9693,10 @@ export function Manage() {
   const [detailUnit, setDetailUnit] = useState('')
   const [deletingDetail, setDeletingDetail] = useState<GameDetail | null>(null)
 
-  // Scores state
+// Scores state
   const { scores, loading: scoresLoading, fetchScores, deleteScore } = useManageScores()
   const [deletingScore, setDeletingScore] = useState<ScoreWithDetails | null>(null)
+  const [showBulkImport, setShowBulkImport] = useState(false)
 
   // PIN state
   const { adminPin, setAdminPin, verifyPin } = useKioskStore()
@@ -7492,24 +9794,26 @@ export function Manage() {
   }
 
   const handleEditPlayer = (player: Player) => {
-    setEditingPlayer(player)
-    setPlayerName(player.name)
-    setShowPlayerForm(true)
-  }
-
+  setEditingPlayer(player)
+  setPlayerName(player.name)
+  setPlayerAvatarUrl(player.avatar_url)
+  setShowPlayerForm(true)
+}
+  
   const handleSavePlayer = async () => {
     if (!playerName.trim()) return
     
     if (editingPlayer) {
-      await updatePlayer(editingPlayer.id, playerName.trim())
+      await updatePlayer(editingPlayer.id, playerName.trim(), playerAvatarUrl)
     } else {
-      await createPlayer(playerName.trim())
+      await createPlayer(playerName.trim(), playerAvatarUrl)
     }
     setShowPlayerForm(false)
     setPlayerName('')
+    setPlayerAvatarUrl(null)
     setEditingPlayer(null)
-  }
-
+}
+   
   const handleConfirmDeletePlayer = () => {
     if (!deletingPlayer) return
     requirePin(async () => {
@@ -8049,9 +10353,16 @@ export function Manage() {
                 exit={{ opacity: 0, x: 20 }}
                 className="h-full flex flex-col"
               >
-                <div className="px-md py-3">
+                
+              <div className="px-md py-3 flex items-center justify-between">
                   <p className="text-sm text-text-muted">Recent scores — tap to delete</p>
-                </div>
+                  <button
+                    onClick={() => setShowBulkImport(true)}
+                    className="text-sm text-category-golf font-medium active:opacity-70"
+                  >
+                    Bulk Import
+                  </button>
+                </div>  
 
                 <div className="flex-1 overflow-y-auto px-md pb-4 space-y-2">
                   {scoresLoading ? (
@@ -8091,6 +10402,7 @@ export function Manage() {
       </div>
 
       {/* Player Form Modal */}
+      {/* Player Form Modal */}
       <AnimatePresence>
         {showPlayerForm && (
           <motion.div
@@ -8098,7 +10410,7 @@ export function Manage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-md"
-            onClick={() => setShowPlayerForm(false)}
+            onClick={() => { setShowPlayerForm(false); setPlayerAvatarUrl(null) }}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -8113,12 +10425,23 @@ export function Manage() {
                   {editingPlayer ? 'Edit Player' : 'Add Player'}
                 </h2>
                 <button
-                  onClick={() => setShowPlayerForm(false)}
+                  onClick={() => { setShowPlayerForm(false); setPlayerAvatarUrl(null) }}
                   className="w-8 h-8 flex items-center justify-center text-text-muted rounded-lg"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              
+              {/* Avatar upload */}
+              <div className="flex justify-center mb-4">
+                <AvatarUpload
+                  currentUrl={playerAvatarUrl}
+                  playerName={playerName || 'New Player'}
+                  onChange={setPlayerAvatarUrl}
+                  playerId={editingPlayer?.id}
+                />
+              </div>
+
               <input
                 type="text"
                 value={playerName}
@@ -8434,6 +10757,15 @@ export function Manage() {
         mode={pinMode}
         error={pinError}
       />
+
+            {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onSuccess={() => {
+          fetchScores()
+        }}
+      />
     </KioskLayout>
   )
 }
@@ -8441,13 +10773,15 @@ export function Manage() {
 
 ## File: src/pages/ModeSelection.tsx
 ```tsx
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { ModeCard } from '@/components/cards/ModeCard'
+import { NewPlayerModal } from '@/components/input'
 import { useGameModes } from '@/hooks/useGameModes'
 import { useGame } from '@/hooks/useGame'
+import { usePlayers } from '@/hooks/usePlayers'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 
 /**
@@ -8463,7 +10797,12 @@ export function ModeSelection() {
   const { category, gameId } = useParams<{ category: string; gameId: string }>()
   const { modes, loading, error } = useGameModes(gameId || null)
   const { game: currentGame } = useGame(gameId || null)
+  const { createPlayer } = usePlayers()
   const { isIdle, resetTimer } = useIdleTimer(30000)
+
+  // New Player modal state
+  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
+  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -8493,21 +10832,43 @@ export function ModeSelection() {
     navigate('/add-score')
   }
 
+  const handleAddPlayer = () => {
+    resetTimer()
+    setShowNewPlayerModal(true)
+  }
+
+  const handleManage = () => {
+    resetTimer()
+    navigate('/manage')
+  }
+
+  const handleCreatePlayer = async (name: string) => {
+    setIsCreatingPlayer(true)
+    try {
+      await createPlayer(name)
+      setShowNewPlayerModal(false)
+    } finally {
+      setIsCreatingPlayer(false)
+    }
+  }
+
   // Get the label for modes from game config
   const modeLabel = currentGame?.mode_label || 'Mode'
 
   return (
     <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
+      <div className="h-full min-h-[480px] flex flex-col">
+        {/* Header with action sheet */}
         <BrowseHeader
           backLabel={currentGame?.name || 'Back'}
           onBack={handleBack}
           onAddScore={handleAddScore}
+          onAddPlayer={handleAddPlayer}
+          onManage={handleManage}
         />
 
         {/* Game title */}
-        <div className="h-[48px] px-md flex items-center gap-3">
+        <div className="h-[48px] px-md flex items-center gap-3 flex-shrink-0">
           {currentGame?.icon_url && (
             <img
               src={currentGame.icon_url}
@@ -8528,16 +10889,16 @@ export function ModeSelection() {
         {/* Modes list */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">Loading {modeLabel.toLowerCase()}s...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
               <p className="text-red-500 mb-2">Error loading {modeLabel.toLowerCase()}s</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
           ) : modes.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[200px]">
               <p className="text-text-secondary">No {modeLabel.toLowerCase()}s for this game</p>
             </div>
           ) : (
@@ -8552,6 +10913,14 @@ export function ModeSelection() {
           )}
         </div>
       </div>
+
+      {/* New Player Modal */}
+      <NewPlayerModal
+        isOpen={showNewPlayerModal}
+        onClose={() => setShowNewPlayerModal(false)}
+        onCreate={handleCreatePlayer}
+        isCreating={isCreatingPlayer}
+      />
     </KioskLayout>
   )
 }

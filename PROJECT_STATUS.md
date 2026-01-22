@@ -1,249 +1,92 @@
-# Project Status — Game Room Scoreboard
+# Project Status - Game Room Scoreboard
 
-**Last Updated:** 2025-01-20  
-**Current Version:** 1.0.0-beta  
-**Status:** Beta Release Ready
+**Last Updated:** 2025-01-21  
+**Current Version:** 0.9.9  
+**Target Version:** 1.0.0 (Beta Release)
 
 ---
 
 ## Executive Summary
 
-🎉 **Beta release complete!** All planned features implemented and tested. The application is ready for real-world testing on the Raspberry Pi kiosk.
+Beta-ready. Application is stable with 119 passing E2E tests. Documentation audit complete.
 
-**v1.0.0-beta Completions (2025-01-20):**
-- ✅ ALPHA-006: Responsive CSS for mobile devices
-- ✅ ALPHA-003: CRUD discoverability (+Add action sheet)
-- ✅ ALPHA-009: Avatar upload with camera icon affordance
-- ✅ ALPHA-014: Bulk CSV/JSON import with score format parsing
-- ✅ ALPHA-015: Score editing UI
-
-**Previous Completions:**
-- ✅ Lucide React icons (cross-platform)
-- ✅ Clock display on idle screen
-- ✅ QR code for mobile access + mDNS
-- ✅ 6-theme system with customization
-- ✅ Playwright E2E test suite (104 tests)
+**Completed (2025-01-21):**
+- Fixed QR code to use dynamic IP detection (works on any network)
+- Fixed mobile IdleDisplay layout (uses responsive CSS class)
+- Removed console.log from production code
+- Documentation audit and cleanup
+- Ready for git commit and Pi deployment
 
 ---
 
-## What Works (Current State)
+## Ticket Status
 
-### Core Features ✅
-- [x] Idle carousel with auto-cycling leaderboards
-- [x] Browse interface (Category → Game → Mode → Detail navigation)
-- [x] Add Score flow with player/game/mode/detail selection
-- [x] Celebration overlay with confetti animation
-- [x] Realtime score updates via Supabase subscriptions
-- [x] Sound effects (Web Audio API synthesizer)
-- [x] Settings panel (sound, carousel speed, celebration duration)
-- [x] Management UI for CRUD operations
-- [x] Admin PIN protection for destructive actions
-- [x] 3-level hierarchy (Game → Mode → Detail)
-- [x] Golf relative scoring (+3, E, -2)
+### Closed
 
-### New in v1.0.0-beta ✅
-- [x] Responsive CSS (mobile-friendly layouts)
-- [x] Action sheet menu (+Add → Add Score / Add Player / Manage)
-- [x] Avatar upload with camera icon overlay
-- [x] Bulk import (CSV/JSON with smart score parsing)
-- [x] Score editing modal
-- [x] Lucide React icons (replaces emojis)
-- [x] Clock display on idle screen (12-hour format)
-- [x] QR code popup for mobile access
-- [x] mDNS hostname (scoreboard.local)
-- [x] Theme system (6 presets + customization)
-- [x] E2E test suite (Playwright)
+| Ticket | Description | Resolution |
+|--------|-------------|------------|
+| ALPHA-001 | pm2 + serve stability | Completed 2025-01-17 |
+| ALPHA-002 | On-screen keyboard | Completed 2025-01-17 |
+| ALPHA-003 | CRUD discoverability | **User accepted** Settings -> Manage |
+| ALPHA-004 | 3-level hierarchy | Completed 2025-01-18 |
+| ALPHA-005 | Lucide icons | Completed 2025-01-20 |
+| ALPHA-007 | Golf relative scoring | Completed 2025-01-18 |
+| ALPHA-008 | Comprehensive seed data | Completed 2025-01-18 |
+| ALPHA-009 | Avatar upload UX | **User accepted** current flow |
+| ALPHA-010 | Clock on idle screen | Completed 2025-01-20 |
+| ALPHA-011 | QR code + mDNS | Completed 2025-01-20, **improved 2025-01-21** |
+| ALPHA-012 | Theme system | Completed 2025-01-20 |
+| ALPHA-013 | E2E testing | Completed 2025-01-20 |
+| BETA-001 | Clock too small | Fixed 2025-01-21 |
+| BETA-002 | Idle doesn't refresh | Fixed 2025-01-21 |
+| BETA-005 | Carousel grouping | Fixed 2025-01-21 |
+| BETA-006 | Back button broken | Fixed 2025-01-21 |
 
-### Infrastructure ✅
-- [x] Supabase backend (PostgreSQL + Realtime + Storage)
-- [x] GitHub repository
-- [x] Pi deployment via pm2 + serve
-- [x] On-screen keyboard (onboard)
-- [x] Comprehensive seed data
+### Deferred
 
----
-
-## Completed Tickets
-
-| Ticket | Description | Completed |
-|--------|-------------|-----------|
-| ALPHA-001 | pm2 + serve server stability | 2025-01-17 |
-| ALPHA-002 | On-screen keyboard | 2025-01-17 |
-| ALPHA-003 | CRUD discoverability (action sheet) | 2025-01-20 |
-| ALPHA-004 | 3-level hierarchy schema | 2025-01-18 |
-| ALPHA-005 | Lucide icons (replace emojis) | 2025-01-20 |
-| ALPHA-006 | Responsive CSS for mobile | 2025-01-20 |
-| ALPHA-007 | Golf relative scoring | 2025-01-18 |
-| ALPHA-008 | Comprehensive seed data | 2025-01-18 |
-| ALPHA-009 | Avatar upload discoverability | 2025-01-20 |
-| ALPHA-010 | Clock on idle screen | 2025-01-20 |
-| ALPHA-011 | QR code + mDNS | 2025-01-20 |
-| ALPHA-012 | Theme system | 2025-01-20 |
-| ALPHA-013 | E2E testing | 2025-01-20 |
-| ALPHA-014 | Bulk CSV/JSON import | 2025-01-20 |
-| ALPHA-015 | Score editing UI | 2025-01-20 |
+| Ticket | Description | Notes |
+|--------|-------------|-------|
+| ALPHA-006 | Responsive CSS for mobile | Functional but needs polish - schedule mobile UI sprint if beta testing reveals heavy mobile usage |
+| ALPHA-014 | Bulk CSV/JSON import | No UI exists |
+| ALPHA-015 | Score editing UI | Hook exists, UI not wired |
 
 ---
 
 ## Test Coverage
 
-**Playwright E2E Tests:** 104 tests passing
+**Playwright E2E Tests:** 119 tests passing
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
-| navigation.spec.ts | 11 | Routing, back buttons, browse hierarchy |
-| settings.spec.ts | 21 | Theme switching, sound, display settings |
-| score-submission.spec.ts | 13 | Form elements, validation |
-| score-flow.spec.ts | 7 | End-to-end submission flows |
-| crud-operations.spec.ts | 14 | Create, Read, Update, Delete with verification |
-| realtime-edge-cases.spec.ts | 14 | Error handling, persistence, features |
-| management.spec.ts | 13 | Tab navigation, basic structure |
-| visual-accessibility.spec.ts | 11 | Touch targets, fonts, viewport |
+| navigation.spec.ts | 11 | Routing, back buttons |
+| settings.spec.ts | 21 | Theme, sound, display |
+| score-submission.spec.ts | 13 | Form elements |
+| score-flow.spec.ts | 7 | End-to-end submission |
+| crud-operations.spec.ts | 14 | CRUD with verification |
+| realtime-edge-cases.spec.ts | 14 | Error handling |
+| management.spec.ts | 13 | Tab navigation |
+| visual-accessibility.spec.ts | 11 | Touch targets, fonts |
+| regression-beta-fixes.spec.ts | 15 | Beta bug regression |
 
-Run tests: `npm run test:e2e`
-
----
-
-## Theme System
-
-### Available Themes
-| Theme | Description |
-|-------|-------------|
-| Dark (default) | Classic dark mode with subtle grays |
-| Light | Clean light mode with dark text |
-| OLED | Pure black for OLED screens |
-| Cyberpunk | Neon cyan/magenta accents |
-| Retro | Warm amber/orange tones |
-| Nature | Forest greens and earth tones |
-
-### Customization
-- Text color override (auto/light/dark)
-- Reset to theme defaults
-- Persistent across sessions
+**Note:** Tests run against real database. CRUD tests may modify data.
 
 ---
 
-## New Components in v1.0.0-beta
+## Next Steps
 
-### Action Sheet
-- Bottom sheet menu triggered by +Add button
-- Options: Add Score, Add Player, Manage...
-- Swipe/tap to dismiss
-
-### Avatar Upload
-- Camera icon overlay on player avatars
-- Tap to upload from device
-- Supabase Storage integration
-- X button to remove
-
-### Bulk Import
-- Smart paste box (auto-detects CSV vs JSON)
-- Fuzzy matching for player/game/mode names
-- Score format parsing based on game/mode settings
-- Validation preview before import
-
-### Edit Score Modal
-- Smart input selection based on score_format
-- TimeInput for race times
-- NumericInput for points/golf scores
+1. ~~Beta bug fixes~~ Complete
+2. ~~Documentation audit~~ Complete
+3. **Git commit and push** <- Current
+4. Deploy to Pi
+5. Final manual testing
+6. Beta release
 
 ---
 
-## Score Format Reference
+## Known Issues
 
-| Format | User Enters | Examples |
-|--------|-------------|----------|
-| `integer` | Whole number | `1000`, `47` |
-| `time_ms` | `M:SS.mmm` or `SS.mmm` | `1:23.456`, `83.456` |
-| `time_seconds` | `M:SS` or seconds | `4:56`, `296` |
-| `golf_relative` | Relative to par | `-6`, `+2`, `0`, `E` |
-| `decimal_2` | Decimal | `98.45` |
-| `level` | `X-Y` format | `8-4` |
-
----
-
-## File Structure
-
-```
-├── src/
-│   ├── components/
-│   │   ├── cards/         # CategoryButton, GameCard, ModeCard
-│   │   ├── display/       # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
-│   │   ├── input/         # SelectField, PickerModal, TimeInput, NumericInput, AvatarUpload
-│   │   ├── layout/        # KioskLayout, BrowseHeader
-│   │   ├── management/    # ConfirmDialog, PinModal, EditScoreModal, BulkImportModal
-│   │   ├── overlays/      # CelebrationOverlay, RealtimeScoreAlert, ActionSheet
-│   │   └── ui/            # BottomSheet
-│   ├── hooks/             # Data fetching + subscriptions + useBulkImport, useAvatarUpload
-│   ├── lib/               # Utilities, Supabase client, types, scoreParser
-│   ├── pages/             # Route components
-│   └── stores/            # Zustand state management
-├── tests/                 # Playwright E2E tests
-├── public/
-│   └── sounds/            # Audio files
-└── supabase/
-    ├── schema.sql         # Database schema
-    ├── clear_data.sql     # Wipe existing data
-    └── seed.sql           # Comprehensive seed data
-```
-
----
-
-## Environment Commands
-
-```bash
-# Development
-npm install
-npm run dev              # localhost:5173
-npm run dev -- --host    # Expose to network
-
-# Testing
-npm run test:e2e         # Run all E2E tests
-npm run test:e2e:ui      # Interactive test UI
-npm run test:e2e:headed  # Watch tests run
-
-# Production Build
-npm run build
-npm run preview -- --host
-
-# Production Server (Pi)
-pm2 start "serve -s dist -l 4173" --name scoreboard
-pm2 save
-pm2 startup
-
-# Type Check
-npx tsc --noEmit
-```
-
----
-
-## Beta Testing Checklist
-
-### On Kiosk (800×480)
-- [ ] Idle carousel cycles correctly
-- [ ] Touch targets are easy to hit
-- [ ] Fonts readable from across room
-- [ ] Themes display correctly
-- [ ] Sound effects work
-
-### On Mobile
-- [ ] QR code scans and loads app
-- [ ] Responsive layout fits screen
-- [ ] Can add scores successfully
-- [ ] Action sheet works
-- [ ] Avatar upload works
-
-### Data Operations
-- [ ] Bulk import parses correctly
-- [ ] Score editing saves correctly
-- [ ] Realtime updates work
-- [ ] Celebrations trigger
-
----
-
-## Next Steps (Post-Beta)
-
-1. 🔲 Beta testing on Pi
-2. 🔲 Gather user feedback
-3. 🔲 Bug fixes
-4. 🔲 v1.0.0 stable release
+### Mobile UI
+The mobile layout is functional but could use a dedicated polish sprint:
+- IdleDisplay now uses `idle-header` CSS class for responsive behavior
+- Some elements may still feel cramped on smaller phones
+- Consider dedicated mobile UI sprint if beta feedback indicates heavy mobile usage

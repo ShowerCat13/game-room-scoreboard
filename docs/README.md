@@ -2,14 +2,9 @@
 
 A beautiful, touch-friendly high score tracker for your home game room. Built for Raspberry Pi kiosks, accessible from any device.
 
-![Version](https://img.shields.io/badge/version-1.0.0--beta-blue)
+![Version](https://img.shields.io/badge/version-0.9.8-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen)
-
-<p align="center">
-  <img src="docs/images/idle-display.png" alt="Idle Display" width="400">
-  <img src="docs/images/mobile-view.png" alt="Mobile View" width="200">
-</p>
+![Tests](https://img.shields.io/badge/tests-119%20passing-brightgreen)
 
 ---
 
@@ -113,6 +108,20 @@ The idle display shows auto-cycling leaderboards. Tap to interact:
 
 ---
 
+## ⚠️ Known Limitations
+
+This is a beta version with intentional scope limitations:
+
+- **No offline mode** — Requires network connection to Supabase
+- **Single household** — No multi-user/multi-tenant support
+- **English only** — No internationalization
+- **Kiosk-first** — Mobile responsive layout is partially implemented
+- **PIN is not secure** — Simple deterrent for home use, not cryptographic protection
+
+See [Future Enhancements](FUTURE_ENHANCEMENTS.md) for planned features.
+
+---
+
 ## 🖥️ Raspberry Pi Deployment
 
 ### Build & Serve
@@ -149,7 +158,7 @@ sudo reboot
 ## 🧪 Testing
 
 ```bash
-npm run test:e2e         # Run all 104 tests
+npm run test:e2e         # Run all 119 tests
 npm run test:e2e:ui      # Interactive test UI
 npm run test:e2e:headed  # Watch tests run
 ```
@@ -160,10 +169,10 @@ npm run test:e2e:headed  # Watch tests run
 
 | Document | Description |
 |----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | How to use all features |
-| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Architecture, contributing, deployment |
+| [User Guide](USER_GUIDE.md) | How to use all features |
+| [Developer Guide](DEVELOPER_GUIDE.md) | Architecture, contributing, deployment |
 | [Changelog](CHANGELOG.md) | Version history |
-| [Future Enhancements](docs/FUTURE_ENHANCEMENTS.md) | Roadmap and ideas |
+| [Future Enhancements](FUTURE_ENHANCEMENTS.md) | Roadmap and ideas |
 
 ---
 
@@ -180,7 +189,7 @@ npm run test:e2e:headed  # Watch tests run
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read the [Developer Guide](docs/DEVELOPER_GUIDE.md) for setup instructions and coding standards.
+Contributions are welcome! Please read the [Developer Guide](DEVELOPER_GUIDE.md) for setup instructions and coding standards.
 
 1. Fork the repository
 2. Create a feature branch

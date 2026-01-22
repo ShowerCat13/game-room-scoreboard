@@ -50,7 +50,7 @@ Show how scores have improved over time:
 - "Your best ever!" badges
 
 **Implementation:**
-- Use Recharts (already available)
+- Install Recharts (npm install recharts)
 - Query historical scores with timestamps
 - Optional: Supabase Edge Function for aggregation
 

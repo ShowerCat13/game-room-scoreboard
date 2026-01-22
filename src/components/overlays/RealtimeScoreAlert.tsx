@@ -1,3 +1,4 @@
+// src/components/overlays/RealtimeScoreAlert.tsx
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Medal } from 'lucide-react'
@@ -14,8 +15,26 @@ interface RealtimeScoreAlertProps {
   scoreUnit?: string | null
   gameName: string
   modeName: string
+  detailName?: string | null  // NEW: Optional detail name
   rank: number
   autoCloseMs?: number
+}
+
+/**
+ * Build the context string for the alert (Game — Mode — Detail)
+ */
+function buildContextString(gameName: string, modeName: string, detailName?: string | null): string {
+  const parts = [gameName]
+  
+  if (modeName) {
+    parts.push(modeName)
+  }
+  
+  if (detailName) {
+    parts.push(detailName)
+  }
+  
+  return parts.join(' — ')
 }
 
 /**
@@ -32,6 +51,7 @@ export function RealtimeScoreAlert({
   scoreUnit,
   gameName,
   modeName,
+  detailName,
   rank,
   autoCloseMs = 5000,
 }: RealtimeScoreAlertProps) {
@@ -52,6 +72,7 @@ export function RealtimeScoreAlert({
   const isFirstPlace = rank === 1
   const isPodium = rank <= 3
   const formattedScore = formatScore(score, scoreFormat, scoreUnit)
+  const contextString = buildContextString(gameName, modeName, detailName)
 
   // Get medal color class
   const getMedalColorClass = () => {
@@ -100,44 +121,43 @@ export function RealtimeScoreAlert({
               {/* Icon */}
               <div className={`
                 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0
-                ${isFirstPlace ? 'bg-yellow-500/20' : 'bg-blue-500/20'}
+                ${isFirstPlace 
+                  ? 'bg-gradient-to-br from-yellow-500/30 to-yellow-600/20' 
+                  : isPodium 
+                    ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10'
+                    : 'bg-background-elevated'
+                }
               `}>
-                <Zap className={`w-6 h-6 ${isFirstPlace ? 'text-yellow-400' : 'text-blue-400'}`} />
+                {isPodium ? (
+                  <Medal className={`w-6 h-6 ${getMedalColorClass()}`} />
+                ) : (
+                  <Zap className="w-6 h-6 text-category-party" />
+                )}
               </div>
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                {/* Title */}
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-base font-bold ${isFirstPlace ? 'text-gradient-gold' : 'text-text-primary'}`}>
-                    {isFirstPlace ? 'NEW RECORD!' : 'New Score!'}
-                  </span>
-                  {isPodium && (
-                    <Medal 
-                      className={`w-5 h-5 ${getMedalColorClass()}`} 
-                      fill="currentColor" 
-                      fillOpacity={0.2}
-                    />
-                  )}
-                </div>
-
                 {/* Player and score */}
-                <p className="text-sm text-text-primary truncate">
-                  <span className="font-semibold">{playerName}</span>
-                  <span className="text-text-secondary"> scored </span>
-                  <span className="font-mono font-semibold">{formattedScore}</span>
-                </p>
-
-                {/* Game context */}
-                <p className="text-xs text-text-muted truncate mt-0.5">
-                  {gameName} — {modeName}
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-text-primary truncate">
+                    {playerName}
+                  </span>
+                  <span className="text-text-muted">scored</span>
+                  <span className="font-mono font-bold text-lg text-text-primary">
+                    {formattedScore}
+                  </span>
+                </div>
+                
+                {/* Game/Mode/Detail context */}
+                <p className="text-sm text-text-secondary truncate mt-0.5">
+                  {contextString}
                 </p>
               </div>
 
               {/* Rank badge */}
               <div className={`
-                px-3 py-1 rounded-full text-sm font-bold flex-shrink-0
-                ${rank === 1 ? 'bg-yellow-500/20 text-yellow-400' : 
+                w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-lg
+                ${isFirstPlace ? 'bg-yellow-500/20 text-yellow-400' :
                   rank === 2 ? 'bg-gray-400/20 text-gray-300' :
                   rank === 3 ? 'bg-orange-600/20 text-orange-400' :
                   'bg-background-elevated text-text-secondary'}

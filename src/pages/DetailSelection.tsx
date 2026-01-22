@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react'
+// src/pages/DetailSelection.tsx
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { DetailCard } from '@/components/cards/DetailCard'
-import { NewPlayerModal } from '@/components/input'
 import { useGameDetails } from '@/hooks/useGameDetails'
 import { useGame } from '@/hooks/useGame'
 import { useGameMode } from '@/hooks/useGameMode'
-import { usePlayers } from '@/hooks/usePlayers'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 
 /**
@@ -28,12 +27,7 @@ export function DetailSelection() {
   const { game: currentGame } = useGame(gameId || null)
   const { mode: currentMode } = useGameMode(modeId || null)
   const { details, loading, error } = useGameDetails(gameId || null, modeId || null)
-  const { createPlayer } = usePlayers()
   const { isIdle, resetTimer } = useIdleTimer(30000)
-
-  // New Player modal state
-  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
-  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -60,8 +54,10 @@ export function DetailSelection() {
     navigate(`/browse/${category}/${gameId}/${modeId}/all`)
   }
 
+  // FIX: Use browser history instead of relying on async data
   const handleBack = () => {
-    navigate(`/browse/${category}/${gameId}`)
+    resetTimer()
+    navigate(-1)
   }
 
   const handleAddScore = () => {
@@ -69,43 +65,21 @@ export function DetailSelection() {
     navigate('/add-score')
   }
 
-  const handleAddPlayer = () => {
-    resetTimer()
-    setShowNewPlayerModal(true)
-  }
-
-  const handleManage = () => {
-    resetTimer()
-    navigate('/manage')
-  }
-
-  const handleCreatePlayer = async (name: string) => {
-    setIsCreatingPlayer(true)
-    try {
-      await createPlayer(name)
-      setShowNewPlayerModal(false)
-    } finally {
-      setIsCreatingPlayer(false)
-    }
-  }
-
   // Get the label for details from game config
   const detailLabel = currentGame?.detail_label || 'Track'
 
   return (
     <KioskLayout>
-      <div className="h-full min-h-[480px] flex flex-col">
-        {/* Header with action sheet */}
+      <div className="h-full flex flex-col">
+        {/* Header */}
         <BrowseHeader
           backLabel={currentMode?.name || 'Back'}
           onBack={handleBack}
           onAddScore={handleAddScore}
-          onAddPlayer={handleAddPlayer}
-          onManage={handleManage}
         />
 
         {/* Mode title */}
-        <div className="h-[48px] px-md flex items-center gap-3 flex-shrink-0">
+        <div className="h-[48px] px-md flex items-center gap-3">
           <div>
             <h2 className="text-lg font-bold text-text-primary">
               {currentGame?.name} — {currentMode?.name}
@@ -119,16 +93,16 @@ export function DetailSelection() {
         {/* Details list */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center h-full min-h-[200px]">
+            <div className="flex items-center justify-center h-full">
               <p className="text-text-secondary">Loading {detailLabel.toLowerCase()}s...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[200px]">
+            <div className="flex flex-col items-center justify-center h-full">
               <p className="text-red-500 mb-2">Error loading {detailLabel.toLowerCase()}s</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
           ) : details.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[200px] gap-4">
+            <div className="flex flex-col items-center justify-center h-full gap-4">
               <p className="text-text-secondary">No {detailLabel.toLowerCase()}s configured</p>
               <button
                 onClick={handleViewAll}
@@ -160,14 +134,6 @@ export function DetailSelection() {
           )}
         </div>
       </div>
-
-      {/* New Player Modal */}
-      <NewPlayerModal
-        isOpen={showNewPlayerModal}
-        onClose={() => setShowNewPlayerModal(false)}
-        onCreate={handleCreatePlayer}
-        isCreating={isCreatingPlayer}
-      />
     </KioskLayout>
   )
 }

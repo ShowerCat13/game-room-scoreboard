@@ -2,7 +2,7 @@
 
 A modern, touch-friendly high score tracker for home game rooms, built for Raspberry Pi kiosks.
 
-![Version](https://img.shields.io/badge/version-1.0.0--beta-blue)
+![Version](https://img.shields.io/badge/version-0.9.8-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![React](https://img.shields.io/badge/React-18-blue)
@@ -11,7 +11,7 @@ A modern, touch-friendly high score tracker for home game rooms, built for Raspb
 
 ## 🎮 Project Overview
 
-**Game Room Scoreboard** is a kiosk application designed for a 7" touchscreen (800×480) that displays and tracks high scores for various games — racing, golf, darts, pinball, RPGs, and more.
+**Game Room Scoreboard** is a kiosk application designed for a 7" touchscreen (800x480) that displays and tracks high scores for various games — racing, golf, darts, pinball, RPGs, and more.
 
 ### Why This Exists
 
@@ -72,7 +72,7 @@ Scores are stored as `BIGINT` and interpreted based on `score_format`:
 | `integer` | Raw value | `1000 pts` | higher_better |
 | `time_ms` | Milliseconds | `1:58.234` | lower_better |
 | `time_seconds` | Seconds | `4:56` | lower_better |
-| `decimal_2` | Value × 100 | `98.45%` | higher_better |
+| `decimal_2` | Value x 100 | `98.45%` | higher_better |
 | `golf_relative` | Raw value | `-3`, `E`, `+2` | lower_better |
 | `level` | Encoded | `8-4` | higher_better |
 
@@ -130,7 +130,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 npm run dev
 ```
 
-Open `http://localhost:5173` — use browser DevTools to emulate 800×480.
+Open `http://localhost:5173` — use browser DevTools to emulate 800x480.
 
 ### 5. Run Tests
 
@@ -175,7 +175,7 @@ The kiosk has strict constraints that drive all design decisions:
 
 | Constraint | Value | Reason |
 |------------|-------|--------|
-| **Display size** | 800×480px | 7" Raspberry Pi touchscreen |
+| **Display size** | 800x480px | 7" Raspberry Pi touchscreen |
 | **Touch targets** | ≥56px | Finger-friendly |
 | **Base font** | 18px | Readable from across room |
 | **Max rows** | 4-5 | Limited vertical space |
@@ -253,7 +253,7 @@ Themes are applied via CSS custom properties and `data-theme` attribute:
 
 ### E2E Tests (Playwright)
 
-104 tests covering:
+119 tests covering:
 - Navigation and routing
 - Score submission flows
 - CRUD operations
@@ -273,7 +273,7 @@ npx playwright test tests/navigation.spec.ts
 
 ### Test Configuration
 
-Tests run at 800×480 viewport to match the kiosk:
+Tests run at 800x480 viewport to match the kiosk:
 
 ```ts
 // playwright.config.ts
@@ -359,20 +359,7 @@ test: Add E2E tests for settings
 
 ## 🗺️ Roadmap
 
-### Future Ideas
-
-| Feature | Description | Complexity |
-|---------|-------------|------------|
-| **Tournaments** | Bracket/round-robin competitions | High |
-| **Achievements** | Badges for milestones | Medium |
-| **Player Stats** | Win rates, averages, trends | Medium |
-| **Voice Announcements** | "New high score by Mike!" | Low |
-| **Game Box Art** | Upload/fetch cover images | Low |
-| **Multiple Kiosks** | Sync across rooms | Medium |
-| **Guest Mode** | Quick play without player profile | Low |
-| **Historical Charts** | Score progression over time | Medium |
-| **Handicap System** | Adjusted scoring for skill levels | High |
-| **Twitch Integration** | Show scores on stream | Medium |
+See [FUTURE_ENHANCEMENTS.md](FUTURE_ENHANCEMENTS.md) for the complete roadmap.
 
 ### Known Limitations
 

@@ -1,16 +1,16 @@
-# Architecture — Game Room Scoreboard
+# Architecture - Game Room Scoreboard
 
-**Version:** 1.0.0-beta  
-**Last Updated:** 2025-01-20
+**Version:** 0.9.9  
+**Last Updated:** 2025-01-21
 
 ---
 
 ## System Overview
 
-A Raspberry Pi-based kiosk application for displaying and managing high scores across a variety of games—from Mario Kart to darts to completion tracking in Stardew Valley.
+A Raspberry Pi-based kiosk application for displaying and managing high scores across a variety of games-from Mario Kart to darts to completion tracking in Stardew Valley.
 
 ### Hardware Target
-- **Primary:** Raspberry Pi 4B (4GB) with 7" touchscreen (800×480) in Smart Pi Kiosk stand
+- **Primary:** Raspberry Pi 4B (4GB) with 7- touchscreen (800x480) in Smart Pi Kiosk stand
 - **Secondary:** Mobile phones/tablets on same WiFi network
 - **Audio:** Speaker connected to Pi for sound effects
 
@@ -33,25 +33,25 @@ The core insight is that different games need different levels of specificity:
 
 ```
 GAME (Container)
-  │
-  ├── mode_label: "Mode" | "Class" | "Machine" | "Category" | custom
-  ├── detail_label: "Track" | "Course" | "Item" | "Enemy" | custom
-  ├── has_modes: boolean
-  ├── has_details: boolean
-  │
-  └── MODE (Level 1 - optional)
-        │
-        ├── Defines the TYPE of metric being tracked
-        ├── Has its own score_format, score_direction, score_unit
-        ├── Can override detail_label for this mode
-        │
-        └── DETAIL (Level 2 - optional)
-              │
-              ├── Can be shared across all modes (mode_id = NULL)
-              ├── Can be mode-specific (mode_id = UUID)
-              ├── Can override score settings (rare)
-              │
-              └── SCORE (The actual value)
+  -
+  -œ-- mode_label: -Mode- | -Class- | -Machine- | -Category- | custom
+  -œ-- detail_label: -Track- | -Course- | -Item- | -Enemy- | custom
+  -œ-- has_modes: boolean
+  -œ-- has_details: boolean
+  -
+  --- MODE (Level 1 - optional)
+        -
+        -œ-- Defines the TYPE of metric being tracked
+        -œ-- Has its own score_format, score_direction, score_unit
+        -œ-- Can override detail_label for this mode
+        -
+        --- DETAIL (Level 2 - optional)
+              -
+              -œ-- Can be shared across all modes (mode_id = NULL)
+              -œ-- Can be mode-specific (mode_id = UUID)
+              -œ-- Can override score settings (rare)
+              -
+              --- SCORE (The actual value)
 ```
 
 ### Key Principle for RPG/Complex Games
@@ -70,14 +70,14 @@ This is crucial for games like Stardew Valley or Fallout 4 where you might track
 Game: Pinball
   has_modes: true
   has_details: false
-  mode_label: "Machine"
+  mode_label: -Machine-
 
 Modes:
-  - Attack From Mars (score: integer, higher_better, "pts")
-  - Medieval Madness (score: integer, higher_better, "pts")
-  - The Addams Family (score: integer, higher_better, "pts")
+  - Attack From Mars (score: integer, higher_better, -pts-
+  - Medieval Madness (score: integer, higher_better, -pts-
+  - The Addams Family (score: integer, higher_better, -pts-
 
-Flow: Select Game → Select Machine → Enter Score
+Flow: Select Game - Select Machine - Enter Score
 ```
 
 ### Two-Level Game: Mario Kart (shared details across modes)
@@ -85,8 +85,8 @@ Flow: Select Game → Select Machine → Enter Score
 Game: Mario Kart 8 Deluxe
   has_modes: true
   has_details: true
-  mode_label: "Class"
-  detail_label: "Track"
+  mode_label: -Class-
+  detail_label: -Track-
   default_score_format: time_ms
   default_score_direction: lower_better
 
@@ -101,7 +101,7 @@ Details (mode_id = NULL, shared across ALL modes):
   - Rainbow Road
   - ... (all 96 tracks)
 
-Flow: Select Game → Select Class → Select Track → Enter Time
+Flow: Select Game - Select Class - Select Track - Enter Time
 ```
 
 ### Two-Level Game: Mario Golf (format changes by mode)
@@ -109,8 +109,8 @@ Flow: Select Game → Select Class → Select Track → Enter Time
 Game: Mario Golf: Super Rush
   has_modes: true
   has_details: true
-  mode_label: "Mode"
-  detail_label: "Course"
+  mode_label: -Mode-
+  detail_label: -Course-
 
 Modes:
   - Standard Golf (score: golf_relative, lower_better)
@@ -123,7 +123,7 @@ Details (mode_id = NULL, shared across modes):
   - Wildweather Woods
   - Bowser Highlands
 
-Flow: Select Game → Select Mode → Select Course → Enter Score
+Flow: Select Game - Select Mode - Select Course - Enter Score
 Note: Score input type changes based on mode (golf score vs time)
 ```
 
@@ -132,26 +132,26 @@ Note: Score input type changes based on mode (golf score vs time)
 Game: Stardew Valley
   has_modes: true
   has_details: true
-  mode_label: "Category"
-  detail_label: "Item"
+  mode_label: -Category-
+  detail_label: -Item-
   
 Modes (each defines a DIFFERENT TYPE of metric):
   - Completion % 
       score_format: decimal_2
       score_direction: higher_better
-      score_unit: "%"
-      detail_label_override: "Category"
+      score_unit: -
+      detail_label_override: -Category-
       
   - Earnings
       score_format: integer
       score_direction: higher_better
-      score_unit: "g"
-      detail_label_override: "Timeframe"
+      score_unit: -g-
+      detail_label_override: -Timeframe-
       
   - Speedrun
       score_format: time_ms
       score_direction: lower_better
-      detail_label_override: "Goal"
+      detail_label_override: -Goal-
 
 Details (mode-specific):
   Completion %:
@@ -174,7 +174,7 @@ Details (mode-specific):
     - Grandpa's Evaluation (4 Candles)
     - Perfection (100%)
 
-Flow: Select Game → Select Category → Select Item → Enter Score
+Flow: Select Game - Select Category - Select Item - Enter Score
 ```
 
 ### Complex RPG: Fallout 4 (mode = metric type)
@@ -182,27 +182,27 @@ Flow: Select Game → Select Category → Select Item → Enter Score
 Game: Fallout 4
   has_modes: true
   has_details: true
-  mode_label: "Category"
-  detail_label: "Target"
+  mode_label: -Category-
+  detail_label: -Target-
 
 Modes (each defines a DIFFERENT TYPE of metric):
   - Eliminations
       score_format: integer
       score_direction: higher_better
-      score_unit: "kills"
-      detail_label_override: "Enemy"
+      score_unit: -kills-
+      detail_label_override: -Enemy-
       
   - Completion %
       score_format: decimal_2
       score_direction: higher_better
-      score_unit: "%"
-      detail_label_override: "Category"
+      score_unit: -
+      detail_label_override: -Category-
       
   - Quests Completed
       score_format: integer
       score_direction: higher_better
-      score_unit: "quests"
-      detail_label_override: "Quest Line"
+      score_unit: -quests-
+      detail_label_override: -Quest Line-
 
 Details (mode-specific):
   Eliminations:
@@ -229,7 +229,7 @@ Details (mode-specific):
     - Institute
     - Minutemen
 
-Flow: Select Game → Select Category → Select Target → Enter Score
+Flow: Select Game - Select Category - Select Target - Enter Score
 ```
 
 ### Platformer: Super Mario Bros Wonder (levels are mode-specific)
@@ -237,8 +237,8 @@ Flow: Select Game → Select Category → Select Target → Enter Score
 Game: Super Mario Bros Wonder
   has_modes: true
   has_details: true
-  mode_label: "World"
-  detail_label: "Level"
+  mode_label: -World-
+  detail_label: -Level-
   default_score_format: time_seconds
   default_score_direction: lower_better
 
@@ -261,22 +261,22 @@ Details (mode-specific - each world has its own levels):
     - Fluff-Puff Peaks Summit
     - ...
 
-Flow: Select Game → Select World → Select Level → Enter Time
+Flow: Select Game - Select World - Select Level - Enter Time
 ```
 
 ---
 
 ## Anti-Pattern: What NOT To Do
 
-❌ **WRONG: Using categories as modes for RPGs**
+-Œ **WRONG: Using categories as modes for RPGs**
 ```
 Fallout 4
-├── Mode: Wildlife
-│   └── Details: Radstag, Deathclaw, Mirelurk
-├── Mode: Raiders  
-│   └── Details: Raider, Gunner, Triggerman
-├── Mode: Synths
-│   └── Details: Gen 1, Gen 2, Courser
+-œ-- Mode: Wildlife
+-   --- Details: Radstag, Deathclaw, Mirelurk
+-œ-- Mode: Raiders  
+-   --- Details: Raider, Gunner, Triggerman
+-œ-- Mode: Synths
+-   --- Details: Gen 1, Gen 2, Courser
 ```
 
 This is wrong because:
@@ -284,15 +284,15 @@ This is wrong because:
 2. The mode doesn't change the score_format
 3. You can't track completion % or quest counts this way
 
-✅ **CORRECT: Using metric types as modes**
+-œ… **CORRECT: Using metric types as modes**
 ```
 Fallout 4
-├── Mode: Eliminations (integer, kills)
-│   └── Details: Deathclaw, Super Mutant, Raider, Synth...
-├── Mode: Completion % (decimal_2, %)
-│   └── Details: Main Quest, Bobbleheads, Magazines...
-├── Mode: Quests Completed (integer, quests)
-│   └── Details: Brotherhood, Railroad, Institute...
+-œ-- Mode: Eliminations (integer, kills)
+-   --- Details: Deathclaw, Super Mutant, Raider, Synth...
+-œ-- Mode: Completion % (decimal_2, %)
+-   --- Details: Main Quest, Bobbleheads, Magazines...
+-œ-- Mode: Quests Completed (integer, quests)
+-   --- Details: Brotherhood, Railroad, Institute...
 ```
 
 This is correct because:
@@ -313,7 +313,7 @@ CREATE TYPE score_format AS ENUM (
   'integer',        -- 47 pts, 15 darts, 13 kills
   'time_ms',        -- 2:22.567 (stored as milliseconds)
   'time_seconds',   -- 4:56 (stored as seconds)  
-  'decimal_2',      -- 12.20 in, 98.45% (stored as value × 100)
+  'decimal_2',      -- 12.20 in, 98.45% (stored as value x 100)
   'golf_relative',  -- -4, E, +3 (stored as integer relative to par)
   'level'           -- World 8-4 (stored as encoded digits)
 );
@@ -429,33 +429,33 @@ const effectiveFormat =
 
 ### Browse Navigation
 ```
-Categories → Games → Modes → Details → Leaderboard
-                      ↓         ↓
+Categories - Games - Modes - Details - Leaderboard
+                      -         -
                 (skip if    (skip if
               !has_modes)  !has_details)
 ```
 
 ### Add Score Flow
 ```
-┌─────────────────────────────────────┐
-│  Step 1: Select Game                │
-│  [Mario Kart 8 Deluxe        ▼]     │
-├─────────────────────────────────────┤
-│  Step 2: Select Class (if has_modes)│
-│  [150cc Time Trial           ▼]     │
-├─────────────────────────────────────┤
-│  Step 3: Select Track (if has_det.) │
-│  [Rainbow Road               ▼]     │
-├─────────────────────────────────────┤
-│  Step 4: Select Player              │
-│  [Andrew                     ▼]     │
-├─────────────────────────────────────┤
-│  Step 5: Enter Score                │
-│  (input type based on effective     │
-│   score_format from inheritance)    │
-├─────────────────────────────────────┤
-│          [ Save Score ]             │
-└─────────────────────────────────────┘
+-Œ--------------------------------------
+-  Step 1: Select Game                -
+-  [Mario Kart 8 Deluxe        -¼]     -
+-œ--------------------------------------
+-  Step 2: Select Class (if has_modes)-
+-  [150cc Time Trial           -¼]     -
+-œ--------------------------------------
+-  Step 3: Select Track (if has_det.) -
+-  [Rainbow Road               -¼]     -
+-œ--------------------------------------
+-  Step 4: Select Player              -
+-  [Andrew                     -¼]     -
+-œ--------------------------------------
+-  Step 5: Enter Score                -
+-  (input type based on effective     -
+-   score_format from inheritance)    -
+-œ--------------------------------------
+-          [ Save Score ]             -
+---------------------------------------
 ```
 
 ---
@@ -463,23 +463,23 @@ Categories → Games → Modes → Details → Leaderboard
 ## Responsive Design
 
 ### Breakpoints
-- **Kiosk:** 800×480 (fixed layout)
+- **Kiosk:** 800x480 (fixed layout)
 - **Mobile Portrait:** max-width 640px (stacked layout)
 - **Tablet/Desktop:** flexible layout
 
 ### Key Adaptations
 | Element | Kiosk | Mobile |
 |---------|-------|--------|
-| Category grid | 4×2 | 2×4 |
+| Category grid | 4x2 | 2x4 |
 | Score row | Horizontal | Stacked |
 | Touch targets | 56px | 56px |
 
 ---
 
-# ARCHITECTURE.md — New Sections to Add
+# ARCHITECTURE.md - New Sections to Add
 
-Add these sections to ARCHITECTURE.md after "Responsive Design" section.
-Also update "Last Updated:" to 2025-01-20
+Add these sections to ARCHITECTURE.md after -Responsive Design- section.
+Also update -Last Updated:- to 2025-01-20
 
 ---
 
@@ -510,14 +510,14 @@ document.documentElement.setAttribute('data-theme', themeName)
 CSS custom properties defined in `index.css`:
 
 ```css
-:root, [data-theme="dark"] {
+:root, [data-theme=-dark- {
   --color-background-primary: #0f0f0f;
   --color-background-card: #1a1a1a;
   --color-text-primary: #ffffff;
   /* ... */
 }
 
-[data-theme="light"] {
+[data-theme=-light- {
   --color-background-primary: #f8fafc;
   --color-text-primary: #111111;
   /* ... */
@@ -527,9 +527,9 @@ CSS custom properties defined in `index.css`:
 ### Text Color Override
 
 For themes where automatic text color doesn't provide enough contrast, users can override:
-- Auto (default) — Uses theme's defined text colors
-- Light — Forces light text (#ffffff)
-- Dark — Forces dark text (#111111)
+- Auto (default) - Uses theme's defined text colors
+- Light - Forces light text (#ffffff)
+- Dark - Forces dark text (#111111)
 
 ### Persistence
 
@@ -543,20 +543,21 @@ Theme settings stored in Zustand with localStorage persistence:
 
 ### E2E Testing with Playwright
 
-The project uses Playwright for end-to-end testing with 104 tests covering all major functionality.
+The project uses Playwright for end-to-end testing with 119 tests covering all major functionality.
 
 ### Test Structure
 
 ```
 tests/
-├── navigation.spec.ts      # Routing, back buttons, browse hierarchy
-├── settings.spec.ts        # Theme switching, sound, display settings
-├── score-submission.spec.ts # Form elements, validation
-├── score-flow.spec.ts      # End-to-end submission flows
-├── crud-operations.spec.ts # Create, Read, Update, Delete
-├── realtime-edge-cases.spec.ts # Error handling, persistence
-├── management.spec.ts      # Tab navigation, structure
-└── visual-accessibility.spec.ts # Touch targets, fonts
+-œ-- navigation.spec.ts      # Routing, back buttons, browse hierarchy
+-œ-- settings.spec.ts        # Theme switching, sound, display settings
+-œ-- score-submission.spec.ts # Form elements, validation
+-œ-- score-flow.spec.ts      # End-to-end submission flows
+-œ-- crud-operations.spec.ts # Create, Read, Update, Delete
+-œ-- realtime-edge-cases.spec.ts # Error handling, persistence
+-œ-- management.spec.ts      # Tab navigation, structure
+-œ-- visual-accessibility.spec.ts # Touch targets, fonts
+--- regression-beta-fixes.spec.ts # Beta bug regression tests
 ```
 
 ### Running Tests
@@ -570,22 +571,32 @@ npm run test:e2e:report  # View HTML report
 
 ### Configuration
 
-Tests run at 800×480 viewport to match Pi kiosk. See `playwright.config.ts`.
+Tests run at 800x480 viewport to match Pi kiosk. See `playwright.config.ts`.
 
 ---
 
-## QR Code & mDNS
+## QR Code & Network Access
 
 ### QR Code Popup
 
 The idle display shows a QR code button in the footer. When tapped:
-- Displays scannable QR code with device URL
-- Shows hostname hint (scoreboard.local)
+- Displays scannable QR code with the device's local IP address
+- URL format: `http://<local-ip>:<port>` (e.g., `http://192.168.1.67:5173`)
 - Dismisses on tap outside
 
-### mDNS Setup (Optional)
+### How It Works
 
-For friendly hostname access (`http://scoreboard.local:4173`):
+The QR code URL is determined at build time via Vite:
+
+1. `vite.config.ts` detects the local network IP using `os.networkInterfaces()`
+2. The IP is injected as a global constant `__LOCAL_IP__`
+3. `IdleDisplay.tsx` uses `getQrUrl()` to build the URL dynamically
+
+This works on any network without requiring mDNS setup.
+
+### mDNS (Optional Enhancement)
+
+For a friendly hostname (`http://scoreboard.local:4173`):
 
 ```bash
 # Install Avahi (mDNS daemon)
@@ -596,66 +607,30 @@ sudo systemctl enable avahi-daemon
 sudo systemctl start avahi-daemon
 ```
 
-The Pi will advertise itself as `scoreboard.local` on the network.
+Note: mDNS may not work on all networks/devices. The IP-based QR code is the primary method.
 
 ---
 
 ## Updated File Structure
 
 ```
-├── src/
-│   ├── components/
-│   │   ├── cards/         # CategoryButton, GameCard, ModeCard
-│   │   ├── display/       # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
-│   │   ├── input/         # SelectField, PickerModal, TimeInput, NumericInput
-│   │   ├── layout/        # KioskLayout, BrowseHeader
-│   │   ├── management/    # ConfirmDialog, PinModal
-│   │   └── overlays/      # CelebrationOverlay, RealtimeScoreAlert
-│   ├── hooks/             # Data fetching + subscriptions
-│   ├── lib/               # Utilities, Supabase client, types
-│   ├── pages/             # Route components
-│   └── stores/            # Zustand state management
-├── tests/                 # Playwright E2E tests (NEW)
-├── public/
-│   └── sounds/            # Audio files
-└── supabase/
-    ├── schema.sql         # Database schema
-    ├── clear_data.sql     # Wipe existing data
-    └── seed.sql           # Comprehensive seed data
-```
-
-## Pi Deployment
-
-### Production Setup
-```bash
-# Install dependencies
-sudo npm install -g pm2 serve
-
-# Build and start
-npm run build
-pm2 start "serve -s dist -l 4173" --name scoreboard
-pm2 save
-pm2 startup
-
-# Kiosk mode
-chromium --kiosk http://localhost:4173
-```
-
----
-
-## File Structure
-
-```
-src/
-├── components/
-│   ├── display/      # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
-│   ├── cards/        # CategoryButton, GameCard, ModeCard
-│   ├── input/        # SelectField, PickerModal, TimeInput, NumericInput
-│   ├── layout/       # KioskLayout, BrowseHeader
-│   ├── management/   # ConfirmDialog, PinModal
-│   └── overlays/     # CelebrationOverlay, RealtimeScoreAlert
-├── hooks/            # Data fetching + subscriptions
-├── lib/              # Utilities, Supabase client, types
-├── pages/            # Route components
-└── stores/           # Zustand state management
+-œ-- src/
+-   -œ-- components/
+-   -   -œ-- cards/         # CategoryButton, GameCard, ModeCard
+-   -   -œ-- display/       # PlayerAvatar, RankBadge, ScoreRow, ScoreValue
+-   -   -œ-- input/         # SelectField, PickerModal, TimeInput, NumericInput
+-   -   -œ-- layout/        # KioskLayout, BrowseHeader
+-   -   -œ-- management/    # ConfirmDialog, PinModal
+-   -   --- overlays/      # CelebrationOverlay, RealtimeScoreAlert
+-   -œ-- hooks/             # Data fetching + subscriptions
+-   -œ-- lib/               # Utilities, Supabase client, types
+-   -œ-- pages/             # Route components
+-   --- stores/            # Zustand state management
+-œ-- tests/                 # Playwright E2E tests (NEW)
+-œ-- public/
+-   --- sounds/            # Audio files
+--- supabase/
+    -œ-- schema.sql         # Database schema
+    -œ-- clear_data.sql     # Wipe existing data
+    --- seed.sql           # Comprehensive seed data
 ```

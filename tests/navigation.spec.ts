@@ -49,13 +49,13 @@ test.describe('Navigation', () => {
     test('should show category selection on /browse', async ({ page }) => {
       await page.goto('/browse')
       
-      // Should see CATEGORIES title (not "Browse Games")
-      await expect(page.locator('text=CATEGORIES')).toBeVisible()
+      // Should see CATEGORIES heading
+      await expect(page.locator('h1:has-text("CATEGORIES")')).toBeVisible()
       
-      // Should have back button (ChevronLeft icon with some text)
-      await expect(page.locator('button').filter({ has: page.locator('svg') }).first()).toBeVisible()
+      // Should have back button
+      await expect(page.locator('button:has-text("Back")')).toBeVisible()
     })
-
+    
     test('should navigate to game selection when clicking a category', async ({ page }) => {
       await page.goto('/browse')
       
@@ -71,22 +71,22 @@ test.describe('Navigation', () => {
     test('should navigate back from category selection', async ({ page }) => {
       await page.goto('/browse')
       
-      // Click back button (first button with chevron icon)
-      await page.locator('button').first().click()
+      // Click back
+      await page.locator('text=Back').click()
       
       // Should go to idle display
       await expect(page).toHaveURL('/')
     })
 
     test('should navigate back through hierarchy', async ({ page }) => {
-      // Start at category selection and verify back works
-      await page.goto('/browse')
+      // Start at a game selection page
+      await page.goto('/browse/racing')
       
-      // Click back
-      await page.locator('button').first().click()
+      // Click back button (may say "Categories" not "Back")
+      await page.locator('button:has(svg.lucide-chevron-left)').first().click()
       
-      // Should go back to home
-      await expect(page).toHaveURL('/')
+      // Should go back to category selection
+      await expect(page).toHaveURL('/browse')
     })
   })
 
@@ -94,15 +94,18 @@ test.describe('Navigation', () => {
     test('should show add score button on browse pages', async ({ page }) => {
       await page.goto('/browse')
       
-      // Should see Add button (text is "Add", not "+ Add" - the plus is an icon)
-      await expect(page.locator('button', { hasText: 'Add' })).toBeVisible()
+      // Should see Add button (no plus sign in text)
+      await expect(page.locator('button').filter({ hasText: 'Add' })).toBeVisible()
     })
-
+    
     test('should navigate to add score page', async ({ page }) => {
       await page.goto('/browse')
       
-      // Click Add button
-      await page.locator('button', { hasText: 'Add' }).click()
+      // Click add button to open menu
+      await page.locator('button').filter({ hasText: 'Add' }).click()
+      
+      // Click "Add Score" in the dropdown menu
+      await page.locator('text=Add Score').click()
       
       // Should navigate to add score
       await expect(page).toHaveURL('/add-score')

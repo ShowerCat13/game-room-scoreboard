@@ -1,3 +1,4 @@
+// src/pages/IdleDisplay.tsx
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -6,7 +7,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { KioskLayout } from '@/components/layout'
 import { ScoreRow } from '@/components/display'
 import { RealtimeScoreAlert } from '@/components/overlays'
-import { useActiveGameModes } from '@/hooks/useActiveGameModes'
+import { useCarouselItems } from '@/hooks/useCarouselItems'
+import type { CarouselItem } from '@/hooks/useCarouselItems'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { useRealtimeScores } from '@/hooks/useRealtimeScores'
 import { useScoreDetails } from '@/hooks/useScoreDetails'
@@ -15,8 +17,11 @@ import { useKioskStore } from '@/stores/kioskStore'
 import { getInitials, getPlayerColor } from '@/lib/utils'
 import type { HighScore } from '@/lib/types'
 
-// Static URL for the scoreboard - uses mDNS hostname
-const SCOREBOARD_URL = 'http://scoreboard.local:4173'
+// Declare the global constant injected by Vite at build time
+declare const __LOCAL_IP__: string
+
+// Build QR URL using the IP address detected by Vite at startup
+const getQrUrl = () => `http://${__LOCAL_IP__}:${window.location.port || '4173'}`
 
 /**
  * Format time in 12-hour format with AM/PM
@@ -35,28 +40,44 @@ function formatTime(date: Date): string {
 }
 
 /**
- * IdleDisplay - Auto-cycling carousel of game mode leaderboards
+ * Build the subtitle for a carousel item
+ * Shows mode name, and detail name if applicable
+ */
+function buildSubtitle(item: CarouselItem): string {
+  const parts: string[] = []
+  
+  if (item.mode_name) {
+    parts.push(item.mode_name)
+  }
+  
+  if (item.detail_name) {
+    parts.push(item.detail_name)
+  }
+  
+  return parts.join(' - ')
+}
+
+/**
+ * IdleDisplay - Auto-cycling carousel of game leaderboards
  *
  * Features:
- * - Auto-cycles through game modes with scores every 10 seconds
- * - Shows top 4 scores per mode
+ * - Auto-cycles through game/mode/detail combinations with scores every 10 seconds
+ * - For games WITH details: shows separate entries per detail (e.g., each golf course)
+ * - For games WITHOUT details: shows one entry per mode
+ * - Shows top 4 scores per entry
  * - Tap anywhere to navigate to browse mode
  * - Real-time score updates with toast alerts
- * - Smooth slide transitions between modes
+ * - Smooth slide transitions between entries
  * - Clock display readable from across the room
  * - QR code for easy mobile access (tap to show/hide)
- * 
- * Responsive:
- * - Desktop/Kiosk: Fixed 800×480 layout
- * - Mobile: Full screen with scrollable content
  */
 export function IdleDisplay() {
   const navigate = useNavigate()
-  const { modes, loading: modesLoading, error: modesError } = useActiveGameModes()
+  const { items, loading: itemsLoading, error: itemsError, refetch } = useCarouselItems()
   const cycleSpeedMs = useKioskStore((state) => state.cycleSpeedMs)
 
   const [currentIndex, setCurrentIndex] = useState(0)
-  const currentMode = modes[currentIndex]
+  const currentItem = items[currentIndex]
 
   // Clock state - updates every minute
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -72,12 +93,13 @@ export function IdleDisplay() {
     return () => clearInterval(timer)
   }, [])
 
-  // Updated useLeaderboard call with new signature: (gameId, modeId, detailId, limit)
+  // Fetch leaderboard for current carousel item
+  // Now includes detail_id for proper filtering
   const { entries: scores, loading: scoresLoading, error: scoresError } = useLeaderboard(
-    currentMode?.game_id || null,
-    currentMode?.id || null,
-    null, // detailId - not applicable in idle display
-    4     // limit - show top 4
+    currentItem?.game_id || null,
+    currentItem?.mode_id || null,
+    currentItem?.detail_id || null,
+    4 // limit - show top 4
   )
 
   // Realtime alert state
@@ -87,7 +109,6 @@ export function IdleDisplay() {
 
   // Handle realtime score events
   const handleNewScore = useCallback(async (newScore: HighScore) => {
-    console.log('New score received:', newScore)
     
     // Fetch full details for the alert
     const details = await fetchScoreDetails(newScore.id)
@@ -96,7 +117,11 @@ export function IdleDisplay() {
       setAlertData(details)
       setShowAlert(true)
     }
-  }, [fetchScoreDetails])
+
+    // Refetch carousel items to include any new game/mode/detail combinations
+    // and to ensure the leaderboard reflects the new score
+    refetch()
+  }, [fetchScoreDetails, refetch])
 
   useRealtimeScores(handleNewScore)
 
@@ -107,16 +132,23 @@ export function IdleDisplay() {
     setTimeout(() => setAlertData(null), 300)
   }, [])
 
-  // Auto-cycle through modes
+  // Auto-cycle through items
   useEffect(() => {
-    if (modes.length === 0) return
+    if (items.length === 0) return
 
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % modes.length)
+      setCurrentIndex((prev) => (prev + 1) % items.length)
     }, cycleSpeedMs)
 
     return () => clearInterval(timer)
-  }, [modes.length, cycleSpeedMs])
+  }, [items.length, cycleSpeedMs])
+
+  // Reset index if it's out of bounds after refetch
+  useEffect(() => {
+    if (currentIndex >= items.length && items.length > 0) {
+      setCurrentIndex(0)
+    }
+  }, [items.length, currentIndex])
 
   // Handle tap to navigate
   const handleTap = () => {
@@ -134,42 +166,48 @@ export function IdleDisplay() {
     setShowQR((prev) => !prev)
   }
 
-  // Get game icon or generate fallback
-  const gameInitials = currentMode?.game_name ? getInitials(currentMode.game_name) : ''
-  const gameColor = currentMode?.game_name ? getPlayerColor(currentMode.game_name) : '#6b7280'
+  // Navigate to settings
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigate('/settings')
+  }
 
-  // Error state for modes loading
-  if (modesError) {
+  // Get game icon or generate fallback
+  const gameInitials = currentItem?.game_name ? getInitials(currentItem.game_name) : ''
+  const gameColor = currentItem?.game_name ? getPlayerColor(currentItem.game_name) : '#6b7280'
+
+  // Error state for items loading
+  if (itemsError) {
     return (
       <KioskLayout>
-        <div className="h-full min-h-[480px] flex flex-col items-center justify-center p-md">
+        <div className="h-full flex flex-col items-center justify-center">
           <p className="text-xl text-red-500 mb-2">Connection Error</p>
-          <p className="text-text-secondary text-sm text-center">{modesError.message}</p>
+          <p className="text-text-secondary text-sm">{itemsError.message}</p>
         </div>
       </KioskLayout>
     )
   }
 
   // Loading state
-  if (modesLoading) {
+  if (itemsLoading) {
     return (
       <KioskLayout>
-        <div className="h-full min-h-[480px] flex items-center justify-center">
+        <div className="h-full flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full border-2 border-text-muted border-t-text-primary animate-spin" />
-            <p className="text-text-secondary">Loading game modes...</p>
+            <p className="text-text-secondary">Loading leaderboards...</p>
           </div>
         </div>
       </KioskLayout>
     )
   }
 
-  // Empty state - no modes with scores
-  if (modes.length === 0) {
+  // Empty state - no items with scores
+  if (items.length === 0) {
     return (
       <KioskLayout>
         <div
-          className="h-full min-h-[480px] flex flex-col items-center justify-center cursor-pointer p-md"
+          className="h-full flex flex-col items-center justify-center cursor-pointer"
           onClick={handleTap}
         >
           <motion.div
@@ -190,14 +228,14 @@ export function IdleDisplay() {
   return (
     <KioskLayout>
       <div
-        className="h-full min-h-[480px] flex flex-col cursor-pointer relative"
+        className="h-full flex flex-col cursor-pointer relative"
         onClick={handleTap}
       >
-        {/* Header: Game + Mode info + Clock */}
+        {/* Header: Game + Mode/Detail info + Clock */}
         <div className="idle-header">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentMode?.id}
+              key={currentItem?.key}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -205,43 +243,43 @@ export function IdleDisplay() {
               className="flex-1"
             >
               <div className="flex items-center gap-3">
-                {currentMode?.game_icon ? (
+                {currentItem?.game_icon ? (
                   <img
-                    src={currentMode.game_icon}
+                    src={currentItem.game_icon}
                     alt=""
-                    className="w-10 h-10 rounded-lg shadow-card flex-shrink-0"
+                    className="w-10 h-10 rounded-lg shadow-card"
                   />
                 ) : (
                   <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-white shadow-card flex-shrink-0"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-base font-bold text-white shadow-card"
                     style={{ backgroundColor: gameColor }}
                   >
                     {gameInitials}
                   </div>
                 )}
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-bold text-text-primary truncate">
-                    {currentMode?.game_name}
+                <div>
+                  <h1 className="text-xl font-bold text-text-primary">
+                    {currentItem?.game_name}
                   </h1>
-                  <p className="text-sm text-text-secondary truncate">
-                    {currentMode?.name}
+                  <p className="text-sm text-text-secondary">
+                    {buildSubtitle(currentItem)}
                   </p>
                 </div>
               </div>
             </motion.div>
           </AnimatePresence>
 
-          {/* Clock - readable from across the room */}
-          <div className="text-xl font-mono font-bold text-text-secondary flex-shrink-0">
+          {/* Clock - ENLARGED for readability from across the room */}
+          <div className="font-mono font-bold text-text-secondary" style={{ fontSize: '48px' }}>
             {formatTime(currentTime)}
           </div>
         </div>
 
         {/* Leaderboard: Score rows */}
-        <div className="flex-1 flex flex-col justify-center px-md py-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col justify-center px-md py-4">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentMode?.id}
+              key={currentItem?.key}
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
@@ -260,11 +298,13 @@ export function IdleDisplay() {
                   </p>
                 </div>
               ) : scores.length === 0 ? (
-                <div className="flex items-center justify-center h-[288px]">
-                  <p className="text-text-secondary">No scores yet for this mode</p>
+                <div className="flex flex-col items-center justify-center h-[288px]">
+                  <Trophy className="w-12 h-12 text-text-muted mb-3" strokeWidth={1.5} />
+                  <p className="text-text-secondary">No scores for this leaderboard</p>
+                  <p className="text-sm text-text-muted mt-1">Tap to add the first score!</p>
                 </div>
               ) : (
-                scores.slice(0, 4).map((entry, index) => (
+                scores.map((entry, index) => (
                   <motion.div
                     key={entry.score_id}
                     initial={{ opacity: 0, y: 10 }}
@@ -277,7 +317,7 @@ export function IdleDisplay() {
                       playerAvatar={entry.player_avatar}
                       score={entry.score}
                       scoreFormat={entry.effective_format}
-                      scoreUnit={entry.effective_unit}
+                      scoreUnit={entry.effective_unit || undefined}
                       className="card"
                     />
                   </motion.div>
@@ -287,79 +327,74 @@ export function IdleDisplay() {
           </AnimatePresence>
         </div>
 
-        {/* Footer: Settings + hint/dots + QR toggle */}
-        <div className="footer-height flex items-center justify-between px-md">
+        {/* Footer: Settings + Tap hint + QR toggle */}
+        <div className="h-[40px] px-md flex items-center justify-between border-t border-background-elevated/50">
           {/* Settings button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate('/settings')
-            }}
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-text-muted active:text-text-secondary active:bg-background-elevated transition-colors"
+            onClick={handleSettingsClick}
+            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary transition-colors"
           >
             <SettingsIcon className="w-5 h-5" />
           </button>
 
-          {/* Center content: hint + dots */}
-          <div className="flex items-center gap-3">
-            <p className="text-xs text-text-muted hide-mobile">
-              Tap to browse
-            </p>
-            {/* Progress dots */}
-            {modes.length > 1 && (
-              <div className="flex gap-1">
-                {modes.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      idx === currentIndex 
-                        ? 'bg-text-secondary w-4' 
-                        : 'bg-background-elevated'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Tap hint */}
+          <p className="text-sm text-text-muted">Tap to browse</p>
 
-          {/* QR code toggle button */}
+          {/* QR code toggle */}
           <button
             onClick={handleQRToggle}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-              showQR 
-                ? 'text-text-primary bg-background-elevated' 
-                : 'text-text-muted active:text-text-secondary active:bg-background-elevated'
-            }`}
+            className="w-10 h-10 flex items-center justify-center text-text-muted active:text-text-primary transition-colors"
           >
             <QrCode className="w-5 h-5" />
           </button>
         </div>
 
-        {/* QR Code overlay - shows in bottom right when toggled */}
+        {/* Carousel indicator dots */}
+        {items.length > 1 && (
+          <div className="absolute bottom-[48px] left-0 right-0 flex justify-center gap-1.5">
+            {items.map((item, index) => (
+              <div
+                key={item.key}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  index === currentIndex
+                    ? 'bg-text-primary w-3'
+                    : 'bg-text-muted'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* QR Code overlay */}
         <AnimatePresence>
           {showQR && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="absolute bottom-16 right-4 p-4 rounded-xl card"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 flex items-center justify-center"
+              onClick={() => setShowQR(false)}
             >
-              <div className="bg-white p-3 rounded-lg">
-                <QRCodeSVG 
-                  value={SCOREBOARD_URL}
-                  size={120}
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                className="bg-white p-6 rounded-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <QRCodeSVG
+                  value={getQrUrl()}
+                  size={200}
                   level="M"
                   includeMargin={false}
                 />
-              </div>
-              <p className="text-xs text-text-muted text-center mt-2">
-                Scan to add scores
-              </p>
-              <p className="text-xs text-text-secondary text-center font-mono">
-                scoreboard.local
-              </p>
+                <p className="text-center text-black text-sm mt-4 font-medium">
+                  Scan to access on your phone
+                </p>
+                <p className="text-center text-gray-500 text-xs mt-1">
+                  {getQrUrl()}
+                </p>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -373,9 +408,10 @@ export function IdleDisplay() {
           playerName={alertData.playerName}
           score={alertData.score}
           scoreFormat={alertData.scoreFormat}
-          scoreUnit={alertData.scoreUnit}
+          scoreUnit={alertData.scoreUnit ?? ''}
           gameName={alertData.gameName}
           modeName={alertData.modeName ?? ''}
+          detailName={alertData.detailName ?? ''}
           rank={alertData.rank}
         />
       )}

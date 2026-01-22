@@ -1,7 +1,7 @@
 # UI Specification — Game Room Scoreboard
 
-**Version:** 1.0.0-beta  
-**Last Updated:** Post-Alpha Sprint
+**Version:** 0.9.8  
+**Last Updated:** 2025-01-21
 
 ---
 
@@ -11,7 +11,7 @@
 
 | Target | Resolution | Orientation | Primary Use |
 |--------|------------|-------------|-------------|
-| Pi Kiosk | 800×480 | Landscape | Display + Touch input |
+| Pi Kiosk | 800x480 | Landscape | Display + Touch input |
 | Mobile | Variable | Portrait | Score entry |
 | Tablet | Variable | Either | Browse + Entry |
 | Desktop | Variable | Landscape | Development |
@@ -32,10 +32,10 @@ screens: {
 
 | Context | Minimum Size |
 |---------|--------------|
-| Primary actions | 56px × 56px |
+| Primary actions | 56px x 56px |
 | List items | 56px height |
-| Icon buttons | 48px × 48px |
-| Close buttons | 44px × 44px |
+| Icon buttons | 48px x 48px |
+| Close buttons | 44px x 44px |
 
 ### Typography
 
@@ -51,7 +51,7 @@ sizes:
   lg: 24px    # Headings, important
   xl: 28px    # Large headings
   xxl: 32px   # Score values
-  clock: 48px # Idle screen clock (NEW)
+  clock: 48px # Idle screen clock
 
 weights:
   normal: 400
@@ -162,79 +162,46 @@ function KioskLayout({ children }) {
 
 The default screen showing auto-cycling leaderboards.
 
-### Kiosk Layout (800×480)
+### Kiosk Layout (800x480)
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│ [Icon] Game Name                                    10:45  │ 64px
-│        Mode — Detail                                   PM  │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 🥇  [Avatar]  Player Name              2:22.567     │  │ 72px
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 🥈  [Avatar]  Player Name              2:24.891     │  │ 72px
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │ 🥉  [Avatar]  Player Name              2:31.044     │  │ 72px
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  4   [Avatar]  Player Name              2:35.220     │  │ 72px
-│  └──────────────────────────────────────────────────────┘  │
-│                                                            │
-├────────────────────────────────────────────────────────────┤
-│ ⚙️          Tap to browse  ● ○ ○           [QR]           │ 56px
-└────────────────────────────────────────────────────────────┘
++------------------------------------------------------------+
+| [Icon] Game Name                                    10:45  | 64px
+|        Mode — Detail                                   PM  |
++------------------------------------------------------------+
+|                                                            |
+|  +------------------------------------------------------+  |
+|  | 🥇  [Avatar]  Player Name              2:22.567     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | 🥈  [Avatar]  Player Name              2:24.891     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | 🥉  [Avatar]  Player Name              2:31.044     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  |  4   [Avatar]  Player Name              2:35.220     |  | 72px
+|  +------------------------------------------------------+  |
+|                                                            |
++------------------------------------------------------------+
+| ⚙️          Tap to browse  ● ○ ○           [QR]           | 56px
++------------------------------------------------------------+
 ```
 
-### Mobile Layout (Portrait)
-
-```
-┌─────────────────────────────┐
-│ [Icon] Game Name            │
-│ Mode — Detail        10:45  │
-├─────────────────────────────┤
-│                             │
-│  ┌───────────────────────┐  │
-│  │ 🥇 [Avatar]           │  │
-│  │    Player Name        │  │
-│  │    2:22.567           │  │
-│  └───────────────────────┘  │
-│                             │
-│  ┌───────────────────────┐  │
-│  │ 🥈 [Avatar]           │  │
-│  │    Player Name        │  │
-│  │    2:24.891           │  │
-│  └───────────────────────┘  │
-│                             │
-│  ┌───────────────────────┐  │
-│  │ 🥉 [Avatar]           │  │
-│  │    Player Name        │  │
-│  │    2:31.044           │  │
-│  └───────────────────────┘  │
-│                             │
-│  ... (scrollable)           │
-│                             │
-├─────────────────────────────┤
-│ ⚙️   Tap to browse   ● ○ ○  │
-└─────────────────────────────┘
-```
-
-### Clock Feature (NEW)
+### Clock Feature
 
 ```yaml
 component: IdleClock
 position: header right (kiosk), below title (mobile)
 format: "10:45 PM" (12-hour with AM/PM)
 font_size: 
-  kiosk: 24px (lg)
+  kiosk: 48px (inline style for readability)
   mobile: 20px
-color: text-secondary
+color: text-primary
 update_interval: 1 minute
 ```
 
-### QR Code Feature (NEW)
+### QR Code Feature
 
 ```yaml
 component: QRCodeButton
@@ -247,7 +214,7 @@ on_tap: opens QRCodeModal
 modal:
   content:
     - title: "Scan to Connect"
-    - QR code (256×256) containing "http://{PI_IP}:4173"
+    - QR code (256x256) containing "http://{PI_IP}:4173"
     - IP address text below QR
     - "Tap anywhere to close"
   
@@ -258,491 +225,546 @@ modal:
 
 ## Screen: Category Selection
 
-### Kiosk Layout (4×2 Grid)
+### Kiosk Layout (4x2 Grid)
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│ ← Back           CATEGORIES                      + Add ▼   │ 56px
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-│  │   🏎️    │ │   ⛳    │ │   🎉    │ │   🎯    │      │
-│  │ Racing  │ │  Golf   │ │  Party  │ │  Darts  │      │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-│                                                            │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-│  │   🕹️    │ │   🎮    │ │   ⚔️    │ │   🧩    │      │
-│  │ Pinball │ │Platform │ │   RPG   │ │  Other  │      │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-│                                                            │
-├────────────────────────────────────────────────────────────┤
-│              30s idle → returns to auto mode               │ 40px
-└────────────────────────────────────────────────────────────┘
++------------------------------------------------------------+
+| <- Back           CATEGORIES                      + Add v   | 56px
++------------------------------------------------------------+
+|                                                            |
+|  +----------+ +----------+ +----------+ +----------+       |
+|  |          | |          | |          | |          |       |
+|  |  Racing  | |   Golf   | |  Party   | |  Darts   |       | ~180px
+|  |    🏎️    | |    ⛳    | |    🎉    | |    🎯    |       |
+|  +----------+ +----------+ +----------+ +----------+       |
+|                                                            |
+|  +----------+ +----------+ +----------+ +----------+       |
+|  |          | |          | |          | |          |       |
+|  | Pinball  | |Platformer| |   RPG    | |  Other   |       | ~180px
+|  |    🕹️    | |    🎮    | |    ⚔️    | |    🧩    |       |
+|  +----------+ +----------+ +----------+ +----------+       |
+|                                                            |
++------------------------------------------------------------+
 ```
 
-### Mobile Layout (2×4 Grid)
-
-```
-┌─────────────────────────────┐
-│ ← Back    CATEGORIES  + Add │
-├─────────────────────────────┤
-│                             │
-│  ┌──────────┐ ┌──────────┐  │
-│  │   🏎️    │ │   ⛳    │  │
-│  │ Racing  │ │  Golf   │  │
-│  └──────────┘ └──────────┘  │
-│                             │
-│  ┌──────────┐ ┌──────────┐  │
-│  │   🎉    │ │   🎯    │  │
-│  │  Party  │ │  Darts  │  │
-│  └──────────┘ └──────────┘  │
-│                             │
-│  ┌──────────┐ ┌──────────┐  │
-│  │   🕹️    │ │   🎮    │  │
-│  │ Pinball │ │Platform │  │
-│  └──────────┘ └──────────┘  │
-│                             │
-│  ┌──────────┐ ┌──────────┐  │
-│  │   ⚔️    │ │   🧩    │  │
-│  │   RPG   │ │  Other  │  │
-│  └──────────┘ └──────────┘  │
-│                             │
-├─────────────────────────────┤
-│    30s idle → auto mode     │
-└─────────────────────────────┘
-```
-
-### + Add Button (Updated)
+### CategoryButton Component
 
 ```yaml
-component: AddMenu
-trigger: "+ Add" button in header
-type: dropdown menu (kiosk) or bottom sheet (mobile)
-
-options:
-  - label: "Add Score"
-    icon: Plus
-    action: navigate to /add-score
+CategoryButton:
+  size: 
+    kiosk: "180px x 180px"
+    mobile: "full width, 80px height"
+  
+  layout:
+    direction: "column (kiosk) | row (mobile)"
+    gap: 8px
+    padding: 16px
     
-  - label: "Add Player"
-    icon: UserPlus
-    action: open NewPlayerModal
+  icon:
+    component: "Lucide icon based on category"
+    size: "48px (kiosk) | 32px (mobile)"
+    color: "category color"
     
-  - label: "Manage"
-    icon: Settings
-    action: navigate to /manage
+  label:
+    font_size: "18px"
+    color: "text-primary"
+    weight: "semibold"
+    
+  background:
+    default: "bg-background-card"
+    active: "bg-background-elevated"
+    
+  border:
+    width: 2px
+    color: "category color (20% opacity)"
+    radius: 12px
+    
+  animation:
+    scale_on_press: 0.98
+    duration: 150ms
 ```
 
 ---
 
-## Screen: Add Score (Updated for 3-Level)
-
-### Flow Logic
-
-```typescript
-// Pseudocode for Add Score steps
-const steps = []
-
-steps.push('game')  // Always show game selection
-
-if (selectedGame?.has_modes) {
-  steps.push('mode')
-}
-
-if (selectedGame?.has_details) {
-  steps.push('detail')
-}
-
-steps.push('player')
-steps.push('score')
-```
+## Screen: Game Selection
 
 ### Layout
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│ ← Cancel                                       ADD SCORE   │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  Game         [Mario Kart 8 Deluxe              ▼]        │
-│                                                            │
-│  Class        [150cc Time Trial                 ▼]        │
-│  (mode_label)  (shown if has_modes)                        │
-│                                                            │
-│  Track        [Rainbow Road                     ▼]        │
-│  (detail_label) (shown if has_details)                     │
-│                                                            │
-│  Player       [Player 1                         ▼]        │
-│               [ + New Player ]                             │
-│                                                            │
-│  Time         ┌──┐ : ┌──┐ . ┌───┐                         │
-│  (dynamic)    │1 │   │23│   │456│                         │
-│               └──┘   └──┘   └───┘                         │
-│                                                            │
-│                    [ Save Score ]                          │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
++------------------------------------------------------------+
+| <- Categories     RACING                          + Add v   | 56px
++------------------------------------------------------------+
+|                                                            |
+|  +------------------------------------------------------+  |
+|  | [Platform] Mario Kart 8 Deluxe                    >  |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | [Platform] F1 24                                  >  |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | [Platform] Forza Horizon 5                        >  |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | [Platform] Assetto Corsa Competizione             >  |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | [Platform] iRacing                                >  |  | 72px
+|  +------------------------------------------------------+  |
+|                                                            |
++------------------------------------------------------------+
 ```
 
-### Score Input Components
+### GameCard Component
 
 ```yaml
-# Based on effective score_format
-integer:
-  component: NumericInput
-  props:
-    suffix: unit (e.g., "pts", "darts")
+GameCard:
+  height: 72px
+  padding: "16px horizontal"
+  
+  layout:
+    direction: row
+    align: center
+    gap: 16px
     
-time_ms:
-  component: TimeInput
-  props:
-    show_milliseconds: true
+  platform_badge:
+    visible: true
+    font_size: 12px
+    color: text-muted
+    background: bg-background-elevated
+    padding: "4px 8px"
+    border_radius: 4px
     
-time_seconds:
-  component: TimeInput
-  props:
-    show_milliseconds: false
+  game_name:
+    font_size: 18px
+    color: text-primary
+    weight: medium
+    truncate: true
     
-decimal_2:
-  component: DecimalInput
-  props:
-    decimal_places: 2
-    suffix: unit
+  chevron:
+    icon: ChevronRight
+    size: 24px
+    color: text-muted
     
-golf_relative:
-  component: GolfInput (NEW)
-  props:
-    # Shows +/- buttons and E for even
-    # Stored as integer (-4, 0, +3)
+  background:
+    default: bg-background-card
+    active: bg-background-elevated
     
-level:
-  component: LevelInput
-  props:
-    # Two number fields: World [_]-[_]
-```
-
-### GolfInput Component (NEW)
-
-```yaml
-component: GolfInput
-layout: horizontal
-
-elements:
-  - minus_button:
-      icon: Minus
-      size: 56px
-      on_tap: decrement value
-      
-  - display:
-      width: 80px
-      font: xxl, mono
-      content: formatted value (-4, E, +3)
-      
-  - plus_button:
-      icon: Plus
-      size: 56px
-      on_tap: increment value
-
-initial_value: 0 (even par)
+  animation:
+    translateX_on_press: 4px
 ```
 
 ---
 
-## Screen: Detail Selection (NEW)
+## Screen: Mode Selection
 
-When a game has details, show this screen after mode selection.
+Shows available modes for selected game.
 
 ### Layout
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│ ← Back to Modes                                  + Add     │
-├────────────────────────────────────────────────────────────┤
-│ MARIO KART 8 DELUXE                                        │
-│ 150cc Time Trial                                           │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  Select Track:                                             │
-│                                                            │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Mario Kart Stadium                              →   │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Water Park                                      →   │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Sweet Sweet Canyon                              →   │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                            │
-│                    (scrollable)                            │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
++------------------------------------------------------------+
+| <- Mario Kart 8    SELECT CLASS                   + Add v   | 56px
++------------------------------------------------------------+
+|                                                            |
+|  +------------------------------------------------------+  |
+|  | 150cc Time Trial                                  >  |  | 72px
+|  | Best lap times at 150cc                              |  |
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | 200cc Time Trial                                  >  |  | 72px
+|  | Best lap times at 200cc                              |  |
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | Mirror Time Trial                                 >  |  | 72px
+|  | Best lap times in mirror mode                        |  |
+|  +------------------------------------------------------+  |
+|                                                            |
++------------------------------------------------------------+
+```
+
+### ModeCard Component
+
+```yaml
+ModeCard:
+  height: auto (min 72px)
+  padding: 16px
+  
+  layout:
+    direction: column
+    gap: 4px
+    
+  mode_name:
+    font_size: 18px
+    color: text-primary
+    weight: medium
+    
+  description:
+    font_size: 14px
+    color: text-secondary
+    lines: 1
+    optional: true
+    
+  score_format_badge:
+    visible: if different from game default
+    shows: "Time" | "Points" | "Golf" etc.
+    
+  chevron:
+    position: right, vertically centered
+```
+
+---
+
+## Screen: Detail Selection (Tracks/Courses)
+
+### Layout
+
+```
++------------------------------------------------------------+
+| <- 150cc TT        SELECT TRACK                   + Add v   | 56px
++------------------------------------------------------------+
+|                                                            |
+|  +------------------------------------------------------+  |
+|  | Mario Kart Stadium                                >  |  | 56px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | Water Park                                        >  |  | 56px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | Sweet Sweet Canyon                                >  |  | 56px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | Thwomp Ruins                                      >  |  | 56px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | Mario Circuit                                     >  |  | 56px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | ...more tracks (scrollable)                          |  |
+|  +------------------------------------------------------+  |
+|                                                            |
++------------------------------------------------------------+
+```
+
+### DetailCard Component
+
+```yaml
+DetailCard:
+  height: 56px
+  padding: "12px 16px"
+  
+  layout:
+    direction: row
+    align: center
+    justify: space-between
+    
+  detail_name:
+    font_size: 16px
+    color: text-primary
+    
+  chevron:
+    icon: ChevronRight
+    color: text-muted
+```
+
+---
+
+## Screen: Leaderboard View
+
+### Layout
+
+```
++------------------------------------------------------------+
+| <- Rainbow Road    LEADERBOARD                    + Add v   | 56px
++------------------------------------------------------------+
+|                                                            |
+|  +------------------------------------------------------+  |
+|  | 🥇  [Avatar]  Mike                     1:58.234     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | 🥈  [Avatar]  Sarah                    2:01.456     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  | 🥉  [Avatar]  Emma                     2:03.789     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  |  4   [Avatar]  Andrew                  2:05.123     |  | 72px
+|  +------------------------------------------------------+  |
+|  +------------------------------------------------------+  |
+|  |  5   [Avatar]  James                   2:08.456     |  | 72px
+|  +------------------------------------------------------+  |
+|                                                            |
++------------------------------------------------------------+
+```
+
+---
+
+## Screen: Add Score
+
+### Layout
+
+```
++------------------------------------------------------------+
+| <- Back              ADD SCORE                              | 56px
++------------------------------------------------------------+
+|                                                            |
+|  Game                                                      |
+|  +------------------------------------------------------+  |
+|  | Mario Kart 8 Deluxe                               v  |  | 56px
+|  +------------------------------------------------------+  |
+|                                                            |
+|  Class                                                     |
+|  +------------------------------------------------------+  |
+|  | 150cc Time Trial                                  v  |  | 56px
+|  +------------------------------------------------------+  |
+|                                                            |
+|  Track                                                     |
+|  +------------------------------------------------------+  |
+|  | Rainbow Road                                      v  |  | 56px
+|  +------------------------------------------------------+  |
+|                                                            |
+|  Player                                                    |
+|  +------------------------------------------------------+  |
+|  | Andrew                                            v  |  | 56px
+|  +------------------------------------------------------+  |
+|                                                            |
+|  +------------------------------------------------------+  |
+|  |              [  Time Input: MM:SS.mmm  ]             |  | 80px
+|  +------------------------------------------------------+  |
+|                                                            |
+|  +------------------------------------------------------+  |
+|  |                    [ Submit Score ]                  |  | 56px
+|  +------------------------------------------------------+  |
+|                                                            |
++------------------------------------------------------------+
 ```
 
 ---
 
 ## Component: ScoreRow
 
-### Kiosk Layout (Horizontal)
+### Anatomy
 
-```yaml
-component: ScoreRow
-height: 72px
-layout: flex row, align center
-
-structure:
-  ┌─────────────────────────────────────────────────────────┐
-  │ [Rank]  [Avatar]  [Name.................]  [Score]     │
-  │  40px    48px              flex-1            120px       │
-  └─────────────────────────────────────────────────────────┘
+```
++------------------------------------------------------------+
+|  [Rank]  [Avatar]  [Name]                         [Score]  |
++------------------------------------------------------------+
 ```
 
-### Mobile Layout (Stacked)
+### ScoreRow Specification
 
 ```yaml
-component: ScoreRow
-min_height: 80px
-layout: flex row, with internal stacking
-
-structure:
-  ┌─────────────────────────────────────────┐
-  │ [Rank] [Avatar]  Player Name            │
-  │                  2:22.567               │
-  └─────────────────────────────────────────┘
+ScoreRow:
+  height: 72px (kiosk) | auto (mobile)
+  padding: "12px 16px"
   
-  # Rank and avatar on left
-  # Name and score stacked on right
+  layout:
+    kiosk:
+      direction: row
+      align: center
+      gap: 16px
+    mobile:
+      direction: column
+      padding: 16px
+      
+  rank_badge:
+    width: 48px
+    font_size: 24px (number) | medal icon for 1-3
+    alignment: center
+    
+  avatar:
+    size: 48px
+    border_radius: 50%
+    fallback: initials with generated color
+    
+  player_name:
+    font_size: 18px
+    color: text-primary
+    weight: medium
+    flex: 1
+    truncate: true
+    
+  score_value:
+    font_family: mono
+    font_size: 24px
+    color: text-primary
+    weight: bold
+    
+  background:
+    default: transparent
+    first_place: "subtle gold gradient"
+    second_place: "subtle silver gradient"  
+    third_place: "subtle bronze gradient"
 ```
 
-### Responsive Implementation
+---
 
-```tsx
-function ScoreRow({ rank, player, score, format, unit }) {
-  const isMobile = useMediaQuery('(max-width: 640px)')
+## Component: SelectField
+
+```yaml
+SelectField:
+  height: 56px
   
-  if (isMobile) {
-    return (
-      <div className="flex items-center gap-3 p-3">
-        <RankBadge rank={rank} />
-        <PlayerAvatar player={player} size={40} />
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold truncate">{player.name}</div>
-          <div className="font-mono text-lg">
-            <ScoreValue value={score} format={format} unit={unit} />
-          </div>
-        </div>
-      </div>
-    )
-  }
+  layout:
+    direction: row
+    align: center
+    padding: "0 16px"
+    
+  label:
+    position: above field
+    font_size: 14px
+    color: text-secondary
+    margin_bottom: 8px
+    
+  value:
+    font_size: 18px
+    color: text-primary
+    flex: 1
+    
+  placeholder:
+    color: text-muted
+    
+  chevron:
+    icon: ChevronDown
+    color: text-muted
+    
+  border:
+    width: 1px
+    color: text-muted (30% opacity)
+    radius: 8px
+    
+  on_tap: opens PickerModal with options
+```
+
+---
+
+## Component: PickerModal
+
+```yaml
+PickerModal:
+  position: bottom sheet (mobile) | center modal (kiosk)
+  max_height: 70vh
   
-  // Kiosk layout
-  return (
-    <div className="flex items-center gap-4 h-[72px] px-4">
-      <RankBadge rank={rank} />
-      <PlayerAvatar player={player} size={48} />
-      <div className="flex-1 font-semibold truncate">{player.name}</div>
-      <div className="font-mono text-xl">
-        <ScoreValue value={score} format={format} unit={unit} />
-      </div>
-    </div>
-  )
-}
+  header:
+    height: 56px
+    title: field label
+    close_button: X icon (44px touch target)
+    
+  search:
+    visible: if options > 10
+    height: 48px
+    placeholder: "Search..."
+    
+  options_list:
+    scrollable: true
+    item_height: 56px
+    
+  option_item:
+    padding: "16px"
+    font_size: 18px
+    selected_indicator: checkmark icon
+    active_background: bg-background-elevated
 ```
 
 ---
 
-## Component: CategoryButton
+## Component: TimeInput
 
-### Specification
+For `time_ms` and `time_seconds` score formats.
 
 ```yaml
-component: CategoryButton
-size:
-  kiosk: ~180×150 (fills grid cell)
-  mobile: ~160×130 (fills 2-column grid)
-
-layout: flex column, align center, justify center
-background: background-card with category tint
-border: 1px solid with category color
-border_radius: 12px
-
-elements:
-  - icon:
-      component: Lucide icon (NOT emoji)
-      size: 32px
-      color: category color
-      
-  - label:
-      font: lg, bold
-      color: category color
-      margin_top: 8px
-
-states:
-  default:
-    opacity: 1
-  active:
-    transform: scale(0.98)
-    background: slightly darker
+TimeInput:
+  layout:
+    direction: row
+    gap: 8px
+    align: center
+    
+  segments:
+    - minutes: 2 digits, max 59
+    - seconds: 2 digits, max 59  
+    - milliseconds: 3 digits (time_ms only)
+    
+  segment_style:
+    width: 64px (min/sec) | 80px (ms)
+    height: 56px
+    font_family: mono
+    font_size: 24px
+    text_align: center
+    border: 1px solid text-muted
+    border_radius: 8px
+    
+  separator:
+    character: ":" or "."
+    font_size: 24px
+    color: text-muted
+    
+  interaction:
+    tap_segment: opens numeric keypad
+    auto_advance: move to next segment when filled
 ```
 
 ---
 
-## Component: RankBadge
+## Component: NumericInput
 
-### Specification
+For `integer` and `decimal_2` score formats.
 
 ```yaml
-component: RankBadge
-size: 40×40
-
-ranks:
-  1:
-    icon: Medal (Lucide)
-    color: medals.gold
-  2:
-    icon: Medal (Lucide)
-    color: medals.silver
-  3:
-    icon: Medal (Lucide)
-    color: medals.bronze
-  4+:
-    content: number
-    font: lg, bold
-    color: text.muted
+NumericInput:
+  height: 56px
+  
+  display:
+    font_family: mono
+    font_size: 24px
+    text_align: center
+    
+  keypad:
+    position: below input or modal
+    keys: 0-9, backspace, decimal (if decimal_2)
+    key_size: 56px
+    
+  validation:
+    integer: whole numbers only
+    decimal_2: max 2 decimal places
 ```
 
 ---
 
-## Manage Screen (Updated)
-
-### Tab Structure
+## Component: CelebrationOverlay
 
 ```yaml
-tabs:
-  - Players
-  - Games
-  - Modes (shown when game selected)
-  - Details (NEW - shown when game selected)
-  - Scores
-```
-
-### Details Tab (NEW)
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ ← Settings                 MANAGE                          │
-├────────────────────────────────────────────────────────────┤
-│ [Players] [Games] [Modes] [Details] [Scores]               │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│ Game: [Mario Kart 8 Deluxe  ▼]                            │
-│ Mode: [All Modes / 150cc TT ▼]  (optional filter)         │
-│                                                            │
-│  + Add Detail                                              │
-│                                                            │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Mario Kart Stadium            [✏️] [🗑️]           │  │
-│  │  Available for: All modes                            │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Water Park                    [✏️] [🗑️]           │  │
-│  │  Available for: All modes                            │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
-```
-
-### Add/Edit Detail Modal
-
-```yaml
-fields:
-  - name:
-      label: "Detail Name"
-      placeholder: "e.g., Rainbow Road"
-      required: true
+CelebrationOverlay:
+  trigger: on successful score submission
+  
+  variants:
+    first_place:
+      confetti: gold particles
+      sound: fanfare
+      duration: 3000ms
+      message: "🥇 NEW HIGH SCORE!"
       
-  - mode_scope:
-      label: "Available for"
-      type: select
-      options:
-        - value: null, label: "All modes in this game"
-        - value: mode_id, label: "{mode.name} only"
-      default: null
+    other_placement:
+      confetti: standard multicolor
+      sound: chime
+      duration: 2000ms
+      message: "Score recorded!"
       
-  - score_override:
-      label: "Override score settings?"
-      type: toggle
-      default: false
-      
-  - score_format: (shown if override enabled)
-  - score_direction: (shown if override enabled)
-  - score_unit: (shown if override enabled)
-```
-
----
-
-## Animation Specifications
-
-### Transitions
-
-```yaml
-page_transition:
-  type: fade + slide
-  duration: 200ms
-  easing: ease-out
-
-modal_enter:
-  type: fade + scale
-  from: opacity 0, scale 0.95
-  to: opacity 1, scale 1
-  duration: 200ms
-
-modal_exit:
-  type: fade
-  duration: 150ms
-
-carousel_transition:
-  type: slide left + fade
-  duration: 300ms
-  easing: ease-in-out
-
-touch_feedback:
-  type: scale
-  to: scale 0.98
-  duration: 100ms
-```
-
-### Celebration Overlay
-
-```yaml
-duration: 5000ms (configurable)
-
-elements:
-  - confetti:
-      type: particle burst
-      count: 50
-      colors: [gold, silver, category color]
-      
-  - title:
-      text: "🎉 NEW HIGH SCORE! 🎉" (if 1st) or "Score Saved!"
-      animation: scale bounce
-      
-  - rank:
-      text: "🥇 1st Place!" (with appropriate medal)
-      
-  - score:
-      font: xxl, mono, bold
-      
-sound:
-  1st_place: fanfare (2-3s)
-  other: chime (0.5s)
+  layout:
+    position: fixed, full screen
+    background: semi-transparent black
+    content: centered
+    
+  animation:
+    entrance: scale up + fade in
+    confetti: particle explosion from center
+    exit: fade out
+    
+  interaction:
+    tap_anywhere: dismiss early
 ```
 
 ---
 
 ## State Management
-
-### Zustand Store Structure
 
 ```typescript
 interface KioskState {
@@ -800,10 +822,12 @@ Note: Not all routes require all params. If a game has no modes, skip to details
 
 ---
 
-Theme System
-Theme Definitions
-Insert after "Color Tokens" section:
-yamlthemes:
+## Theme System
+
+### Theme Definitions
+
+```yaml
+themes:
   dark:  # Default
     background:
       primary: "#0f0f0f"
@@ -866,21 +890,35 @@ yamlthemes:
       secondary: "#98d8aa"
       muted: "#5a9a6a"
     accent: "#228b22"
-Theme Implementation
-css/* Applied via data-theme attribute on <html> */
+```
+
+### Theme Implementation
+
+```css
+/* Applied via data-theme attribute on <html> */
 [data-theme="light"] {
   --color-background-primary: #f8fafc;
   --color-text-primary: #111111;
   /* ... */
 }
-Text Color Override
-For accessibility when theme colors don't provide enough contrast:
-OverrideEffectAuto (default)Use theme's text colorsLightForce #ffffff textDarkForce #111111 text
+```
 
-Settings Page — Theme Section
-Add after existing Settings sections:
-Theme Selection
-yamlThemeSection:
+### Text Color Override
+
+For accessibility when theme colors don't provide enough contrast:
+
+| Override | Effect |
+|----------|--------|
+| Auto (default) | Use theme's text colors |
+| Light | Force #ffffff text |
+| Dark | Force #111111 text |
+
+---
+
+## Settings Page — Theme Section
+
+```yaml
+ThemeSection:
   layout: 
     container: "flex flex-col gap-4"
     
@@ -922,70 +960,16 @@ yamlThemeSection:
   reset_button:
     label: "Reset to Defaults"
     style: "text-sm text-text-muted"
+```
 
-IdleDisplay — Clock Component
-Add to IdleDisplay page spec:
-Clock
-yamlClock:
-  location: "header, right side"
-  
-  layout:
-    container: "flex items-center"
-    
-  time_display:
-    format: "12-hour with AM/PM"
-    example: "12:34 PM"
-    font: "text-lg font-medium font-mono"
-    color: "text-text-primary"
-    
-  update_interval: "60 seconds"
-  
-  implementation:
-    - Use useEffect with setInterval
-    - Update every minute (not every second)
-    - Format: h:mm A (using date-fns or native)
+---
 
-IdleDisplay — QR Code Popup
-Add to IdleDisplay page spec:
-QR Code Button
-yamlQRButton:
-  location: "footer, right side"
-  
-  button:
-    icon: "QrCode from lucide-react"
-    size: "w-10 h-10"
-    style: "text-text-muted active:text-text-secondary"
-    
-  behavior:
-    on_click: "Toggle QR popup visibility"
-QR Code Popup
-yamlQRPopup:
-  position: "absolute, bottom-right corner above footer"
-  
-  container:
-    style: "bg-white p-4 rounded-lg shadow-lg"
-    
-  content:
-    qr_code:
-      size: "150x150"
-      data: "http://{hostname}:{port}"
-      library: "qrcode.react"
-      
-    url_text:
-      text: "scoreboard.local"
-      style: "text-xs text-center font-mono text-gray-600"
-      
-    hint_text:
-      text: "Scan to add scores"
-      style: "text-xs text-center text-gray-500"
-      
-  dismiss:
-    trigger: "Click outside popup"
-    animation: "fade out"
+## Light Theme Adjustments
 
-Light Theme Adjustments
 For light theme, certain elements need color overrides:
-yamllight_theme_overrides:
+
+```yaml
+light_theme_overrides:
   medals:
     gold: "#b8860b"      # Darker gold
     silver: "#708090"    # Slate gray
@@ -1003,10 +987,13 @@ yamllight_theme_overrides:
     first: "bg-[#b8860b]"
     second: "bg-[#708090]"
     third: "bg-[#8b4513]"
+```
+
+---
 
 ## Accessibility
 
-- All touch targets ≥ 56px
+- All touch targets >= 56px
 - Color not sole indicator (icons + text)
 - Sufficient contrast ratios
 - Focus visible states (for keyboard testing)

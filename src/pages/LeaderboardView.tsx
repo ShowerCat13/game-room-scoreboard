@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react'
+// src/pages/LeaderboardView.tsx
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Trophy } from 'lucide-react'
 import { KioskLayout } from '@/components/layout/KioskLayout'
 import { BrowseHeader } from '@/components/layout/BrowseHeader'
 import { ScoreRow } from '@/components/display/ScoreRow'
-import { NewPlayerModal } from '@/components/input'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { useGame } from '@/hooks/useGame'
 import { useGameMode } from '@/hooks/useGameMode'
-import { usePlayers } from '@/hooks/usePlayers'
 import { useIdleTimer } from '@/hooks/useIdleTimer'
 
 /**
@@ -22,7 +21,7 @@ import { useIdleTimer } from '@/hooks/useIdleTimer'
  */
 export function LeaderboardView() {
   const navigate = useNavigate()
-  const { category, gameId, modeId, detailId } = useParams<{
+  const { gameId, modeId, detailId } = useParams<{
     category: string
     gameId: string
     modeId: string
@@ -42,12 +41,7 @@ export function LeaderboardView() {
   
   const { game: currentGame } = useGame(gameId || null)
   const { mode: currentMode } = useGameMode(modeId || null)
-  const { createPlayer } = usePlayers()
   const { isIdle, resetTimer } = useIdleTimer(30000)
-
-  // New Player modal state
-  const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
-  const [isCreatingPlayer, setIsCreatingPlayer] = useState(false)
 
   // Return to idle display when idle
   useEffect(() => {
@@ -56,39 +50,15 @@ export function LeaderboardView() {
     }
   }, [isIdle, navigate])
 
+  // FIX: Use browser history instead of relying on async data that may not be loaded
   const handleBack = () => {
     resetTimer()
-    // Go back to detail selection if game has details, otherwise mode selection
-    if (currentGame?.has_details) {
-      navigate(`/browse/${category}/${gameId}/${modeId}`)
-    } else {
-      navigate(`/browse/${category}/${gameId}`)
-    }
+    navigate(-1)
   }
 
   const handleAddScore = () => {
     resetTimer()
     navigate('/add-score')
-  }
-
-  const handleAddPlayer = () => {
-    resetTimer()
-    setShowNewPlayerModal(true)
-  }
-
-  const handleManage = () => {
-    resetTimer()
-    navigate('/manage')
-  }
-
-  const handleCreatePlayer = async (name: string) => {
-    setIsCreatingPlayer(true)
-    try {
-      await createPlayer(name)
-      setShowNewPlayerModal(false)
-    } finally {
-      setIsCreatingPlayer(false)
-    }
   }
 
   // Build title based on what's selected
@@ -97,20 +67,25 @@ export function LeaderboardView() {
     return currentMode.name
   }
 
+  // Build back label - use mode name or game name, fallback to "Back"
+  const buildBackLabel = () => {
+    if (currentMode?.name) return currentMode.name
+    if (currentGame?.name) return currentGame.name
+    return 'Back'
+  }
+
   return (
     <KioskLayout>
-      <div className="h-full min-h-[480px] flex flex-col">
-        {/* Header with action sheet */}
+      <div className="h-full flex flex-col">
+        {/* Header */}
         <BrowseHeader
-          backLabel={currentGame?.has_details ? (currentGame?.detail_label || 'Back') : (currentGame?.name || 'Back')}
+          backLabel={buildBackLabel()}
           onBack={handleBack}
           onAddScore={handleAddScore}
-          onAddPlayer={handleAddPlayer}
-          onManage={handleManage}
         />
 
         {/* Mode/Detail title */}
-        <div className="h-[56px] px-md flex flex-col justify-center flex-shrink-0">
+        <div className="h-[56px] px-md flex flex-col justify-center">
           <h2 className="text-lg font-bold text-text-primary">
             {buildTitle()}
           </h2>
@@ -125,11 +100,11 @@ export function LeaderboardView() {
         {/* Leaderboard */}
         <div className="flex-1 overflow-y-auto px-md py-2 space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center h-full min-h-[200px]">
+            <div className="flex items-center justify-center h-full">
               <p className="text-text-secondary">Loading...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[200px] px-4">
+            <div className="flex flex-col items-center justify-center h-full px-4">
               <p className="text-red-500 mb-2">Error loading leaderboard</p>
               <p className="text-text-muted text-sm text-center">{error.message}</p>
             </div>
@@ -137,7 +112,7 @@ export function LeaderboardView() {
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center h-full min-h-[200px] gap-3"
+              className="flex flex-col items-center justify-center h-full gap-3"
             >
               <Trophy className="w-12 h-12 text-text-muted" />
               <p className="text-text-secondary">No scores yet</p>
@@ -170,14 +145,6 @@ export function LeaderboardView() {
           )}
         </div>
       </div>
-
-      {/* New Player Modal */}
-      <NewPlayerModal
-        isOpen={showNewPlayerModal}
-        onClose={() => setShowNewPlayerModal(false)}
-        onCreate={handleCreatePlayer}
-        isCreating={isCreatingPlayer}
-      />
     </KioskLayout>
   )
 }
