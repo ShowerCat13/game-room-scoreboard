@@ -29,8 +29,9 @@ const env = { VITE_SUPABASE_URL: `http://${ip}:54399`, VITE_SUPABASE_ANON_KEY: '
 
 await import('./dry-run-supabase.mjs')
 
-console.log(`\nBuilding against the dry-run database at ${env.VITE_SUPABASE_URL} ...`)
-await run('npx', ['tsc', '-b'], env)
+console.log(`\nBuilding against the dry-run database at ${env.VITE_SUPABASE_URL}`)
+console.log('This takes 1-2 minutes on a Raspberry Pi - wait for the DRY RUN banner.\n')
+// No type check here (npm run build does that); it's the slow, silent part on a Pi
 await run('npx', ['vite', 'build'], env)
 
 if (await portInUse(4173)) {
