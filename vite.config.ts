@@ -1,23 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import os from 'os'
+// Detect the home-network IP for the QR code (prefers LAN over VPN addresses)
+import { getLanIp } from './scripts/lan-ip.mjs'
 
-// Detect local network IP address for QR code feature
-function getLocalIP(): string {
-  const interfaces = os.networkInterfaces()
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name] || []) {
-      // Skip internal and non-IPv4 addresses
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address
-      }
-    }
-  }
-  return 'localhost'
-}
-
-const localIP = getLocalIP()
+const localIP = getLanIp()
 
 // https://vite.dev/config/
 export default defineConfig({

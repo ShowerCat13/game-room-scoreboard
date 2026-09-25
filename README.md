@@ -144,6 +144,27 @@ sudo hostnamectl set-hostname scoreboard
 sudo reboot
 ```
 
+### 🎃 Halloween 2026 (`halloween-2026` branch)
+
+**Dry run** (fake racers, nothing touches Supabase):
+
+```bash
+npm run dry-run     # builds against an in-memory stand-in database; Ctrl+C to stop
+npm run build       # afterwards, to point back at the real database
+```
+
+Open `http://localhost:4173/?fps=1` on the kiosk to see the frame rate. The QR
+code and dry run use the Pi's home-network address; set `LAN_IP=192.168.x.x`
+if they pick the wrong one.
+
+**Sound:** connect a speaker and add `--autoplay-policy=no-user-gesture-required`
+to the Chromium `Exec=` line above. Test from Settings -> Halloween Haunt.
+
+**Real database:** in the Supabase SQL Editor run `supabase/halloween-2026.sql`
+(adds the Boo Cinema track), then follow the setup steps at the top of
+`supabase/security.sql` (host sign-in and PIN-protected profiles), then
+`npm run build`.
+
 ---
 
 ## 🧪 Testing
