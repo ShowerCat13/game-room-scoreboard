@@ -93,7 +93,7 @@ export const useKioskStore = create<KioskState>()(
       adminPin: null,
       
       // Theme defaults
-      themeId: 'dark',
+      themeId: 'spooky',
       textPrimaryOverride: null,
       accentPrimaryOverride: null,
 
@@ -181,6 +181,16 @@ export const useKioskStore = create<KioskState>()(
     }),
     {
       name: 'kiosk-settings',
+      // v1 (Halloween 2026): switch existing kiosks to the spooky theme once;
+      // it can still be changed in Settings afterwards
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as PersistedSettings
+        if (version < 1) {
+          return { ...state, themeId: 'spooky' }
+        }
+        return state
+      },
       // Only persist these specific fields
       partialize: (state) => ({
         soundEnabled: state.soundEnabled,

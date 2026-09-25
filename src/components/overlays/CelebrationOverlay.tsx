@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Medal, Sparkles } from 'lucide-react'
+import { Trophy, Medal, Sparkles, Ghost } from 'lucide-react'
 import { formatScore } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
 import { useKioskStore } from '@/stores/kioskStore'
@@ -54,6 +54,30 @@ function ConfettiParticle({ color }: { color: string }) {
   )
 }
 
+// Ghost that drifts up the screen (spooky theme replacement for confetti)
+function GhostParticle({ color }: { color: string }) {
+  const randomX = useMemo(() => Math.random() * 100, [])
+  const randomDelay = useMemo(() => Math.random() * 0.8, [])
+  const randomDuration = useMemo(() => 3 + Math.random() * 2, [])
+  const randomSize = useMemo(() => 20 + Math.random() * 24, [])
+  const randomSway = useMemo(() => (Math.random() - 0.5) * 60, [])
+
+  return (
+    <motion.div
+      initial={{ y: '105vh', x: `${randomX}vw`, opacity: 0 }}
+      animate={{
+        y: '-10vh',
+        x: [`${randomX}vw`, `calc(${randomX}vw + ${randomSway}px)`, `${randomX}vw`],
+        opacity: [0, 0.9, 0.9, 0],
+      }}
+      transition={{ duration: randomDuration, delay: randomDelay, ease: 'easeOut' }}
+      className="absolute top-0 pointer-events-none"
+    >
+      <Ghost style={{ width: randomSize, height: randomSize, color }} strokeWidth={1.5} />
+    </motion.div>
+  )
+}
+
 /**
  * CelebrationOverlay - Full-screen celebration after score submission
  * Features: Confetti particles, dramatic animations, auto-dismiss, sound effects
@@ -70,6 +94,7 @@ export function CelebrationOverlay({
 }: CelebrationOverlayProps) {
   const celebrationDurationMs = useKioskStore((state) => state.celebrationDurationMs)
   const duration = autoCloseMs ?? celebrationDurationMs
+  const isSpooky = useKioskStore((state) => state.themeId === 'spooky')
 
   // Auto-close timer
   useEffect(() => {
@@ -100,7 +125,9 @@ export function CelebrationOverlay({
   }
 
   // Confetti colors based on rank
-  const confettiColors = isFirstPlace 
+  const confettiColors = isSpooky
+    ? ['#f1ecff', '#7dff9b', '#c77dff', '#ff8a1f', '#d6dcff']
+    : isFirstPlace
     ? ['#ffd700', '#ffed4a', '#fbbf24', '#f59e0b', '#ffffff']
     : isPodium
     ? ['#c0c0c0', '#e5e7eb', '#9ca3af', '#6b7280', '#ffffff']
@@ -119,8 +146,11 @@ export function CelebrationOverlay({
     Array.from({ length: confettiCount }, (_, i) => ({
       id: i,
       color: confettiColors[i % confettiColors.length]
-    })), [confettiCount, isFirstPlace, isPodium]
+    })), [confettiCount, isFirstPlace, isPodium, isSpooky]
   )
+
+  // Fewer, larger particles for ghosts
+  const particles = isSpooky ? confettiParticles.slice(0, Math.ceil(confettiCount / 2)) : confettiParticles
 
   return (
     <AnimatePresence>
@@ -139,9 +169,11 @@ export function CelebrationOverlay({
         >
           {/* Confetti */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {confettiParticles.map(({ id, color }) => (
-              <ConfettiParticle key={id} color={color} />
-            ))}
+            {particles.map(({ id, color }) =>
+              isSpooky
+                ? <GhostParticle key={id} color={color} />
+                : <ConfettiParticle key={id} color={color} />
+            )}
           </div>
 
           {/* Glow effect behind content */}
@@ -174,7 +206,7 @@ export function CelebrationOverlay({
               >
                 <Sparkles className="w-6 h-6 text-medals-gold" />
                 <p className="text-xl font-bold text-gradient-gold">
-                  NEW HIGH SCORE!
+                  {isSpooky ? 'BOO! NEW TRACK RECORD!' : 'NEW HIGH SCORE!'}
                 </p>
                 <Sparkles className="w-6 h-6 text-medals-gold" />
               </motion.div>
@@ -185,7 +217,7 @@ export function CelebrationOverlay({
                 transition={{ delay: 0.1 }}
                 className="text-xl font-bold text-text-primary mb-2"
               >
-                Score Saved!
+                {isSpooky ? 'Boo! Time Saved!' : 'Score Saved!'}
               </motion.p>
             )}
 

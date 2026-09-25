@@ -1,10 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import {
-  IdleDisplay,
-  CategorySelection,
-  GameSelection,
-  ModeSelection,
-  LeaderboardView,
+  PartyDisplay,
   AddScore,
   Settings,
   Manage,
@@ -21,14 +17,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Idle carousel - home screen */}
-        <Route path="/" element={<IdleDisplay />} />
+        {/* Halloween 2026: single Boo Cinema leaderboard replaces the carousel */}
+        <Route path="/" element={<PartyDisplay />} />
 
-        {/* Browse hierarchy */}
-        <Route path="/browse" element={<CategorySelection />} />
-        <Route path="/browse/:category" element={<GameSelection />} />
-        <Route path="/browse/:category/:gameId" element={<ModeSelection />} />
-        <Route path="/browse/:category/:gameId/:modeId" element={<LeaderboardView />} />
+        {/* Browse hierarchy is hidden for the party */}
+        <Route path="/browse/*" element={<Navigate to="/" replace />} />
 
         {/* Score entry */}
         <Route path="/add-score" element={<AddScore />} />

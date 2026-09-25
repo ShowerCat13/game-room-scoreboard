@@ -26,3 +26,6 @@ export { useManageGameModes } from './useManageGameModes'
 export { useManageGameDetails } from './useManageGameDetails'
 export { useManageScores } from './useManageScores'
 export type { ScoreWithDetails } from './useManageScores'
+
+// Halloween 2026 party
+export { useBestTimesLeaderboard, fetchBestTimes, bestPerPlayer } from './useBestTimesLeaderboard'

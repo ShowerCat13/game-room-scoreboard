@@ -1,7 +1,7 @@
 /**
  * Theme System for Game Room Scoreboard
  * 
- * 6 preset themes + customization options
+ * 7 preset themes + customization options
  */
 
 export interface ThemeColors {
@@ -45,6 +45,7 @@ export interface Theme {
     scanlines?: boolean
     glow?: boolean
     noise?: boolean
+    spooky?: boolean  // Drifting fog, floating ghosts, Boo celebration
   }
 }
 
@@ -229,6 +230,37 @@ export const themes: Record<string, Theme> = {
       glow: true,
     },
   },
+
+  spooky: {
+    id: 'spooky',
+    name: 'Spooky',
+    description: 'Haunted purples and ghostly green',
+    colors: {
+      bgPrimary: '#0b0714',
+      bgCard: '#160e26',
+      bgElevated: '#241839',
+      textPrimary: '#f1ecff',
+      textSecondary: '#bba9e0',
+      textMuted: '#7d6c9e',
+      accentPrimary: '#7dff9b',
+      accentSecondary: '#ff8a1f',
+      categoryRacing: '#ff8a1f',
+      categoryGolf: '#7dff9b',
+      categoryParty: '#ffb81f',
+      categoryDarts: '#9b6bff',
+      categoryPinball: '#c77dff',
+      categoryPlatformer: '#ff5e8a',
+      categoryRpg: '#5ee7ff',
+      categoryOther: '#7d6c9e',
+      medalGold: '#ffb81f',
+      medalSilver: '#d6dcff',
+      medalBronze: '#ff7a1a',
+    },
+    effects: {
+      glow: true,
+      spooky: true,
+    },
+  },
 }
 
 // ============================================================================
@@ -291,10 +323,11 @@ export function applyTheme(theme: Theme): void {
   root.style.setProperty('--color-medal-bronze', colors.medalBronze)
   
   // Set effect classes
-  root.classList.remove('theme-scanlines', 'theme-glow', 'theme-noise')
+  root.classList.remove('theme-scanlines', 'theme-glow', 'theme-noise', 'theme-spooky')
   if (effects?.scanlines) root.classList.add('theme-scanlines')
   if (effects?.glow) root.classList.add('theme-glow')
   if (effects?.noise) root.classList.add('theme-noise')
+  if (effects?.spooky) root.classList.add('theme-spooky')
   
   // Set theme ID for CSS targeting
   root.setAttribute('data-theme', theme.id)

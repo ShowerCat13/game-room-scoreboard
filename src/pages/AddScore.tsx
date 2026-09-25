@@ -16,6 +16,7 @@ import { useGameDetails } from '@/hooks/useGameDetails'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useSubmitScore } from '@/hooks/useSubmitScore'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
+import { bestPerPlayer } from '@/hooks/useBestTimesLeaderboard'
 import type { ScoreFormat, ScoreDirection } from '@/lib/types'
 
 type PickerType = 'game' | 'mode' | 'detail' | 'player' | null
@@ -28,10 +29,13 @@ type PickerType = 'game' | 'mode' | 'detail' | 'player' | null
  * - ?gameId=xxx - Pre-select a game
  * - ?modeId=xxx - Pre-select a mode (requires gameId)
  * - ?detailId=xxx - Pre-select a detail (requires gameId + modeId)
+ * - ?locked=1 - Hide game/mode/detail pickers and rank by best time per player
+ *   (used by the Halloween party screen and its QR code)
  */
 export function AddScore() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const isLocked = searchParams.get('locked') === '1'
 
   // Form state - pre-populate from URL params if present
   const [selectedGameId, setSelectedGameId] = useState<string | null>(
@@ -64,7 +68,7 @@ export function AddScore() {
     selectedGameId,
     selectedModeId,
     selectedDetailId,
-    100
+    isLocked ? 1000 : 100
   )
 
   // Derived display values
@@ -150,6 +154,22 @@ export function AddScore() {
     if (currentLeaderboard.length === 0) return 1
 
     const isLowerBetter = effectiveScoreDirection === 'lower_better'
+
+    // Locked (party) mode: one entry per player, so rank the player's best
+    // time against everyone else's best
+    if (isLocked) {
+      const board = bestPerPlayer(currentLeaderboard)
+      const previousBest = board.find((e) => e.player_id === selectedPlayerId)?.score
+      const best = previousBest === undefined
+        ? score
+        : isLowerBetter ? Math.min(score, previousBest) : Math.max(score, previousBest)
+
+      return 1 + board.filter((e) =>
+        e.player_id !== selectedPlayerId &&
+        (isLowerBetter ? e.score <= best : e.score >= best)
+      ).length
+    }
+
     let rank = 1
 
     for (const entry of currentLeaderboard) {
@@ -200,7 +220,9 @@ export function AddScore() {
 
   // Handle back/cancel
   const handleBack = () => {
-    if (window.history.length > 1) {
+    if (isLocked) {
+      navigate('/')
+    } else if (window.history.length > 1) {
       navigate(-1)
     } else {
       navigate('/')
@@ -329,12 +351,25 @@ export function AddScore() {
         <BrowseHeader
           backLabel="Cancel"
           onBack={handleBack}
-          title="ADD SCORE"
+          title={isLocked ? 'ADD YOUR TIME' : 'ADD SCORE'}
         />
 
         {/* Form body */}
         <div className="flex-1 p-md space-y-4 overflow-y-auto">
+          {/* Locked event banner replaces the game/mode/detail pickers */}
+          {isLocked && (
+            <div className="card px-md py-3 text-center">
+              <p className="text-lg font-bold text-text-primary">
+                {selectedDetail?.name || 'Loading track...'}
+              </p>
+              <p className="text-sm text-text-secondary">
+                {[selectedGame?.name, selectedMode?.name].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+          )}
+
           {/* Game selector */}
+          {!isLocked && (
           <SelectField
             label="Game"
             value={selectedGame?.name || null}
@@ -342,9 +377,10 @@ export function AddScore() {
             onPress={() => setActivePicker('game')}
             disabled={gamesLoading}
           />
+          )}
 
           {/* Mode selector - shown if game has modes */}
-          {gameHasModes && (
+          {!isLocked && gameHasModes && (
             <SelectField
               label={modeLabel}
               value={selectedMode?.name || null}
@@ -361,7 +397,7 @@ export function AddScore() {
           )}
 
           {/* Detail selector - shown if game has details */}
-          {gameHasDetails && (
+          {!isLocked && gameHasDetails && (
             <SelectField
               label={detailLabel}
               value={selectedDetail?.name || null}

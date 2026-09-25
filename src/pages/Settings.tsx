@@ -507,7 +507,7 @@ export function Settings() {
                 <div className="flex items-start gap-2">
                   <Info className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-text-muted">
-                    Tap the carousel to browse games, or use the "+ Add" button to submit scores.
+                    Halloween edition: tap "Add your time" or scan the QR code to enter a Boo Cinema time.
                     Settings are automatically saved.
                   </p>
                 </div>

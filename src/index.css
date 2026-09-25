@@ -495,3 +495,54 @@
     transform: scale(1);
   }
 }
+/* ============================================================================
+   SPOOKY THEME (Halloween 2026)
+   ============================================================================ */
+
+/* Drifting purple/green fog behind the kiosk content */
+.theme-spooky .kiosk-container {
+  background-image:
+    radial-gradient(ellipse 60% 45% at 15% 110%, rgba(125, 255, 155, 0.10), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 90% -10%, rgba(155, 107, 255, 0.18), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 50% 120%, rgba(255, 138, 31, 0.08), transparent 70%);
+  background-size: 140% 140%;
+  animation: spooky-fog 24s ease-in-out infinite alternate;
+}
+
+.theme-spooky .card {
+  border-color: rgba(155, 107, 255, 0.18);
+}
+
+.theme-spooky .podium-gold {
+  border-left-color: var(--color-medal-gold);
+  box-shadow: 0 0 18px rgba(255, 184, 31, 0.15);
+}
+
+@keyframes spooky-fog {
+  from { background-position: 0% 0%; }
+  to   { background-position: 100% 100%; }
+}
+
+/* Gentle bobbing for ghost icons */
+.party-float {
+  animation: party-float 3s ease-in-out infinite;
+}
+
+@keyframes party-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* Primary call-to-action on the party screen */
+.party-cta {
+  background-color: var(--color-accent-primary);
+  color: var(--color-bg-primary);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--color-accent-primary) 35%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-spooky .kiosk-container,
+  .party-float {
+    animation: none;
+  }
+}
