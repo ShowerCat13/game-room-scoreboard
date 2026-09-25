@@ -25,6 +25,29 @@ export const AMBIENT_SLOTS: SpookySlot[] = [
 
 const EXTENSIONS = ['mp3', 'ogg', 'wav']
 
+/**
+ * Which part of each downloaded clip to play, plus light processing.
+ * Offsets/durations were picked from each file's loudness profile, so the
+ * source files can stay untouched (see public/sounds/CREDITS.md).
+ */
+interface ClipSettings {
+  offset?: number      // seconds into the file
+  duration?: number    // seconds to play
+  rate?: number        // playback rate (pitch + speed)
+  echo?: boolean       // ghostly feedback echo
+}
+
+const CLIPS: Partial<Record<SpookySlot, ClipSettings>> = {
+  ghost_laugh: { offset: 0, duration: 3.2, rate: 1.2, echo: true },
+  witch_cackle: { offset: 3.5, duration: 2.5 },
+  thunder: { offset: 6.2, duration: 6.5 },
+  wolf_howl: { offset: 0, duration: 6 },
+  evil_laugh: { offset: 2.8, duration: 2.6, rate: 0.92 },
+  heartbeat: { offset: 0, duration: 4 },
+}
+
+const FADE_OUT = 0.35
+
 // undefined = not loaded yet, null = no file (use synth)
 const buffers = new Map<SpookySlot, AudioBuffer | null>()
 const loading = new Map<SpookySlot, Promise<AudioBuffer | null>>()
@@ -74,12 +97,7 @@ export async function playSpooky(slot: SpookySlot, gain = 1): Promise<void> {
     const buffer = await loadSlot(slot)
 
     if (buffer) {
-      const src = ctx.createBufferSource()
-      const g = ctx.createGain()
-      src.buffer = buffer
-      g.gain.value = volume
-      src.connect(g).connect(ctx.destination)
-      src.start()
+      playClip(ctx, buffer, volume, CLIPS[slot] ?? {})
       return
     }
 
@@ -87,6 +105,41 @@ export async function playSpooky(slot: SpookySlot, gain = 1): Promise<void> {
   } catch (error) {
     console.warn('Spooky sound failed:', error)
   }
+}
+
+function playClip(ctx: AudioContext, buffer: AudioBuffer, volume: number, clip: ClipSettings) {
+  const now = ctx.currentTime
+  const rate = clip.rate ?? 1
+  const offset = Math.min(clip.offset ?? 0, buffer.duration)
+  const length = Math.min(clip.duration ?? buffer.duration, buffer.duration - offset)
+  const wallLength = length / rate
+
+  const src = ctx.createBufferSource()
+  const g = ctx.createGain()
+  src.buffer = buffer
+  src.playbackRate.value = rate
+
+  // Short fade in/out so sliced clips don't click
+  g.gain.setValueAtTime(0, now)
+  g.gain.linearRampToValueAtTime(volume, now + 0.02)
+  g.gain.setValueAtTime(volume, now + Math.max(0.03, wallLength - FADE_OUT))
+  g.gain.linearRampToValueAtTime(0, now + wallLength)
+
+  src.connect(g).connect(ctx.destination)
+
+  if (clip.echo) {
+    const delay = ctx.createDelay(1)
+    const feedback = ctx.createGain()
+    const wet = ctx.createGain()
+    delay.delayTime.value = 0.18
+    feedback.gain.value = 0.4
+    wet.gain.value = 0.5
+    g.connect(delay)
+    delay.connect(feedback).connect(delay)
+    delay.connect(wet).connect(ctx.destination)
+  }
+
+  src.start(now, offset, length)
 }
 
 // ============================================================================
