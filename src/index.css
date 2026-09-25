@@ -80,10 +80,10 @@
     user-select: text;
   }
 
-  /* Hide scrollbars but keep functionality */
+  /* Slim but grabbable scrollbars (touch/mouse on the kiosk) */
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
@@ -91,8 +91,9 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: var(--color-bg-elevated);
-    @apply rounded;
+    background-color: var(--color-text-muted);
+    border: 2px solid var(--color-bg-card);
+    @apply rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {

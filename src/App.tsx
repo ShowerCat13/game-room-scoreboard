@@ -6,6 +6,7 @@ import {
   Manage,
 } from '@/pages'
 import { useSoundInit, useTheme } from '@/hooks'
+import { useDragScroll } from '@/hooks/useDragScroll'
 import { FpsMeter } from '@/components/haunt/FpsMeter'
 import { AdminGate } from '@/components/management'
 
@@ -15,6 +16,9 @@ function App() {
   
   // Apply theme CSS variables to document root
   useTheme()
+
+  // Drag-to-scroll for the Pi touchscreen (often reported as a mouse)
+  useDragScroll()
 
   return (
     <BrowserRouter>
