@@ -84,6 +84,10 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isCreating && name.trim()) handleSubmit()
+                  }}
+                  enterKeyHint="done"
                   placeholder="Enter player name"
                   maxLength={30}
                   autoFocus

@@ -1,7 +1,7 @@
 // src/pages/PartyDisplay.tsx
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Settings as SettingsIcon, Ghost, Plus, Timer } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { KioskLayout } from '@/components/layout'
@@ -23,6 +23,8 @@ const getQrUrl = () =>
 
 // Rows that fit beside the QR panel on the 800×480 kiosk
 const KIOSK_ROWS = 4
+// How long each page of the kiosk leaderboard stays up
+const PAGE_MS = 8000
 
 function formatClock(date: Date): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -75,8 +77,19 @@ export function PartyDisplay() {
     setTimeout(() => setAlertData(null), 300)
   }, [])
 
-  const visibleEntries = entries.slice(0, KIOSK_ROWS)
-  const hiddenCount = entries.length - visibleEntries.length
+  // Page through everyone on the kiosk so every racer gets screen time
+  const pageCount = Math.max(1, Math.ceil(entries.length / KIOSK_ROWS))
+  const [page, setPage] = useState(0)
+  useEffect(() => {
+    if (pageCount <= 1) {
+      setPage(0)
+      return
+    }
+    const timer = setInterval(() => setPage((p) => (p + 1) % pageCount), PAGE_MS)
+    return () => clearInterval(timer)
+  }, [pageCount])
+  const currentPage = page % pageCount
+  const visibleEntries = entries.slice(currentPage * KIOSK_ROWS, (currentPage + 1) * KIOSK_ROWS)
 
   const renderBoard = (rows: typeof entries) => {
     if (loading) {
@@ -156,12 +169,34 @@ export function PartyDisplay() {
         <div className="flex-1 flex gap-md px-md py-3 min-h-0 mobile:flex-col">
           {/* Leaderboard */}
           <div className="flex-1 min-w-0 flex flex-col">
-            {/* Kiosk: top rows only */}
-            <div className="flex-1 hide-mobile">{renderBoard(visibleEntries)}</div>
-            {hiddenCount > 0 && (
-              <p className="text-xs text-text-muted text-center pt-1 hide-mobile">
-                +{hiddenCount} more {hiddenCount === 1 ? 'racer' : 'racers'} in the shadows
-              </p>
+            {/* Kiosk: one page of rows at a time */}
+            <div className="flex-1 hide-mobile">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentPage}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {renderBoard(visibleEntries)}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            {pageCount > 1 && (
+              // .hide-mobile forces display:block, so the flex row lives inside it
+              <div className="hide-mobile pt-2">
+                <div className="flex items-center justify-center gap-1.5">
+                  {Array.from({ length: pageCount }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === currentPage ? 'w-4 bg-accent-primary' : 'w-1.5 bg-text-muted'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
             {/* Phones: full list */}
             <div className="show-mobile">{renderBoard(entries)}</div>

@@ -7,7 +7,8 @@ import {
   PickerModal,
   TimeInput,
   NumericInput,
-  NewPlayerModal
+  NewPlayerModal,
+  LapTimePad
 } from '@/components/input'
 import { CelebrationOverlay } from '@/components/overlays'
 import { useGames } from '@/hooks/useGames'
@@ -18,6 +19,7 @@ import { useSubmitScore } from '@/hooks/useSubmitScore'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { bestPerPlayer } from '@/hooks/useBestTimesLeaderboard'
 import type { ScoreFormat, ScoreDirection } from '@/lib/types'
+import { formatScore } from '@/lib/utils'
 
 type PickerType = 'game' | 'mode' | 'detail' | 'player' | null
 
@@ -49,12 +51,14 @@ export function AddScore() {
   )
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [scoreValue, setScoreValue] = useState<number | null>(null)
+  const [timeHint, setTimeHint] = useState<string | null>(null)
 
   // Modal visibility state
   const [activePicker, setActivePicker] = useState<PickerType>(null)
   const [showNewPlayerModal, setShowNewPlayerModal] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
   const [submittedRank, setSubmittedRank] = useState(1)
+  const [celebrationNote, setCelebrationNote] = useState<string | null>(null)
 
   // Data hooks
   const { games, loading: gamesLoading } = useGames()
@@ -143,6 +147,13 @@ export function AddScore() {
 
   // Create new player and auto-select them
   const handleCreatePlayer = async (name: string) => {
+    // Reuse an existing player with the same name rather than creating a duplicate
+    const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())
+    if (existing) {
+      setSelectedPlayerId(existing.id)
+      return
+    }
+
     const player = await createPlayer(name)
     if (player) {
       setSelectedPlayerId(player.id)
@@ -208,6 +219,21 @@ export function AddScore() {
     if (result.success) {
       const rank = calculateRank(scoreValue)
       setSubmittedRank(rank)
+
+      // Party mode: tell returning racers whether they beat their own best
+      if (isLocked) {
+        const isLowerBetter = effectiveScoreDirection === 'lower_better'
+        const previousBest = bestPerPlayer(currentLeaderboard)
+          .find((e) => e.player_id === selectedPlayerId)?.score
+        const improved = previousBest === undefined ||
+          (isLowerBetter ? scoreValue < previousBest : scoreValue > previousBest)
+        setCelebrationNote(
+          previousBest === undefined ? null
+            : improved ? 'New personal best!'
+            : `Your best is still ${formatScore(previousBest, effectiveScoreFormat, effectiveScoreUnit)}`
+        )
+      }
+
       setShowCelebration(true)
     }
   }
@@ -344,124 +370,9 @@ export function AddScore() {
   const modeLabel = selectedGame?.mode_label || 'Mode'
   const detailLabel = selectedGame?.detail_label || 'Track'
 
-  return (
-    <KioskLayout>
-      <div className="h-full flex flex-col">
-        {/* Header */}
-        <BrowseHeader
-          backLabel="Cancel"
-          onBack={handleBack}
-          title={isLocked ? 'ADD YOUR TIME' : 'ADD SCORE'}
-        />
-
-        {/* Form body */}
-        <div className="flex-1 p-md space-y-4 overflow-y-auto">
-          {/* Locked event banner replaces the game/mode/detail pickers */}
-          {isLocked && (
-            <div className="card px-md py-3 text-center">
-              <p className="text-lg font-bold text-text-primary">
-                {selectedDetail?.name || 'Loading track...'}
-              </p>
-              <p className="text-sm text-text-secondary">
-                {[selectedGame?.name, selectedMode?.name].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-          )}
-
-          {/* Game selector */}
-          {!isLocked && (
-          <SelectField
-            label="Game"
-            value={selectedGame?.name || null}
-            placeholder={gamesLoading ? 'Loading...' : 'Select a game'}
-            onPress={() => setActivePicker('game')}
-            disabled={gamesLoading}
-          />
-          )}
-
-          {/* Mode selector - shown if game has modes */}
-          {!isLocked && gameHasModes && (
-            <SelectField
-              label={modeLabel}
-              value={selectedMode?.name || null}
-              placeholder={
-                !selectedGameId
-                  ? 'Select a game first'
-                  : modesLoading
-                    ? 'Loading...'
-                    : `Select ${modeLabel.toLowerCase()}`
-              }
-              onPress={() => setActivePicker('mode')}
-              disabled={!selectedGameId || modesLoading}
-            />
-          )}
-
-          {/* Detail selector - shown if game has details */}
-          {!isLocked && gameHasDetails && (
-            <SelectField
-              label={detailLabel}
-              value={selectedDetail?.name || null}
-              placeholder={
-                !selectedModeId && gameHasModes
-                  ? `Select ${modeLabel.toLowerCase()} first`
-                  : !selectedGameId
-                    ? 'Select a game first'
-                    : detailsLoading
-                      ? 'Loading...'
-                      : `Select ${detailLabel.toLowerCase()}`
-              }
-              onPress={() => setActivePicker('detail')}
-              disabled={(!selectedModeId && gameHasModes) || !selectedGameId || detailsLoading}
-            />
-          )}
-
-          {/* Player selector */}
-          <SelectField
-            label="Player"
-            value={selectedPlayer?.name || null}
-            placeholder={playersLoading ? 'Loading...' : 'Select a player'}
-            onPress={() => setActivePicker('player')}
-            disabled={playersLoading}
-          />
-
-          {/* Score input */}
-          <div className="pt-4">
-            <p className="text-sm text-text-secondary mb-3 text-center">
-              {getScoreInputLabel()}
-            </p>
-            {renderScoreInput()}
-          </div>
-
-          {/* Error display */}
-          {submitError && (
-            <div className="p-3 bg-red-500/10 rounded-lg">
-              <p className="text-red-500 text-center text-sm">
-                {submitError.message}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Submit button */}
-        <div className="p-md border-t border-background-elevated">
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className={`
-              w-full h-[56px] rounded-lg
-              text-lg font-bold
-              transition-colors
-              ${canSubmit
-                ? 'bg-category-darts text-white active:brightness-110'
-                : 'bg-background-elevated text-text-muted cursor-not-allowed'
-              }
-            `}
-          >
-            {submitting ? 'Saving...' : 'Save Score'}
-          </button>
-        </div>
-      </div>
-
+  // Shared modals (pickers, new player, celebration)
+  const modals = (
+    <>
       {/* ===== MODALS ===== */}
 
       {/* Game picker modal */}
@@ -536,8 +447,174 @@ export function AddScore() {
           scoreFormat={effectiveScoreFormat}
           scoreUnit={effectiveScoreUnit}
           rank={submittedRank}
+          note={celebrationNote}
         />
       )}
+    </>
+  )
+
+  // Party (locked) layout: name + save on the left, time keypad on the right
+  if (isLocked) {
+    return (
+      <KioskLayout>
+        <div className="h-full flex flex-col">
+          <BrowseHeader backLabel="Cancel" onBack={handleBack} title="ADD YOUR TIME" />
+
+          <div className="flex-1 min-h-0 flex gap-md p-md mobile:flex-col">
+            {/* On phones this column dissolves (mobile:contents) so the keypad can sit above Save */}
+            <div className="flex-1 min-w-0 flex flex-col gap-3 mobile:contents">
+              <div className="card px-md py-3 text-center">
+                <p className="text-lg font-bold text-text-primary">
+                  {selectedDetail?.name || 'Loading track...'}
+                </p>
+                <p className="text-sm text-text-secondary">
+                  {[selectedGame?.name, selectedMode?.name].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+
+              <SelectField
+                label="Who's racing?"
+                value={selectedPlayer?.name || null}
+                placeholder={playersLoading ? 'Loading...' : 'Tap to pick or add your name'}
+                onPress={() => setActivePicker('player')}
+                disabled={playersLoading}
+              />
+
+              <p className={`mobile:order-4 text-sm text-center min-h-[20px] ${timeHint ? 'text-red-400 font-semibold' : 'text-text-muted'}`}>
+                {timeHint ?? (selectedPlayer && scoreValue === null ? 'Enter your time on the keypad' : '')}
+              </p>
+
+              {submitError && (
+                <p className="mobile:order-4 text-red-500 text-center text-sm">{submitError.message}</p>
+              )}
+
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className={`
+                  mt-auto w-full h-[56px] rounded-lg text-lg font-bold transition-colors mobile:order-5
+                  ${canSubmit ? 'party-cta active:brightness-110' : 'bg-background-elevated text-text-muted cursor-not-allowed'}
+                `}
+              >
+                {submitting ? 'Saving...' : 'Save Time'}
+              </button>
+            </div>
+
+            <div className="w-[280px] flex-shrink-0 mobile:w-full mobile:order-3">
+              <LapTimePad onChange={setScoreValue} onValidityChange={setTimeHint} />
+            </div>
+          </div>
+        </div>
+        {modals}
+      </KioskLayout>
+    )
+  }
+
+  return (
+    <KioskLayout>
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <BrowseHeader
+          backLabel="Cancel"
+          onBack={handleBack}
+          title="ADD SCORE"
+        />
+
+        {/* Form body */}
+        <div className="flex-1 p-md space-y-4 overflow-y-auto">
+          {/* Game selector */}
+          <SelectField
+            label="Game"
+            value={selectedGame?.name || null}
+            placeholder={gamesLoading ? 'Loading...' : 'Select a game'}
+            onPress={() => setActivePicker('game')}
+            disabled={gamesLoading}
+          />
+
+          {/* Mode selector - shown if game has modes */}
+          {gameHasModes && (
+            <SelectField
+              label={modeLabel}
+              value={selectedMode?.name || null}
+              placeholder={
+                !selectedGameId
+                  ? 'Select a game first'
+                  : modesLoading
+                    ? 'Loading...'
+                    : `Select ${modeLabel.toLowerCase()}`
+              }
+              onPress={() => setActivePicker('mode')}
+              disabled={!selectedGameId || modesLoading}
+            />
+          )}
+
+          {/* Detail selector - shown if game has details */}
+          {gameHasDetails && (
+            <SelectField
+              label={detailLabel}
+              value={selectedDetail?.name || null}
+              placeholder={
+                !selectedModeId && gameHasModes
+                  ? `Select ${modeLabel.toLowerCase()} first`
+                  : !selectedGameId
+                    ? 'Select a game first'
+                    : detailsLoading
+                      ? 'Loading...'
+                      : `Select ${detailLabel.toLowerCase()}`
+              }
+              onPress={() => setActivePicker('detail')}
+              disabled={(!selectedModeId && gameHasModes) || !selectedGameId || detailsLoading}
+            />
+          )}
+
+          {/* Player selector */}
+          <SelectField
+            label="Player"
+            value={selectedPlayer?.name || null}
+            placeholder={playersLoading ? 'Loading...' : 'Select a player'}
+            onPress={() => setActivePicker('player')}
+            disabled={playersLoading}
+          />
+
+          {/* Score input */}
+          <div className="pt-4">
+            <p className="text-sm text-text-secondary mb-3 text-center">
+              {getScoreInputLabel()}
+            </p>
+            {renderScoreInput()}
+          </div>
+
+          {/* Error display */}
+          {submitError && (
+            <div className="p-3 bg-red-500/10 rounded-lg">
+              <p className="text-red-500 text-center text-sm">
+                {submitError.message}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Submit button */}
+        <div className="p-md border-t border-background-elevated">
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className={`
+              w-full h-[56px] rounded-lg
+              text-lg font-bold
+              transition-colors
+              ${canSubmit
+                ? 'bg-category-darts text-white active:brightness-110'
+                : 'bg-background-elevated text-text-muted cursor-not-allowed'
+              }
+            `}
+          >
+            {submitting ? 'Saving...' : 'Save Score'}
+          </button>
+        </div>
+      </div>
+
+      {modals}
     </KioskLayout>
   )
 }

@@ -15,6 +15,8 @@ interface CelebrationOverlayProps {
   scoreUnit?: string | null
   rank: number
   autoCloseMs?: number
+  /** Optional line under the rank, e.g. "Your best is still 2:04.731" */
+  note?: string | null
 }
 
 // Confetti particle component
@@ -91,6 +93,7 @@ export function CelebrationOverlay({
   scoreUnit,
   rank,
   autoCloseMs,
+  note,
 }: CelebrationOverlayProps) {
   const celebrationDurationMs = useKioskStore((state) => state.celebrationDurationMs)
   const duration = autoCloseMs ?? celebrationDurationMs
@@ -262,6 +265,17 @@ export function CelebrationOverlay({
               )}
               <span>{getOrdinal(rank)} Place!</span>
             </motion.div>
+
+            {note && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+                className="text-sm text-text-secondary mt-3"
+              >
+                {note}
+              </motion.p>
+            )}
           </motion.div>
 
           {/* Hint */}

@@ -27,8 +27,14 @@ export function TimeInput({ value, onChange, showMilliseconds = true }: TimeInpu
   const [parts, setParts] = useState(parseMs(value))
   const secRef = useRef<HTMLInputElement>(null)
   const msRef = useRef<HTMLInputElement>(null)
+  // Last value this component emitted, so typing doesn't get reformatted mid-entry
+  const emittedRef = useRef<number | null>(value)
 
+  // Only resync the boxes when the value changes from outside (e.g. form reset).
+  // Resyncing on our own onChange padded "5" to "05" and dropped the next digit.
   useEffect(() => {
+    if (value === emittedRef.current) return
+    emittedRef.current = value
     setParts(parseMs(value))
   }, [value, showMilliseconds])
 
@@ -38,10 +44,13 @@ export function TimeInput({ value, onChange, showMilliseconds = true }: TimeInpu
     const ms = parseInt(newParts.ms) || 0
 
     if (newParts.min === '' && newParts.sec === '' && (!showMilliseconds || newParts.ms === '')) {
+      emittedRef.current = null
       onChange(null)
     } else {
       const totalMs = (min * 60000) + (sec * 1000) + (showMilliseconds ? ms : 0)
-      onChange(showMilliseconds ? totalMs : Math.floor(totalMs / 1000))
+      const next = showMilliseconds ? totalMs : Math.floor(totalMs / 1000)
+      emittedRef.current = next
+      onChange(next)
     }
   }
 
