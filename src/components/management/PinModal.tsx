@@ -9,6 +9,9 @@ interface PinModalProps {
   onSubmit: (pin: string) => void
   mode: 'verify' | 'setup' | 'change'
   error?: string | null
+  /** Override the default title/subtitle (e.g. for player profile PINs) */
+  title?: string
+  subtitle?: string
 }
 
 /**
@@ -24,6 +27,8 @@ export function PinModal({
   onSubmit,
   mode,
   error,
+  title: titleOverride,
+  subtitle: subtitleOverride,
 }: PinModalProps) {
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
@@ -97,17 +102,17 @@ export function PinModal({
   const currentPin = stage === 'enter' ? pin : confirmPin
   const showContinue = mode !== 'verify' && stage === 'enter' && pin.length === 4
 
-  const title = mode === 'verify' 
+  const title = titleOverride ?? (mode === 'verify' 
     ? 'Enter PIN' 
     : mode === 'setup' 
       ? (stage === 'enter' ? 'Create PIN' : 'Confirm PIN')
-      : (stage === 'enter' ? 'New PIN' : 'Confirm PIN')
+      : (stage === 'enter' ? 'New PIN' : 'Confirm PIN'))
 
-  const subtitle = mode === 'verify'
+  const subtitle = subtitleOverride ?? (mode === 'verify'
     ? 'Enter your 4-digit PIN to continue'
     : stage === 'enter'
       ? 'Choose a 4-digit PIN'
-      : 'Enter the PIN again to confirm'
+      : 'Enter the PIN again to confirm')
 
   return (
     <AnimatePresence>

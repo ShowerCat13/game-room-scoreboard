@@ -5,3 +5,4 @@ export { EditScoreModal } from './EditScoreModal'
 
 // Management UI components
 export { BulkImportModal } from './BulkImportModal'
+export { AdminGate } from './AdminGate'

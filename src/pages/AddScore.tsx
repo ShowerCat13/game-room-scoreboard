@@ -8,8 +8,10 @@ import {
   TimeInput,
   NumericInput,
   NewPlayerModal,
-  LapTimePad
+  LapTimePad,
+  EditProfileFlow
 } from '@/components/input'
+import { rememberPin } from '@/lib/myProfiles'
 import { CelebrationOverlay } from '@/components/overlays'
 import { useGames } from '@/hooks/useGames'
 import { useGameModes } from '@/hooks/useGameModes'
@@ -64,7 +66,8 @@ export function AddScore() {
   const { games, loading: gamesLoading } = useGames()
   const { modes, loading: modesLoading } = useGameModes(selectedGameId)
   const { details, loading: detailsLoading } = useGameDetails(selectedGameId, selectedModeId)
-  const { players, loading: playersLoading, createPlayer } = usePlayers()
+  const { players, loading: playersLoading, createPlayer, refetch: refetchPlayers } = usePlayers()
+  const [editingProfile, setEditingProfile] = useState(false)
   const { submitScore, submitting, error: submitError } = useSubmitScore()
 
   // Fetch current leaderboard to calculate rank
@@ -146,7 +149,7 @@ export function AddScore() {
   }
 
   // Create new player and auto-select them
-  const handleCreatePlayer = async (name: string, avatarUrl?: string | null) => {
+  const handleCreatePlayer = async (name: string, avatarUrl?: string | null, pin?: string | null) => {
     // Reuse an existing player with the same name rather than creating a duplicate
     const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())
     if (existing) {
@@ -154,7 +157,8 @@ export function AddScore() {
       return
     }
 
-    const player = await createPlayer(name, avatarUrl)
+    const player = await createPlayer(name, avatarUrl, pin)
+    if (player && pin) rememberPin(player.id, pin)
     if (player) {
       setSelectedPlayerId(player.id)
     }
@@ -473,13 +477,26 @@ export function AddScore() {
                 </p>
               </div>
 
-              <SelectField
-                label="Who's racing?"
-                value={selectedPlayer?.name || null}
-                placeholder={playersLoading ? 'Loading...' : 'Tap to pick or add your name'}
-                onPress={() => setActivePicker('player')}
-                disabled={playersLoading}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <SelectField
+                    label="Who's racing?"
+                    value={selectedPlayer?.name || null}
+                    placeholder={playersLoading ? 'Loading...' : 'Tap to pick or add your name'}
+                    onPress={() => setActivePicker('player')}
+                    disabled={playersLoading}
+                  />
+                </div>
+                {selectedPlayer && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingProfile(true)}
+                    className="w-[64px] flex-shrink-0 rounded-lg bg-background-card text-sm text-text-secondary active:bg-background-elevated"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
 
               <p className={`mobile:order-4 text-sm text-center min-h-[20px] ${timeHint ? 'text-red-400 font-semibold' : 'text-text-muted'}`}>
                 {timeHint ?? (selectedPlayer && scoreValue === null ? 'Enter your time on the keypad' : '')}
@@ -507,6 +524,13 @@ export function AddScore() {
           </div>
         </div>
         {modals}
+        {editingProfile && (
+          <EditProfileFlow
+            player={selectedPlayer}
+            onClose={() => setEditingProfile(false)}
+            onSaved={() => refetchPlayers()}
+          />
+        )}
       </KioskLayout>
     )
   }

@@ -6,7 +6,7 @@ interface UsePlayersResult {
   players: Player[]
   loading: boolean
   error: Error | null
-  createPlayer: (name: string, avatarUrl?: string | null) => Promise<Player | null>
+  createPlayer: (name: string, avatarUrl?: string | null, pin?: string | null) => Promise<Player | null>
   refetch: () => void
 }
 
@@ -74,14 +74,20 @@ export function usePlayers(): UsePlayersResult {
     }
   }, [])
 
-  const createPlayer = useCallback(async (name: string, avatarUrl?: string | null): Promise<Player | null> => {
+  const createPlayer = useCallback(async (
+    name: string,
+    avatarUrl?: string | null,
+    pin?: string | null
+  ): Promise<Player | null> => {
     try {
+      // Guests create players through the create_player RPC (see supabase/security.sql),
+      // which validates input and stores the optional profile PIN server-side
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: insertError } = await (supabase as any)
-        .from('players')
-        .insert({ name, avatar_url: avatarUrl || null })
-        .select()
-        .single()
+      const { data, error: insertError } = await (supabase as any).rpc('create_player', {
+        p_name: name,
+        p_avatar_url: avatarUrl || null,
+        p_pin: pin || null,
+      })
 
       if (insertError) throw insertError
 

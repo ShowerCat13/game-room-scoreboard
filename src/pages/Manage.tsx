@@ -23,6 +23,7 @@ import { useManageGameDetails } from '@/hooks/useManageGameDetails'
 import { useManageScores, type ScoreWithDetails } from '@/hooks/useManageScores'
 import { useKioskStore } from '@/stores/kioskStore'
 import { formatScore } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 import { AvatarUpload } from '@/components/input'
 import type { Player, Game, GameMode, GameDetail, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
 import { BulkImportModal } from '@/components/management'
@@ -69,6 +70,8 @@ export function Manage() {
   const [showPlayerForm, setShowPlayerForm] = useState(false)
   const [playerName, setPlayerName] = useState('')
   const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null)
+  const [playerPin, setPlayerPin] = useState('')
+  const [playerPinError, setPlayerPinError] = useState<string | null>(null)
   const [deletingPlayer, setDeletingPlayer] = useState<Player | null>(null)
 
   // Games state
@@ -209,6 +212,8 @@ export function Manage() {
   setEditingPlayer(player)
   setPlayerName(player.name)
   setPlayerAvatarUrl(player.avatar_url)
+  setPlayerPin('')
+  setPlayerPinError(null)
   setShowPlayerForm(true)
 }
   
@@ -216,6 +221,22 @@ export function Manage() {
     if (!playerName.trim()) return
     
     if (editingPlayer) {
+      // Optional: set/reset the player's profile PIN (host-only RPC, see supabase/security.sql)
+      if (playerPin) {
+        if (!/^\d{4}$/.test(playerPin)) {
+          setPlayerPinError('PIN must be 4 digits')
+          return
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any).rpc('set_player_pin', {
+          p_player_id: editingPlayer.id,
+          p_pin: playerPin,
+        })
+        if (error) {
+          setPlayerPinError(`Couldn't set PIN: ${error.message}`)
+          return
+        }
+      }
       await updatePlayer(editingPlayer.id, playerName.trim(), playerAvatarUrl)
     } else {
       await createPlayer(playerName.trim(), playerAvatarUrl)
@@ -223,6 +244,8 @@ export function Manage() {
     setShowPlayerForm(false)
     setPlayerName('')
     setPlayerAvatarUrl(null)
+    setPlayerPin('')
+    setPlayerPinError(null)
     setEditingPlayer(null)
 }
    
@@ -862,6 +885,25 @@ export function Manage() {
                 autoFocus
                 className="w-full h-[56px] px-md bg-background-elevated text-text-primary rounded-lg mb-4 outline-none focus:ring-2 focus:ring-category-golf"
               />
+              {editingPlayer && (
+                <div className="mb-4">
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={playerPin}
+                    onChange={(e) => {
+                      setPlayerPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                      setPlayerPinError(null)
+                    }}
+                    placeholder="New profile PIN (optional)"
+                    className="w-full h-[48px] px-md bg-background-elevated text-text-primary rounded-lg outline-none focus:ring-2 focus:ring-category-golf"
+                  />
+                  <p className={`mt-1 text-xs ${playerPinError ? 'text-red-400' : 'text-text-muted'}`}>
+                    {playerPinError ?? 'Sets or resets the PIN this player uses to edit their profile'}
+                  </p>
+                </div>
+              )}
               <button
                 onClick={handleSavePlayer}
                 disabled={!playerName.trim()}

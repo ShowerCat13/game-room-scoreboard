@@ -7,6 +7,7 @@ import {
 } from '@/pages'
 import { useSoundInit, useTheme } from '@/hooks'
 import { FpsMeter } from '@/components/haunt/FpsMeter'
+import { AdminGate } from '@/components/management'
 
 function App() {
   // Initialize audio context on first user interaction
@@ -31,7 +32,7 @@ function App() {
 
         {/* Settings & Management */}
         <Route path="/settings" element={<Settings />} />
-        <Route path="/manage" element={<Manage />} />
+        <Route path="/manage" element={<AdminGate><Manage /></AdminGate>} />
       </Routes>
     </BrowserRouter>
   )

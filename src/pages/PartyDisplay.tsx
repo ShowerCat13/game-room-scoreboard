@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings as SettingsIcon, Ghost, Plus, Timer } from 'lucide-react'
+import { Settings as SettingsIcon, Ghost, Plus, Timer, UserPen } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { KioskLayout } from '@/components/layout'
 import { ScoreRow } from '@/components/display'
@@ -15,6 +15,9 @@ import { PARTY_EVENT, PARTY_ADD_SCORE_PATH } from '@/lib/event'
 import { HauntLayer } from '@/components/haunt/HauntLayer'
 import { triggerJumpScare } from '@/lib/haunt/scare'
 import { useKioskStore } from '@/stores/kioskStore'
+import { usePlayers } from '@/hooks/usePlayers'
+import { PickerModal, EditProfileFlow } from '@/components/input'
+import type { Player } from '@/lib/types'
 import type { HighScore } from '@/lib/types'
 
 // Declare the global constant injected by Vite at build time
@@ -45,6 +48,11 @@ export function PartyDisplay() {
   const { gameId, modeId, detailId } = PARTY_EVENT
   const { entries, loading, error, refetch } = useBestTimesLeaderboard(gameId, modeId, detailId)
   const isSpooky = useKioskStore((state) => state.themeId === 'spooky')
+
+  // Edit profile (PIN-protected, see EditProfileFlow)
+  const { players, refetch: refetchPlayers } = usePlayers()
+  const [pickingProfile, setPickingProfile] = useState(false)
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
 
   const [currentTime, setCurrentTime] = useState(new Date())
   useEffect(() => {
@@ -254,9 +262,38 @@ export function PartyDisplay() {
             <Timer className="w-3.5 h-3.5" />
             {entries.length} {entries.length === 1 ? 'racer' : 'racers'} · best time counts
           </p>
-          <div className="w-9" />
+          <button
+            onClick={() => setPickingProfile(true)}
+            className="h-9 px-2 flex items-center gap-1 text-xs text-text-muted active:text-text-primary transition-colors"
+          >
+            <UserPen className="w-4 h-4" />
+            Edit profile
+          </button>
         </div>
       </div>
+
+      <PickerModal
+        isOpen={pickingProfile}
+        onClose={() => setPickingProfile(false)}
+        title="Whose profile?"
+        options={players.map((p) => ({ id: p.id, label: p.name }))}
+        selectedId={null}
+        onSelect={(id) => {
+          setPickingProfile(false)
+          setEditingPlayer(players.find((p) => p.id === id) ?? null)
+        }}
+        emptyMessage="No players yet"
+      />
+      {editingPlayer && (
+        <EditProfileFlow
+          player={editingPlayer}
+          onClose={() => setEditingPlayer(null)}
+          onSaved={() => {
+            refetchPlayers()
+            refetch()
+          }}
+        />
+      )}
 
       {alertData && (
         <RealtimeScoreAlert
