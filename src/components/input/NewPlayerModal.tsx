@@ -2,20 +2,28 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { getInitials, getPlayerColor } from '@/lib/utils'
+import { SPOOKICONS, toSpookiconUrl } from '@/lib/spookicons'
+import { PlayerAvatar } from '@/components/display/PlayerAvatar'
+
+const randomSpookiconId = () => SPOOKICONS[Math.floor(Math.random() * SPOOKICONS.length)].id
 
 interface NewPlayerModalProps {
   isOpen: boolean
   onClose: () => void
-  onCreate: (name: string) => Promise<void>
+  onCreate: (name: string, avatarUrl?: string | null) => Promise<void>
   isCreating?: boolean
+  /** Halloween party: let the player pick a spookicon (one is pre-picked at random) */
+  showSpookicons?: boolean
 }
 
 /**
  * NewPlayerModal - Create a new player during score entry
  */
-export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }: NewPlayerModalProps) {
+export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false, showSpookicons = false }: NewPlayerModalProps) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [spookiconId, setSpookiconId] = useState(randomSpookiconId)
+  const avatarUrl = showSpookicons ? toSpookiconUrl(spookiconId) : null
 
   const handleSubmit = async () => {
     const trimmed = name.trim()
@@ -29,8 +37,9 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }
     }
 
     setError(null)
-    await onCreate(trimmed)
+    await onCreate(trimmed, avatarUrl)
     setName('')
+    setSpookiconId(randomSpookiconId())
     onClose()
   }
 
@@ -68,7 +77,8 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }
 
             {/* Content */}
             <div className="p-md space-y-4">
-              {/* Avatar preview */}
+              {/* Avatar preview (spookicon mode shows it inline with the name instead) */}
+              {!showSpookicons && (
               <div className="flex justify-center">
                 <div
                   className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white"
@@ -77,9 +87,14 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }
                   {name ? getInitials(name) : '?'}
                 </div>
               </div>
+              )}
 
               {/* Name input */}
               <div>
+                <div className="flex items-center gap-3">
+                {showSpookicons && (
+                  <PlayerAvatar name={name || '?'} avatarUrl={avatarUrl} size={56} />
+                )}
                 <input
                   type="text"
                   value={name}
@@ -100,10 +115,38 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false }
                     ${error ? 'ring-2 ring-red-500' : ''}
                   `}
                 />
+                </div>
                 {error && (
                   <p className="mt-2 text-sm text-red-500">{error}</p>
                 )}
               </div>
+
+              {/* Spookicon picker */}
+              {showSpookicons && (
+                <div>
+                  <p className="text-xs text-text-muted mb-2">Pick your spookicon</p>
+                  <div className="grid grid-cols-8 gap-1.5">
+                    {SPOOKICONS.map(({ id, label, Icon, color }) => {
+                      const selected = id === spookiconId
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-label={label}
+                          aria-pressed={selected}
+                          onClick={() => setSpookiconId(id)}
+                          className={`aspect-square rounded-full flex items-center justify-center text-white transition-transform active:scale-90 ${
+                            selected ? 'ring-2 ring-accent-primary ring-offset-2 ring-offset-background-elevated scale-105' : 'opacity-75'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        >
+                          <Icon className="w-5 h-5" strokeWidth={1.75} />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Create button */}
               <button

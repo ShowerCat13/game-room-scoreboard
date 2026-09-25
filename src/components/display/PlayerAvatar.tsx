@@ -1,4 +1,5 @@
 import { getInitials, getPlayerColor } from '@/lib/utils'
+import { getSpookicon } from '@/lib/spookicons'
 
 interface PlayerAvatarProps {
   name: string
@@ -22,6 +23,21 @@ export function PlayerAvatar({
 }: PlayerAvatarProps) {
   const initials = getInitials(name)
   const backgroundColor = getPlayerColor(name)
+  const spookicon = getSpookicon(avatarUrl)
+
+  if (spookicon) {
+    const { Icon, color, label } = spookicon
+    return (
+      <div
+        role="img"
+        aria-label={`${name} (${label})`}
+        className={`rounded-full flex items-center justify-center text-white flex-shrink-0 ${ringClass} ${className}`}
+        style={{ width: size, height: size, backgroundColor: color }}
+      >
+        <Icon style={{ width: size * 0.58, height: size * 0.58 }} strokeWidth={1.75} />
+      </div>
+    )
+  }
 
   if (avatarUrl) {
     return (

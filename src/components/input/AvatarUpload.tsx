@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { Camera, Loader2, X } from 'lucide-react'
 import { useAvatarUpload } from '@/hooks/useAvatarUpload'
+import { getSpookicon } from '@/lib/spookicons'
+import { PlayerAvatar } from '@/components/display/PlayerAvatar'
 import { getInitials, getPlayerColor } from '@/lib/utils'
 
 interface AvatarUploadProps {
@@ -91,7 +93,9 @@ export function AvatarUpload({
           style={{ width: size, height: size }}
         >
           {/* Avatar image or fallback */}
-          {displayUrl ? (
+          {getSpookicon(displayUrl) ? (
+            <PlayerAvatar name={playerName} avatarUrl={displayUrl} size={size} />
+          ) : displayUrl ? (
             <img
               src={displayUrl}
               alt={playerName}

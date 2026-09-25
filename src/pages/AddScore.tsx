@@ -146,7 +146,7 @@ export function AddScore() {
   }
 
   // Create new player and auto-select them
-  const handleCreatePlayer = async (name: string) => {
+  const handleCreatePlayer = async (name: string, avatarUrl?: string | null) => {
     // Reuse an existing player with the same name rather than creating a duplicate
     const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())
     if (existing) {
@@ -154,7 +154,7 @@ export function AddScore() {
       return
     }
 
-    const player = await createPlayer(name)
+    const player = await createPlayer(name, avatarUrl)
     if (player) {
       setSelectedPlayerId(player.id)
     }
@@ -435,6 +435,7 @@ export function AddScore() {
         isOpen={showNewPlayerModal}
         onClose={() => setShowNewPlayerModal(false)}
         onCreate={handleCreatePlayer}
+        showSpookicons={isLocked}
       />
 
       {/* Celebration overlay */}

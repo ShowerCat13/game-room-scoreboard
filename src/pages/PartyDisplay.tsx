@@ -204,12 +204,15 @@ export function PartyDisplay() {
 
           {/* Entry panel */}
           <div className="w-[220px] flex-shrink-0 flex flex-col items-center justify-between gap-3 mobile:w-full mobile:order-first">
-            <div className="card w-full p-3 flex flex-col items-center hide-mobile">
-              <div className="bg-white p-2 rounded-lg">
-                <QRCodeSVG value={getQrUrl()} size={148} level="M" includeMargin={false} />
+            {/* .hide-mobile forces display:block, so centering lives on an inner flex column */}
+            <div className="card w-full p-3 hide-mobile">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-white p-2 rounded-lg leading-none">
+                  <QRCodeSVG value={getQrUrl()} size={148} level="M" includeMargin={false} className="block" />
+                </div>
+                <p className="text-sm text-text-primary font-semibold mt-2">Scan to add your time</p>
+                <p className="text-xs text-text-muted">Phone must be on the party Wi-Fi</p>
               </div>
-              <p className="text-sm text-text-primary font-semibold mt-2">Scan to add your time</p>
-              <p className="text-xs text-text-muted">Phone must be on the party Wi-Fi</p>
             </div>
 
             <button
