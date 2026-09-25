@@ -6,6 +6,7 @@ import {
   Manage,
 } from '@/pages'
 import { useSoundInit, useTheme } from '@/hooks'
+import { FpsMeter } from '@/components/haunt/FpsMeter'
 
 function App() {
   // Initialize audio context on first user interaction
@@ -16,6 +17,8 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* Performance check on the Pi: open with ?fps=1 */}
+      <FpsMeter />
       <Routes>
         {/* Halloween 2026: single Boo Cinema leaderboard replaces the carousel */}
         <Route path="/" element={<PartyDisplay />} />

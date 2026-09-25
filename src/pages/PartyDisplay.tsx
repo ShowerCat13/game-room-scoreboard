@@ -12,6 +12,9 @@ import { useRealtimeScores } from '@/hooks/useRealtimeScores'
 import { useScoreDetails } from '@/hooks/useScoreDetails'
 import type { RealtimeScoreData } from '@/hooks/useScoreDetails'
 import { PARTY_EVENT, PARTY_ADD_SCORE_PATH } from '@/lib/event'
+import { HauntLayer } from '@/components/haunt/HauntLayer'
+import { triggerJumpScare } from '@/lib/haunt/scare'
+import { useKioskStore } from '@/stores/kioskStore'
 import type { HighScore } from '@/lib/types'
 
 // Declare the global constant injected by Vite at build time
@@ -41,6 +44,7 @@ export function PartyDisplay() {
   const navigate = useNavigate()
   const { gameId, modeId, detailId } = PARTY_EVENT
   const { entries, loading, error, refetch } = useBestTimesLeaderboard(gameId, modeId, detailId)
+  const isSpooky = useKioskStore((state) => state.themeId === 'spooky')
 
   const [currentTime, setCurrentTime] = useState(new Date())
   useEffect(() => {
@@ -68,6 +72,11 @@ export function PartyDisplay() {
     const standing = best?.find((e) => e.player_id === newScore.player_id)
     setAlertData({ ...details, rank: standing ? Number(standing.rank) : details.rank })
     setShowAlert(true)
+
+    // New track record from a phone: scare the room
+    if (standing && Number(standing.rank) === 1 && standing.score_id === newScore.id) {
+      triggerJumpScare()
+    }
   }, [fetchScoreDetails, refetch, gameId, modeId, detailId])
 
   useRealtimeScores(handleNewScore)
@@ -128,7 +137,13 @@ export function PartyDisplay() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
+            className="relative"
           >
+            {isSpooky && entries.length >= 3 && entry.player_id === entries[entries.length - 1].player_id && (
+              <span className="tombstone-tag absolute top-0.5 left-1/2 -translate-x-1/2 text-xs z-10">
+                Dead last
+              </span>
+            )}
             <ScoreRow
               rank={Number(entry.rank)}
               playerName={entry.player_name || 'Unknown'}
@@ -136,7 +151,7 @@ export function PartyDisplay() {
               score={entry.score}
               scoreFormat={entry.effective_format}
               scoreUnit={entry.effective_unit || undefined}
-              className="card"
+              className={isSpooky ? 'card tombstone' : 'card'}
             />
           </motion.div>
         ))}
@@ -146,7 +161,8 @@ export function PartyDisplay() {
 
   return (
     <KioskLayout>
-      <div className="h-full flex flex-col relative mobile:min-h-[100dvh]">
+      {isSpooky && <HauntLayer />}
+      <div className="h-full flex flex-col relative z-10 mobile:min-h-[100dvh]">
         {/* Header */}
         <div className="idle-header">
           <div className="flex items-center gap-3">
@@ -154,7 +170,7 @@ export function PartyDisplay() {
               <Ghost className="w-6 h-6 text-accent-primary party-float" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-text-primary leading-tight">
+              <h1 className="spooky-title text-xl font-bold text-text-primary leading-tight">
                 {PARTY_EVENT.title}
               </h1>
               <p className="text-sm text-text-secondary">{PARTY_EVENT.subtitle}</p>

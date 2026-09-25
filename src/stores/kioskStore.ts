@@ -14,6 +14,9 @@ interface PersistedSettings {
   themeId: string
   textPrimaryOverride: string | null
   accentPrimaryOverride: string | null
+  // Halloween haunt
+  hauntSounds: boolean
+  hauntScares: boolean
 }
 
 // UI state for the kiosk application
@@ -80,6 +83,10 @@ interface KioskState extends PersistedSettings {
   setTextPrimaryOverride: (color: string | null) => void
   setAccentPrimaryOverride: (color: string | null) => void
   resetThemeCustomizations: () => void
+
+  // Haunt actions
+  setHauntSounds: (enabled: boolean) => void
+  setHauntScares: (enabled: boolean) => void
 }
 
 export const useKioskStore = create<KioskState>()(
@@ -96,6 +103,10 @@ export const useKioskStore = create<KioskState>()(
       themeId: 'spooky',
       textPrimaryOverride: null,
       accentPrimaryOverride: null,
+
+      // Halloween haunt defaults
+      hauntSounds: true,
+      hauntScares: true,
 
       // Non-persisted state
       isIdleMode: true,
@@ -178,6 +189,9 @@ export const useKioskStore = create<KioskState>()(
         textPrimaryOverride: null, 
         accentPrimaryOverride: null 
       }),
+
+      setHauntSounds: (enabled) => set({ hauntSounds: enabled }),
+      setHauntScares: (enabled) => set({ hauntScares: enabled }),
     }),
     {
       name: 'kiosk-settings',
@@ -201,6 +215,8 @@ export const useKioskStore = create<KioskState>()(
         themeId: state.themeId,
         textPrimaryOverride: state.textPrimaryOverride,
         accentPrimaryOverride: state.accentPrimaryOverride,
+        hauntSounds: state.hauntSounds,
+        hauntScares: state.hauntScares,
       }),
       // Sync sound manager on rehydration
       onRehydrateStorage: () => (state) => {

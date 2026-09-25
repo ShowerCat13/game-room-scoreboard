@@ -15,13 +15,17 @@ import {
   ShieldOff,
   Palette,
   RotateCcw,
-  Check
+  Check,
+  Ghost,
+  Skull,
 } from 'lucide-react'
 import { KioskLayout } from '@/components/layout'
 import { PinModal } from '@/components/management'
 import { useKioskStore } from '@/stores/kioskStore'
 import { sounds } from '@/lib/sounds'
 import { getThemeList, themes } from '@/lib/themes'
+import { playSpooky } from '@/lib/haunt/spookySounds'
+import { JumpScare } from '@/components/haunt/JumpScare'
 
 // Cycle speed options
 const CYCLE_SPEEDS = [
@@ -65,6 +69,11 @@ export function Settings() {
   const setSoundVolume = useKioskStore((state) => state.setSoundVolume)
   const setCycleSpeed = useKioskStore((state) => state.setCycleSpeed)
   const setCelebrationDuration = useKioskStore((state) => state.setCelebrationDuration)
+  const hauntSounds = useKioskStore((state) => state.hauntSounds)
+  const hauntScares = useKioskStore((state) => state.hauntScares)
+  const setHauntSounds = useKioskStore((state) => state.setHauntSounds)
+  const setHauntScares = useKioskStore((state) => state.setHauntScares)
+  const [testScare, setTestScare] = useState(false)
   
   // Theme state
   const themeId = useKioskStore((state) => state.themeId)
@@ -346,6 +355,52 @@ export function Settings() {
             </div>
           </motion.div>
 
+          {/* Halloween Haunt Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+          >
+            <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">
+              Halloween Haunt
+            </h2>
+            <div className="card p-1 space-y-1">
+              {[
+                { label: 'Haunt sounds (laughs, groans, thunder)', value: hauntSounds, set: setHauntSounds, Icon: Ghost },
+                { label: 'Jump scares', value: hauntScares, set: setHauntScares, Icon: Skull },
+              ].map(({ label, value, set, Icon }) => (
+                <button
+                  key={label}
+                  onClick={() => set(!value)}
+                  className="w-full h-[56px] px-md flex items-center justify-between rounded-lg active:bg-background-elevated transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-5 h-5 ${value ? 'text-category-golf' : 'text-text-muted'}`} />
+                    <span className="text-base text-text-primary">{label}</span>
+                  </div>
+                  <div className={`w-12 h-7 rounded-full transition-colors relative ${value ? 'bg-category-golf' : 'bg-background-elevated'}`}>
+                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </div>
+                </button>
+              ))}
+
+              <div className="grid grid-cols-2 gap-1 p-1">
+                <button
+                  onClick={() => void playSpooky('ghost_laugh')}
+                  className="h-[48px] rounded-lg bg-background-elevated text-sm text-text-primary active:brightness-125"
+                >
+                  Test ghost laugh
+                </button>
+                <button
+                  onClick={() => setTestScare(true)}
+                  className="h-[48px] rounded-lg bg-background-elevated text-sm text-text-primary active:brightness-125"
+                >
+                  Test jump scare
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Display Section */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -516,6 +571,8 @@ export function Settings() {
           </motion.div>
         </div>
       </div>
+
+      {testScare && <JumpScare onDone={() => setTestScare(false)} />}
 
       {/* PIN Modal */}
       <PinModal

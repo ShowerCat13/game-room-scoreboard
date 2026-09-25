@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Medal, Sparkles, Ghost } from 'lucide-react'
 import { formatScore } from '@/lib/utils'
 import { sounds } from '@/lib/sounds'
 import { useKioskStore } from '@/stores/kioskStore'
 import type { ScoreFormat } from '@/lib/types'
+import { JumpScare } from '@/components/haunt/JumpScare'
 
 interface CelebrationOverlayProps {
   isOpen: boolean
@@ -98,20 +99,28 @@ export function CelebrationOverlay({
   const celebrationDurationMs = useKioskStore((state) => state.celebrationDurationMs)
   const duration = autoCloseMs ?? celebrationDurationMs
   const isSpooky = useKioskStore((state) => state.themeId === 'spooky')
-
-  // Auto-close timer
+  const hauntScares = useKioskStore((state) => state.hauntScares)
+  // Spooky theme: a new track record opens with a jump scare
+  const scareFirst = isSpooky && hauntScares && rank === 1
+  const [scaring, setScaring] = useState(false)
   useEffect(() => {
-    if (!isOpen) return
+    if (isOpen && scareFirst) setScaring(true)
+  }, [isOpen, scareFirst])
+
+  // Auto-close timer (starts after any jump scare finishes)
+  useEffect(() => {
+    if (!isOpen || scaring) return
     const timer = setTimeout(onClose, duration)
     return () => clearTimeout(timer)
-  }, [isOpen, onClose, duration])
+  }, [isOpen, onClose, duration, scaring])
 
   // Play sound when overlay opens
   useEffect(() => {
-    if (isOpen) {
+    // The jump scare brings its own sounds
+    if (isOpen && !scareFirst) {
       sounds.playScoreSound(rank)
     }
-  }, [isOpen, rank])
+  }, [isOpen, rank, scareFirst])
 
   const isFirstPlace = rank === 1
   const isPodium = rank <= 3
@@ -156,8 +165,10 @@ export function CelebrationOverlay({
   const particles = isSpooky ? confettiParticles.slice(0, Math.ceil(confettiCount / 2)) : confettiParticles
 
   return (
+    <>
+    {isOpen && scaring && <JumpScare onDone={() => setScaring(false)} />}
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && !scaring && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -166,8 +177,8 @@ export function CelebrationOverlay({
           onClick={onClose}
           className="fixed inset-0 z-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden"
           style={{
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.95) 100%)',
-            backdropFilter: 'blur(8px)',
+            // No backdrop blur: it's expensive on the Raspberry Pi GPU
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.97) 100%)',
           }}
         >
           {/* Confetti */}
@@ -208,7 +219,7 @@ export function CelebrationOverlay({
                 className="flex items-center justify-center gap-3 mb-2"
               >
                 <Sparkles className="w-6 h-6 text-medals-gold" />
-                <p className="text-xl font-bold text-gradient-gold">
+                <p className={`text-xl font-bold ${isSpooky ? 'spooky-title' : 'text-gradient-gold'}`}>
                   {isSpooky ? 'BOO! NEW TRACK RECORD!' : 'NEW HIGH SCORE!'}
                 </p>
                 <Sparkles className="w-6 h-6 text-medals-gold" />
@@ -290,5 +301,6 @@ export function CelebrationOverlay({
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   )
 }

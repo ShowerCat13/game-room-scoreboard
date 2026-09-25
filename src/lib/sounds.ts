@@ -10,7 +10,7 @@ type SoundType = 'fanfare' | 'chime' | 'click' | 'error'
 // Audio context singleton (created on first user interaction)
 let audioContext: AudioContext | null = null
 
-function getAudioContext(): AudioContext {
+export function getAudioContext(): AudioContext {
   if (!audioContext) {
     audioContext = new AudioContext()
   }

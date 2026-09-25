@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&family=Creepster&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -543,6 +543,196 @@
 @media (prefers-reduced-motion: reduce) {
   .theme-spooky .kiosk-container,
   .party-float {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   HAUNT EFFECTS (Halloween 2026)
+   Transform/opacity only, so they stay smooth on a Raspberry Pi 4
+   ============================================================================ */
+
+/* Creepy display font for titles */
+.theme-spooky .spooky-title {
+  font-family: 'Creepster', 'Inter', system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-primary);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--color-accent-primary) 45%, transparent);
+}
+
+/* Screen shake (lightning, jump scares) */
+.haunt-shake #root {
+  animation: haunt-shake 0.5s linear;
+}
+@keyframes haunt-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-6px, 3px); }
+  20% { transform: translate(5px, -4px); }
+  30% { transform: translate(-4px, -2px); }
+  40% { transform: translate(4px, 4px); }
+  50% { transform: translate(-3px, 1px); }
+  60% { transform: translate(2px, -2px); }
+  80% { transform: translate(-1px, 1px); }
+}
+
+/* Lightning: double flash then fade */
+.haunt-lightning {
+  background: #e8e4ff;
+  opacity: 0;
+  animation: haunt-lightning 0.9s ease-out forwards;
+}
+@keyframes haunt-lightning {
+  0% { opacity: 0; }
+  4% { opacity: 0.85; }
+  10% { opacity: 0.1; }
+  16% { opacity: 0.6; }
+  30% { opacity: 0.05; }
+  100% { opacity: 0; }
+}
+
+/* Glowing eyes that fade in, blink, and fade out */
+.haunt-eyes {
+  display: flex;
+  gap: 14px;
+  opacity: 0;
+  animation: haunt-eyes-life 5s ease-in-out forwards;
+}
+.haunt-eyes span {
+  width: 18px;
+  height: 10px;
+  border-radius: 50% 50% 45% 45%;
+  background: #ff4040;
+  box-shadow: 0 0 10px 4px rgba(255, 40, 40, 0.75), 0 0 22px 6px rgba(255, 0, 0, 0.35);
+  animation: haunt-blink 5s steps(1) forwards;
+}
+@keyframes haunt-eyes-life {
+  0% { opacity: 0; }
+  15%, 80% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+@keyframes haunt-blink {
+  0%, 38%, 44%, 100% { transform: scaleY(1); }
+  40%, 42% { transform: scaleY(0.1); }
+}
+
+/* Bats flapping across the screen */
+.haunt-bat {
+  position: absolute;
+  left: 0;
+  width: 72px;
+  height: 36px;
+  fill: #05030a;
+  filter: drop-shadow(0 0 3px rgba(199, 125, 255, 0.95));
+  translate: -60px 0;
+  animation: haunt-bat-fly 6s linear forwards, haunt-bat-flap 0.18s ease-in-out infinite alternate;
+}
+.haunt-bat-0 { top: 18%; animation-duration: 6s, 0.18s; }
+.haunt-bat-1 { top: 28%; width: 54px; animation-duration: 7s, 0.15s; animation-delay: 0.3s, 0s; }
+.haunt-bat-2 { top: 12%; width: 44px; animation-duration: 6.5s, 0.2s; animation-delay: 0.6s, 0s; }
+@keyframes haunt-bat-fly {
+  0% { translate: -60px 0; }
+  25% { translate: 25vw 20px; }
+  50% { translate: 50vw -10px; }
+  75% { translate: 75vw 25px; }
+  100% { translate: 110vw 0; }
+}
+@keyframes haunt-bat-flap {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0.35); }
+}
+
+/* Idle haunting: lights flicker and a ghost drifts across */
+.haunt-flicker {
+  background: #000;
+  opacity: 0;
+  animation: haunt-flicker 2.2s steps(1) forwards;
+}
+@keyframes haunt-flicker {
+  0% { opacity: 0; }
+  10% { opacity: 0.7; }
+  14% { opacity: 0.1; }
+  22% { opacity: 0.8; }
+  26% { opacity: 0.2; }
+  40% { opacity: 0.6; }
+  50%, 100% { opacity: 0; }
+}
+.haunt-idle-ghost {
+  top: 20%;
+  left: 0;
+  opacity: 0;
+  animation: haunt-idle-drift 9s ease-in-out forwards;
+}
+@keyframes haunt-idle-drift {
+  0% { transform: translate(-200px, 40px) rotate(-8deg); opacity: 0; }
+  15% { opacity: 0.85; }
+  50% { transform: translate(330px, -30px) rotate(6deg); opacity: 0.85; }
+  85% { opacity: 0.85; }
+  100% { transform: translate(820px, 30px) rotate(-6deg); opacity: 0; }
+}
+
+/* Jump scare: flash + face lunging at the screen */
+.jump-scare {
+  background: #000;
+  animation: jump-scare-bg 1.5s ease-out forwards;
+}
+.jump-scare-flash {
+  background: #b00000;
+  opacity: 0;
+  animation: jump-scare-red 1.5s ease-out forwards;
+}
+.jump-scare-face {
+  animation: jump-scare-lunge 1.5s cubic-bezier(0.2, 1.6, 0.4, 1) forwards;
+}
+@keyframes jump-scare-bg {
+  0%, 85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes jump-scare-red {
+  0% { opacity: 0.9; }
+  12% { opacity: 0; }
+  20% { opacity: 0.5; }
+  35%, 100% { opacity: 0; }
+}
+@keyframes jump-scare-lunge {
+  0% { transform: scale(0.2) rotate(-10deg); }
+  18% { transform: scale(1.25) rotate(4deg); }
+  24% { transform: scale(1.1) rotate(-3deg); }
+  30% { transform: scale(1.18) rotate(2deg); }
+  85% { transform: scale(1.15) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Tombstone leaderboard rows */
+.theme-spooky .tombstone {
+  background:
+    radial-gradient(ellipse 30% 60% at 0% 100%, rgba(77, 124, 15, 0.22), transparent 70%),
+    linear-gradient(180deg, #3b3450 0%, #2a2439 55%, #1f1a2c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 34px 34px 6px 6px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.45),
+    0 4px 10px rgba(0, 0, 0, 0.55);
+}
+.theme-spooky .tombstone .text-text-primary,
+.theme-spooky .tombstone .font-mono:not(.text-gradient-gold) {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.08), 0 -1px 0 rgba(0, 0, 0, 0.7);
+}
+
+.tombstone-tag {
+  font-family: 'Creepster', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  color: #ff4d4d;
+  text-shadow: 0 0 6px rgba(255, 60, 60, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .haunt-shake #root,
+  .haunt-bat,
+  .haunt-eyes,
+  .haunt-idle-ghost,
+  .jump-scare-face {
     animation: none;
   }
 }
