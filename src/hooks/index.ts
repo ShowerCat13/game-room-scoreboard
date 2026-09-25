@@ -29,3 +29,4 @@ export type { ScoreWithDetails } from './useManageScores'
 
 // Halloween 2026 party
 export { useBestTimesLeaderboard, fetchBestTimes, bestPerPlayer } from './useBestTimesLeaderboard'
+export { useHauntNet } from './useHauntNet'

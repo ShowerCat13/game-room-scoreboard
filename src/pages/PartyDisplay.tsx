@@ -1,5 +1,5 @@
 // src/pages/PartyDisplay.tsx
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Settings as SettingsIcon, Ghost, Plus, Timer, UserPen } from 'lucide-react'
@@ -13,7 +13,9 @@ import { useScoreDetails } from '@/hooks/useScoreDetails'
 import type { RealtimeScoreData } from '@/hooks/useScoreDetails'
 import { PARTY_EVENT, PARTY_ADD_SCORE_PATH } from '@/lib/event'
 import { HauntLayer } from '@/components/haunt/HauntLayer'
-import { triggerJumpScare } from '@/lib/haunt/scare'
+import { HAUNT_NET_EVENT, triggerJumpScare } from '@/lib/haunt/scare'
+import type { HauntNetDetail } from '@/lib/haunt/scare'
+import { useHauntNet } from '@/hooks/useHauntNet'
 import { useKioskStore } from '@/stores/kioskStore'
 import { usePlayers } from '@/hooks/usePlayers'
 import { PickerModal, EditProfileFlow } from '@/components/input'
@@ -31,6 +33,8 @@ const getQrUrl = () =>
 const KIOSK_ROWS = 4
 // How long each page of the kiosk leaderboard stays up
 const PAGE_MS = 8000
+// How long a haunt victim's name reads DECEASED
+const DECEASED_MS = 8000
 
 function formatClock(date: Date): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -97,16 +101,44 @@ export function PartyDisplay() {
   // Page through everyone on the kiosk so every racer gets screen time
   const pageCount = Math.max(1, Math.ceil(entries.length / KIOSK_ROWS))
   const [page, setPage] = useState(0)
+  // haunt-net victim whose name reads DECEASED (paging holds while it does)
+  const [deceasedId, setDeceasedId] = useState<string | null>(null)
   useEffect(() => {
     if (pageCount <= 1) {
       setPage(0)
       return
     }
+    if (deceasedId) return
     const timer = setInterval(() => setPage((p) => (p + 1) % pageCount), PAGE_MS)
     return () => clearInterval(timer)
-  }, [pageCount])
+  }, [pageCount, deceasedId])
   const currentPage = page % pageCount
   const visibleEntries = entries.slice(currentPage * KIOSK_ROWS, (currentPage + 1) * KIOSK_ROWS)
+
+  // haunt-net: join the hub while the haunt is showing (HauntLayer plays the
+  // effects); on a dread or terror haunt, glitch the victim's name if on screen
+  useHauntNet(isSpooky)
+  const visibleRef = useRef(visibleEntries)
+  visibleRef.current = visibleEntries
+  useEffect(() => {
+    if (!isSpooky) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onNetHaunt = (e: Event) => {
+      const { victim, intensity } = (e as CustomEvent<HauntNetDetail>).detail
+      if (!victim || intensity < 2) return
+      const name = victim.toLowerCase()
+      const entry = visibleRef.current.find((v) => v.player_name?.trim().toLowerCase() === name)
+      if (!entry) return
+      clearTimeout(timer)
+      setDeceasedId(entry.player_id)
+      timer = setTimeout(() => setDeceasedId(null), DECEASED_MS)
+    }
+    window.addEventListener(HAUNT_NET_EVENT, onNetHaunt)
+    return () => {
+      window.removeEventListener(HAUNT_NET_EVENT, onNetHaunt)
+      clearTimeout(timer)
+    }
+  }, [isSpooky])
 
   const renderBoard = (rows: typeof entries) => {
     if (loading) {
@@ -155,11 +187,12 @@ export function PartyDisplay() {
             <ScoreRow
               rank={Number(entry.rank)}
               playerName={entry.player_name || 'Unknown'}
+              displayName={entry.player_id === deceasedId ? 'DECEASED' : undefined}
               playerAvatar={entry.player_avatar}
               score={entry.score}
               scoreFormat={entry.effective_format}
               scoreUnit={entry.effective_unit || undefined}
-              className={isSpooky ? 'card tombstone' : 'card'}
+              className={`${isSpooky ? 'card tombstone' : 'card'}${entry.player_id === deceasedId ? ' haunt-deceased' : ''}`}
             />
           </motion.div>
         ))}

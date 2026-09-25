@@ -160,6 +160,13 @@ if they pick the wrong one.
 **Sound:** connect a speaker and add `--autoplay-policy=no-user-gesture-required`
 to the Chromium `Exec=` line above. Test from Settings -> Halloween Haunt.
 
+**Haunt network (optional):** set `VITE_HAUNT_HUB=elise-pod.local:8765` in `.env`
+(then `npm run build`, or `npm run dry-run`) to join the haunt-net hub. While
+the spooky theme is on, the party screen connects as `scoreboard` and plays its
+part of each haunt: 1 lightning + a spooky sound, 2 adds eyes and the ghost and
+glitches the victim's name to DECEASED if it's on screen, 3 the jump scare
+(the Settings sound/scare toggles still apply). Empty = off.
+
 **Real database:** in the Supabase SQL Editor run `supabase/halloween-2026.sql`
 (adds the Boo Cinema track), then follow the setup steps at the top of
 `supabase/security.sql` (host sign-in and PIN-protected profiles), then

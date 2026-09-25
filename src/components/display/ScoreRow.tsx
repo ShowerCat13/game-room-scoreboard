@@ -6,6 +6,8 @@ import type { ScoreFormat } from '@/lib/types'
 interface ScoreRowProps {
   rank: number
   playerName: string
+  /** Text shown in place of the name (the avatar keeps the real name) */
+  displayName?: string
   playerAvatar?: string | null
   score: number
   scoreFormat: ScoreFormat
@@ -33,6 +35,7 @@ interface ScoreRowProps {
 export function ScoreRow({
   rank,
   playerName,
+  displayName,
   playerAvatar,
   score,
   scoreFormat,
@@ -85,8 +88,8 @@ export function ScoreRow({
             size={48}
             ringClass={avatarRingClass}
           />
-          <div className={`text-lg truncate ${rank <= 3 ? 'font-semibold' : 'font-normal'} text-text-primary`}>
-            {playerName}
+          <div className={`score-row-name text-lg truncate ${rank <= 3 ? 'font-semibold' : 'font-normal'} text-text-primary`}>
+            {displayName ?? playerName}
           </div>
         </div>
       </div>

@@ -4,7 +4,8 @@ import { JumpScare } from './JumpScare'
 import { AMBIENT_SLOTS, playSpooky, preloadSpookySounds } from '@/lib/haunt/spookySounds'
 import type { SpookySlot } from '@/lib/haunt/spookySounds'
 import { useKioskStore } from '@/stores/kioskStore'
-import { HAUNT_SCARE_EVENT } from '@/lib/haunt/scare'
+import { HAUNT_NET_EVENT, HAUNT_SCARE_EVENT } from '@/lib/haunt/scare'
+import type { HauntNetDetail } from '@/lib/haunt/scare'
 
 
 // Timings (ms). Random ranges keep it unpredictable.
@@ -87,12 +88,13 @@ export function HauntLayer() {
   useRandomInterval(lightning, LIGHTNING)
 
   // Random ambient sound (never the same one twice in a row)
-  useRandomInterval(() => {
+  const ambientSound = useCallback(() => {
     const options = AMBIENT_SLOTS.filter((s) => s !== lastSlot.current)
     const slot = options[Math.floor(Math.random() * options.length)]
     lastSlot.current = slot
     void playSpooky(slot, 0.7)
-  }, AMBIENT_SOUND, hauntSounds)
+  }, [])
+  useRandomInterval(ambientSound, AMBIENT_SOUND, hauntSounds)
 
   // Eyes blinking in the dark around the edges
   const spawnEyes = useCallback(() => {
@@ -150,6 +152,28 @@ export function HauntLayer() {
     window.addEventListener(HAUNT_SCARE_EVENT, onScare)
     return () => window.removeEventListener(HAUNT_SCARE_EVENT, onScare)
   }, [hauntScares])
+
+  // haunt-net hub (see useHauntNet): 1 unease, 2 dread, 3 terror
+  useEffect(() => {
+    const onNetHaunt = (e: Event) => {
+      const { intensity } = (e as CustomEvent<HauntNetDetail>).detail
+      if (intensity === 3 && hauntScares) {
+        setScaring(true)
+        return
+      }
+      lightning()
+      if (intensity === 1) {
+        if (hauntSounds) ambientSound()
+        return
+      }
+      // Dread: eyes plus the drifting ghost and its laugh (the victim's name
+      // glitch lives in PartyDisplay, which knows who is on screen)
+      spawnEyes()
+      idleHaunt()
+    }
+    window.addEventListener(HAUNT_NET_EVENT, onNetHaunt)
+    return () => window.removeEventListener(HAUNT_NET_EVENT, onNetHaunt)
+  }, [hauntSounds, hauntScares, lightning, ambientSound, spawnEyes, idleHaunt])
 
   return (
     <>
