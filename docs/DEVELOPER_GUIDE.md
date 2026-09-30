@@ -320,7 +320,7 @@ Add to `~/.config/autostart/scoreboard.desktop`:
 [Desktop Entry]
 Type=Application
 Name=Scoreboard
-Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:4173
+Exec=chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-infobars http://localhost:4173
 ```
 
 ### mDNS Setup (scoreboard.local)

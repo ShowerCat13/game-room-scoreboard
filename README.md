@@ -133,8 +133,12 @@ Create `~/.config/autostart/scoreboard.desktop`:
 [Desktop Entry]
 Type=Application
 Name=Scoreboard
-Exec=chromium-browser --kiosk --noerrdialogs http://localhost:4173
+Exec=chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-infobars --disable-session-crashed-bubble http://localhost:4173
 ```
+
+On Raspberry Pi OS trixie the browser command is `chromium`; `chromium-browser`
+no longer exists, and an autostart entry using it fails silently at boot.
+The autoplay flag lets haunt sounds play without someone tapping the screen first.
 
 ### mDNS (scoreboard.local)
 
@@ -153,12 +157,16 @@ npm run dry-run     # builds against an in-memory stand-in database; Ctrl+C to s
 npm run build       # afterwards, to point back at the real database
 ```
 
+If the dry run was started from a remote shell, closing the shell may leave it
+running; stop it with `pkill -f scripts/dry-run.mjs`.
+
 Open `http://localhost:4173/?fps=1` on the kiosk to see the frame rate. The QR
 code and dry run use the Pi's home-network address; set `LAN_IP=192.168.x.x`
 if they pick the wrong one.
 
-**Sound:** connect a speaker and add `--autoplay-policy=no-user-gesture-required`
-to the Chromium `Exec=` line above. Test from Settings -> Halloween Haunt.
+**Sound:** connect a speaker; the `Exec=` line above already has
+`--autoplay-policy=no-user-gesture-required`. Haunt sounds play only on the party
+screen with the spooky theme and **Haunt sounds** on. Test from Settings -> Halloween Haunt.
 
 **Haunt network (optional):** set `VITE_HAUNT_HUB=elise-pod.local:8765` in `.env`
 (then `npm run build`, or `npm run dry-run`) to join the haunt-net hub. While
