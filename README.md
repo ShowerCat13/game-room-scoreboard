@@ -178,17 +178,25 @@ glitches the victim's name to DECEASED if it's on screen, 3 the jump scare
 **Real database:** in the Supabase SQL Editor run `supabase/halloween-2026.sql`
 (adds the Boo Cinema track), then follow the setup steps at the top of
 `supabase/security.sql` (host sign-in and PIN-protected profiles), then
-`npm run build`.
+`npm run build`. Then check it (changes nothing; the dry run can't, because its
+stand-in database fakes these functions):
+
+```bash
+npm run check-db    # tables, functions, and which players still need a PIN
+```
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-npm run test:e2e         # Run all 104 tests
+npm run test:e2e         # Run all tests (party flows: tests/party-flows.spec.ts)
 npm run test:e2e:ui      # Interactive test UI
 npm run test:e2e:headed  # Watch tests run
 ```
+
+The tests start their own stand-in database and app server, so they never touch
+the real Supabase project in `.env`.
 
 ---
 

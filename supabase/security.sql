@@ -25,6 +25,20 @@
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- The PIN functions call extensions.crypt(). If pgcrypto was installed into
+-- another schema earlier, they would be created fine and then fail at the
+-- party, so stop here instead (the SQL Editor then applies nothing).
+do $$
+declare
+  v_schema text := (select extnamespace::regnamespace::text from pg_extension where extname = 'pgcrypto');
+begin
+  if v_schema is distinct from 'extensions' then
+    raise exception 'pgcrypto is installed in schema "%", not "extensions"', v_schema
+      using hint = 'Run: alter extension pgcrypto set schema extensions; then run this file again.';
+  end if;
+end;
+$$;
+
 
 -- ============================================================================
 -- ADMINS
@@ -86,6 +100,26 @@ drop policy if exists "Anyone can delete details"  on public.game_details;
 drop policy if exists "Anyone can update scores"   on public.high_scores;
 drop policy if exists "Anyone can delete scores"   on public.high_scores;
 -- Kept: "Anyone can submit scores" (INSERT on high_scores) and all "Anyone can view" policies
+
+-- Databases made from an older schema.sql have open write policies under other
+-- names (e.g. "Anyone can update game modes"), which would survive the drops
+-- above. Drop every remaining write policy except score submission and ours.
+do $$
+declare
+  r record;
+begin
+  for r in
+    select tablename, policyname from pg_policies
+    where schemaname = 'public'
+      and tablename in ('players', 'games', 'game_modes', 'game_details', 'high_scores')
+      and cmd <> 'SELECT'
+      and policyname not like 'Admins manage %'
+      and not (tablename = 'high_scores' and cmd = 'INSERT')
+  loop
+    execute format('drop policy %I on public.%I', r.policyname, r.tablename);
+  end loop;
+end;
+$$;
 
 -- Admin can do everything
 drop policy if exists "Admins manage players"  on public.players;

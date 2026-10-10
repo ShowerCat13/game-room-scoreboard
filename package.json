@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "dry-run": "node scripts/dry-run.mjs",
+    "check-db": "node scripts/check-db.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

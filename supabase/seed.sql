@@ -3,6 +3,10 @@
 -- ============================================================================
 -- Run this AFTER schema.sql to populate your games and modes
 -- Customize player names and add your own scores!
+--
+-- OUT OF DATE: written for the older schema (tracks as modes, with subtitle
+-- and context columns), so the game_modes inserts fail on today's schema.sql,
+-- where tracks are game_details. Not used by the Halloween party.
 -- ============================================================================
 
 -- ============================================================================
