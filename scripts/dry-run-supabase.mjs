@@ -1,5 +1,9 @@
-// Dry-run stand-in for Supabase (in-memory PostgREST subset). Used by scripts/dry-run.mjs.
-// Mirrors supabase/security.sql closely enough for UI testing; not a security test.
+// Dry-run stand-in for Supabase (in-memory PostgREST subset). Used by scripts/dry-run.mjs
+// and the Playwright tests. Mirrors supabase/security.sql closely enough for UI testing;
+// not a security test, and it can't tell you whether the real database has that setup
+// (npm run check-db does).
+//
+// DRY_RUN_DB_PORT picks the port (default 54399; Windows may reserve that range).
 import http from 'node:http'
 import { randomUUID } from 'node:crypto'
 
@@ -7,6 +11,7 @@ const G = '8a110000-2026-4000-8000-000000000001'
 const M = '8a110000-2026-4000-8000-000000000002'
 const D = '8a110000-2026-4000-8000-000000000003'
 const now = () => new Date().toISOString()
+export const PORT = Number(process.env.DRY_RUN_DB_PORT) || 54399
 
 const db = {
   games: [{ id: G, name: 'Mario Kart World', category: 'racing', platform: 'Switch 2', icon_url: null,
@@ -190,11 +195,12 @@ const server = http.createServer(async (req, res) => {
     return send(201, rows)
   }
   if (req.method === 'DELETE') {
-    const doomed = new Set(applyFilters(db[table], url.searchParams).map((r) => r.id))
-    db[table] = db[table].filter((r) => !doomed.has(r.id))
-    return send(200, [])
+    const doomed = applyFilters(db[table], url.searchParams)
+    const ids = new Set(doomed.map((r) => r.id))
+    db[table] = db[table].filter((r) => !ids.has(r.id))
+    return send(200, doomed)
   }
   return send(405, { message: 'method not mocked' })
 })
 
-server.listen(54399, '0.0.0.0', () => console.log('Dry-run database listening on port 54399'))
+server.listen(PORT, '0.0.0.0', () => console.log(`Dry-run database listening on port ${PORT}`))

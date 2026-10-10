@@ -5,7 +5,15 @@ import { defineConfig, devices } from '@playwright/test'
  * 
  * Run with: npm run test:e2e
  * UI mode: npm run test:e2e:ui
+ *
+ * The tests create and delete players and scores, so they run against the
+ * in-memory stand-in database (scripts/dry-run-supabase.mjs), never the real
+ * one in .env. Both servers start fresh on their own ports; if a port is
+ * taken the run stops rather than reusing a server that may point at Supabase.
  */
+const DB_PORT = 53999 // outside the ranges Windows reserves (54360-54459 on the dev PC)
+const APP_PORT = 5174 // not 5173, so a running `npm run dev` is never reused
+
 export default defineConfig({
   testDir: './tests',
   
@@ -29,8 +37,8 @@ export default defineConfig({
   
   // Shared settings for all projects
   use: {
-    // Base URL for the dev server
-    baseURL: 'http://localhost:5173',
+    // Base URL for the test app server (pointed at the stand-in database)
+    baseURL: `http://localhost:${APP_PORT}`,
     
     // Collect trace on first retry
     trace: 'on-first-retry',
@@ -70,11 +78,25 @@ export default defineConfig({
     // },
   ],
 
-  // Run local dev server before starting tests
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  // Stand-in database, then the app built against it (env beats .env in Vite)
+  webServer: [
+    {
+      command: 'node scripts/dry-run-supabase.mjs',
+      url: `http://127.0.0.1:${DB_PORT}/rest/v1/games`,
+      env: { DRY_RUN_DB_PORT: String(DB_PORT) },
+      reuseExistingServer: false,
+      timeout: 30 * 1000,
+    },
+    {
+      command: `npx vite --port ${APP_PORT} --strictPort`,
+      url: `http://localhost:${APP_PORT}`,
+      env: {
+        VITE_SUPABASE_URL: `http://127.0.0.1:${DB_PORT}`,
+        VITE_SUPABASE_ANON_KEY: 'dry-run',
+        VITE_HAUNT_HUB: '', // never join the real haunt-net hub from a test
+      },
+      reuseExistingServer: false,
+      timeout: 120 * 1000,
+    },
+  ],
 })

@@ -11,6 +11,23 @@ npm install -D @playwright/test
 npx playwright install
 ```
 
+## Which database the tests use
+
+The tests create and delete players and scores, so `playwright.config.ts` never
+points them at the real Supabase project in `.env`. It starts two servers of its own:
+
+- the in-memory stand-in database (`scripts/dry-run-supabase.mjs`) on port 53999
+- the app on port 5174, built against it
+
+If either port is taken, the run stops instead of reusing whatever is there.
+The stand-in fakes `supabase/security.sql`, so the tests check the app, not the
+real database; `npm run check-db` checks that (read-only).
+
+`party-flows.spec.ts` covers the Halloween party: new player with a PIN, adding
+a time, editing a profile, host sign-in, and the error messages.
+Most of the other specs were written for the January game-room screens and
+fail against the party screens.
+
 ## Running Tests
 
 ```bash

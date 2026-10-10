@@ -24,10 +24,9 @@ function run(cmd, args, env) {
 }
 
 const ip = getLanIp()
+const { PORT } = await import('./dry-run-supabase.mjs')
 // Phones reach the stand-in database through the Pi's network address
-const env = { VITE_SUPABASE_URL: `http://${ip}:54399`, VITE_SUPABASE_ANON_KEY: 'dry-run' }
-
-await import('./dry-run-supabase.mjs')
+const env = { VITE_SUPABASE_URL: `http://${ip}:${PORT}`, VITE_SUPABASE_ANON_KEY: 'dry-run' }
 
 console.log(`\nBuilding against the dry-run database at ${env.VITE_SUPABASE_URL}`)
 console.log('This takes 1-2 minutes on a Raspberry Pi - wait for the DRY RUN banner.\n')
