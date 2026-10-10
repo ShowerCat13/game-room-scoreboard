@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { getInitials, getPlayerColor } from '@/lib/utils'
 import { SPOOKICONS, toSpookiconUrl } from '@/lib/spookicons'
+import { describeDbError } from '@/lib/dbErrors'
 import { PlayerAvatar } from '@/components/display/PlayerAvatar'
 import { SpookiconPicker } from './SpookiconPicker'
 
@@ -11,7 +12,8 @@ const randomSpookiconId = () => SPOOKICONS[Math.floor(Math.random() * SPOOKICONS
 interface NewPlayerModalProps {
   isOpen: boolean
   onClose: () => void
-  onCreate: (name: string, avatarUrl?: string | null, pin?: string | null) => Promise<void>
+  /** Resolve with a message to keep the modal open and show it; throw to show the error */
+  onCreate: (name: string, avatarUrl?: string | null, pin?: string | null) => Promise<string | null | void>
   isCreating?: boolean
   /** Halloween party: let the player pick a spookicon (one is pre-picked at random) */
   showSpookicons?: boolean
@@ -25,6 +27,8 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false, 
   const [error, setError] = useState<string | null>(null)
   const [spookiconId, setSpookiconId] = useState(randomSpookiconId)
   const [pin, setPin] = useState('')
+  const [creating, setCreating] = useState(false)
+  const busy = isCreating || creating
   const pinValid = pin === '' || /^\d{4}$/.test(pin)
   const avatarUrl = showSpookicons ? toSpookiconUrl(spookiconId) : null
 
@@ -44,7 +48,20 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false, 
     }
 
     setError(null)
-    await onCreate(trimmed, avatarUrl, pin || null)
+    setCreating(true)
+    try {
+      // A failed create keeps the modal open with the reason, instead of closing as if it worked
+      const problem = await onCreate(trimmed, avatarUrl, pin || null)
+      if (problem) {
+        setError(problem)
+        return
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : describeDbError(err))
+      return
+    } finally {
+      setCreating(false)
+    }
     setName('')
     setPin('')
     setSpookiconId(randomSpookiconId())
@@ -109,7 +126,7 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false, 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isCreating && name.trim()) handleSubmit()
+                    if (e.key === 'Enter' && !busy && name.trim()) handleSubmit()
                   }}
                   enterKeyHint="done"
                   placeholder="Enter player name"
@@ -131,7 +148,7 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false, 
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isCreating && name.trim()) handleSubmit()
+                    if (e.key === 'Enter' && !busy && name.trim()) handleSubmit()
                   }}
                   placeholder="PIN"
                   aria-label="Optional 4-digit PIN"
@@ -162,18 +179,18 @@ export function NewPlayerModal({ isOpen, onClose, onCreate, isCreating = false, 
               {/* Create button */}
               <button
                 onClick={handleSubmit}
-                disabled={isCreating || !name.trim() || !pinValid}
+                disabled={busy || !name.trim() || !pinValid}
                 className={`
                   w-full h-[56px] rounded-lg
                   text-lg font-bold
                   transition-colors
-                  ${isCreating || !name.trim() || !pinValid
+                  ${busy || !name.trim() || !pinValid
                     ? 'bg-background-elevated text-text-muted cursor-not-allowed'
                     : 'bg-category-darts text-white active:brightness-110'
                   }
                 `}
               >
-                {isCreating ? 'Creating...' : 'Create Player'}
+                {busy ? 'Creating...' : 'Create Player'}
               </button>
             </div>
           </motion.div>

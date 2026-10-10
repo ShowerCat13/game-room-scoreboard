@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { describeDbError } from '@/lib/dbErrors'
 import { getSpookicon, toSpookiconUrl } from '@/lib/spookicons'
 import { getRememberedPin, rememberPin, forgetPin } from '@/lib/myProfiles'
 import { PlayerAvatar } from '@/components/display/PlayerAvatar'
@@ -81,9 +82,19 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
     setMessage(null)
     setStage('checking')
 
+    // A failed check shows its cause rather than asking for a PIN that can't be verified
+    const fail = (err: unknown) => {
+      setMessage(describeDbError(err))
+      setStage('blocked')
+    }
+
     const start = async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: hasPin } = await (supabase as any).rpc('player_has_pin', { p_player_id: player.id })
+      const { data: hasPin, error } = await (supabase as any).rpc('player_has_pin', { p_player_id: player.id })
+      if (error) {
+        fail(error)
+        return
+      }
       if (hasPin === false) {
         setMessage(describeError({ ok: false, error: 'no_pin' }))
         setStage('blocked')
@@ -108,9 +119,9 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
           if (result.error !== 'wrong_pin') setMessage(describeError(result))
         }
       })
-      .catch(() => setStage('pin'))
+      .catch(fail)
 
-    void start().catch(() => setStage('pin'))
+    void start().catch(fail)
   }, [player])
 
   if (!player) return null
@@ -128,8 +139,8 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
         setMessage(describeError(result))
         setStage('blocked')
       }
-    } catch {
-      setPinError("Couldn't reach the scoreboard")
+    } catch (err) {
+      setPinError(describeDbError(err))
     }
   }
 
@@ -154,7 +165,7 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
         setMessage(describeError(result))
       }
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Save failed')
+      setMessage(describeDbError(err))
     } finally {
       setSaving(false)
     }

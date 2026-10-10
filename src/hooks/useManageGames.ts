@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { dbError, NOT_SAVED } from '@/lib/dbErrors'
 import type { Game, GameCategory, ScoreFormat, ScoreDirection } from '@/lib/types'
 
 // Options for creating a new game
@@ -46,6 +47,7 @@ interface UseManageGamesResult {
 
 /**
  * useManageGames - Full CRUD operations for games
+ * Saves and deletes throw an Error with a readable message when they fail.
  * Uses soft delete (is_active = false) to preserve score history
  * 
  * Supports the 3-level hierarchy configuration:
@@ -73,7 +75,7 @@ export function useManageGames(): UseManageGamesResult {
       if (queryError) throw queryError
       setGames((data as Game[]) || [])
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch games'))
+      setError(dbError(err))
     } finally {
       setLoading(false)
     }
@@ -119,7 +121,7 @@ export function useManageGames(): UseManageGamesResult {
       return newGame
     } catch (err) {
       console.error('Failed to create game:', err)
-      return null
+      throw dbError(err)
     }
   }, [])
 
@@ -130,12 +132,14 @@ export function useManageGames(): UseManageGamesResult {
     try {
       // Type assertion needed because Supabase client types don't match our schema
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('games')
         .update(updates)
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Update local state
       setGames(prev => 
@@ -144,7 +148,7 @@ export function useManageGames(): UseManageGamesResult {
       return true
     } catch (err) {
       console.error('Failed to update game:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 
@@ -153,19 +157,21 @@ export function useManageGames(): UseManageGamesResult {
       // Soft delete - keeps score history intact
       // Type assertion needed because Supabase client types don't match our schema
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('games')
         .update({ is_active: false })
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Remove from local state
       setGames(prev => prev.filter(g => g.id !== id))
       return true
     } catch (err) {
       console.error('Failed to delete game:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { dbError, NOT_SAVED } from '@/lib/dbErrors'
 import type { GameDetail, ScoreFormat, ScoreDirection } from '@/lib/types'
 
 // Fields that can be updated on a game detail
@@ -32,6 +33,7 @@ interface UseManageGameDetailsResult {
 
 /**
  * useManageGameDetails - Full CRUD operations for game details
+ * Saves and deletes throw an Error with a readable message when they fail.
  * 
  * Details are Level 2 of the hierarchy (Game → Mode → Detail)
  * Examples: tracks, courses, fish types, enemy types
@@ -73,7 +75,7 @@ export function useManageGameDetails(): UseManageGameDetailsResult {
       if (queryError) throw queryError
       setDetails((data as GameDetail[]) || [])
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch game details'))
+      setError(dbError(err))
     } finally {
       setLoading(false)
     }
@@ -117,7 +119,7 @@ export function useManageGameDetails(): UseManageGameDetailsResult {
       return newDetail
     } catch (err) {
       console.error('Failed to create game detail:', err)
-      return null
+      throw dbError(err)
     }
   }, [])
 
@@ -128,12 +130,14 @@ export function useManageGameDetails(): UseManageGameDetailsResult {
     try {
       // Type assertion needed because Supabase client types don't match our schema
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('game_details')
         .update(updates)
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Update local state
       setDetails(prev => 
@@ -142,7 +146,7 @@ export function useManageGameDetails(): UseManageGameDetailsResult {
       return true
     } catch (err) {
       console.error('Failed to update game detail:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 
@@ -151,19 +155,21 @@ export function useManageGameDetails(): UseManageGameDetailsResult {
       // Soft delete - keeps score history intact
       // Type assertion needed because Supabase client types don't match our schema
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('game_details')
         .update({ is_active: false })
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Remove from local state
       setDetails(prev => prev.filter(d => d.id !== id))
       return true
     } catch (err) {
       console.error('Failed to delete game detail:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 

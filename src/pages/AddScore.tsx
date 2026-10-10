@@ -148,20 +148,22 @@ export function AddScore() {
     setScoreValue(null)
   }
 
-  // Create new player and auto-select them
+  // Create new player and auto-select them. Returns a message to keep the
+  // New Player box open; a failed create throws and the box shows why.
   const handleCreatePlayer = async (name: string, avatarUrl?: string | null, pin?: string | null) => {
     // Reuse an existing player with the same name rather than creating a duplicate
     const existing = players.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase())
     if (existing) {
+      // The typed PIN can't be added to someone else's profile, so don't silently drop it
+      if (pin) return `${existing.name} is already racing. Pick them from the list, or use a different name.`
       setSelectedPlayerId(existing.id)
-      return
+      return null
     }
 
     const player = await createPlayer(name, avatarUrl, pin)
-    if (player && pin) rememberPin(player.id, pin)
-    if (player) {
-      setSelectedPlayerId(player.id)
-    }
+    if (pin) rememberPin(player.id, pin)
+    setSelectedPlayerId(player.id)
+    return null
   }
 
   // Calculate what rank this score would achieve

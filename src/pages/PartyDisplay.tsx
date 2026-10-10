@@ -296,7 +296,11 @@ export function PartyDisplay() {
             {entries.length} {entries.length === 1 ? 'racer' : 'racers'} · best time counts
           </p>
           <button
-            onClick={() => setPickingProfile(true)}
+            onClick={() => {
+              // Guests sign up on their phones, so reload the list each time
+              refetchPlayers()
+              setPickingProfile(true)
+            }}
             className="h-9 px-2 flex items-center gap-1 text-xs text-text-muted active:text-text-primary transition-colors"
           >
             <UserPen className="w-4 h-4" />

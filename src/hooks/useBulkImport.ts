@@ -204,7 +204,8 @@ export function useBulkImport(): UseBulkImportResult {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any
       
-      const playersRes = await sb.from('players').select('id, name').eq('is_active', true)
+      // players has no is_active column (players are deleted, not hidden)
+      const playersRes = await sb.from('players').select('id, name')
       const gamesRes = await sb.from('games').select('id, name, default_score_format').eq('is_active', true)
       const modesRes = await sb.from('game_modes').select('id, name, game_id, score_format').eq('is_active', true)
       const detailsRes = await sb.from('game_details').select('id, name, game_id, mode_id, score_format').eq('is_active', true)

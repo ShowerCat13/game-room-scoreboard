@@ -24,6 +24,7 @@ import { useManageScores, type ScoreWithDetails } from '@/hooks/useManageScores'
 import { useKioskStore } from '@/stores/kioskStore'
 import { formatScore } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { describeDbError } from '@/lib/dbErrors'
 import { AvatarUpload } from '@/components/input'
 import type { Player, Game, GameMode, GameDetail, GameCategory, ScoreDirection, ScoreFormat } from '@/lib/types'
 import { BulkImportModal } from '@/components/management'
@@ -65,7 +66,7 @@ export function Manage() {
   const [activeTab, setActiveTab] = useState<Tab>('players')
   
   // Players state
-  const { players, loading: playersLoading, fetchPlayers, createPlayer, updatePlayer, deletePlayer } = useManagePlayers()
+  const { players, loading: playersLoading, error: playersError, fetchPlayers, createPlayer, updatePlayer, deletePlayer } = useManagePlayers()
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [showPlayerForm, setShowPlayerForm] = useState(false)
   const [playerName, setPlayerName] = useState('')
@@ -75,8 +76,8 @@ export function Manage() {
   const [deletingPlayer, setDeletingPlayer] = useState<Player | null>(null)
 
   // Games state
-  const { games, loading: gamesLoading, fetchGames, createGame, updateGame, deleteGame } = useManageGames()
-  const { modes, loading: modesLoading, fetchModes, createMode, updateMode, deleteMode, clearModes } = useManageGameModes()
+  const { games, loading: gamesLoading, error: gamesError, fetchGames, createGame, updateGame, deleteGame } = useManageGames()
+  const { modes, loading: modesLoading, error: modesError, fetchModes, createMode, updateMode, deleteMode, clearModes } = useManageGameModes()
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [editingGame, setEditingGame] = useState<Game | null>(null)
   const [showGameForm, setShowGameForm] = useState(false)
@@ -95,7 +96,7 @@ export function Manage() {
   const [deletingMode, setDeletingMode] = useState<GameMode | null>(null)
 
   // Details state
-  const { details, loading: detailsLoading, fetchDetails, createDetail, updateDetail, deleteDetail, clearDetails } = useManageGameDetails()
+  const { details, loading: detailsLoading, error: detailsError, fetchDetails, createDetail, updateDetail, deleteDetail, clearDetails } = useManageGameDetails()
   const [detailsGameId, setDetailsGameId] = useState<string | null>(null)
   const [detailsModeId, setDetailsModeId] = useState<string | null>(null)
   const [editingDetail, setEditingDetail] = useState<GameDetail | null>(null)
@@ -109,7 +110,7 @@ export function Manage() {
   const [deletingDetail, setDeletingDetail] = useState<GameDetail | null>(null)
 
 // Scores state
-  const { scores, loading: scoresLoading, fetchScores, deleteScore } = useManageScores()
+  const { scores, loading: scoresLoading, error: scoresError, fetchScores, deleteScore } = useManageScores()
   const [deletingScore, setDeletingScore] = useState<ScoreWithDetails | null>(null)
   const [showBulkImport, setShowBulkImport] = useState(false)
 
@@ -119,6 +120,23 @@ export function Manage() {
   const [pinMode, setPinMode] = useState<'verify' | 'setup'>('verify')
   const [pinError, setPinError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
+
+  // Saves and deletes say why they failed instead of looking like they worked
+  const [actionError, setActionError] = useState<string | null>(null)
+  const loadError = playersError ?? gamesError ?? modesError ?? detailsError ?? scoresError
+  const [dismissedLoadError, setDismissedLoadError] = useState<Error | null>(null)
+  const bannerError = actionError ?? (loadError && loadError !== dismissedLoadError ? `Couldn't load: ${loadError.message}` : null)
+
+  const attempt = async (action: () => Promise<unknown>): Promise<boolean> => {
+    setActionError(null)
+    try {
+      await action()
+      return true
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : describeDbError(err))
+      return false
+    }
+  }
 
   // Fetch data on tab change
   useEffect(() => {
@@ -233,13 +251,13 @@ export function Manage() {
           p_pin: playerPin,
         })
         if (error) {
-          setPlayerPinError(`Couldn't set PIN: ${error.message}`)
+          setPlayerPinError(`Couldn't set PIN: ${describeDbError(error)}`)
           return
         }
       }
-      await updatePlayer(editingPlayer.id, playerName.trim(), playerAvatarUrl)
+      if (!(await attempt(() => updatePlayer(editingPlayer.id, playerName.trim(), playerAvatarUrl)))) return
     } else {
-      await createPlayer(playerName.trim(), playerAvatarUrl)
+      if (!(await attempt(() => createPlayer(playerName.trim(), playerAvatarUrl)))) return
     }
     setShowPlayerForm(false)
     setPlayerName('')
@@ -252,7 +270,7 @@ export function Manage() {
   const handleConfirmDeletePlayer = () => {
     if (!deletingPlayer) return
     requirePin(async () => {
-      await deletePlayer(deletingPlayer.id)
+      await attempt(() => deletePlayer(deletingPlayer.id))
       setDeletingPlayer(null)
     })
   }
@@ -280,17 +298,16 @@ export function Manage() {
   const handleSaveGame = async () => {
     if (!gameName.trim()) return
     
-    if (editingGame) {
-      await updateGame(editingGame.id, {
+    const saved = await attempt(() => editingGame
+      ? updateGame(editingGame.id, {
         name: gameName.trim(),
         platform: gamePlatform.trim() || null,
         category: gameCategory,
       })
-    } else {
-      await createGame(gameName.trim(), gameCategory, {
+      : createGame(gameName.trim(), gameCategory, {
         platform: gamePlatform.trim() || null,
-      })
-    }
+      }))
+    if (!saved) return
     setShowGameForm(false)
     setGameName('')
     setGamePlatform('')
@@ -301,9 +318,9 @@ export function Manage() {
     if (!deletingGame) return
     const gameToDelete = deletingGame
     requirePin(async () => {
-      await deleteGame(gameToDelete.id)
+      const deleted = await attempt(() => deleteGame(gameToDelete.id))
       setDeletingGame(null)
-      if (selectedGame?.id === gameToDelete.id) {
+      if (deleted && selectedGame?.id === gameToDelete.id) {
         setSelectedGame(null)
       }
     })
@@ -334,23 +351,22 @@ export function Manage() {
   const handleSaveMode = async () => {
     if (!modeName.trim() || !selectedGame) return
     
-    if (editingMode) {
-      await updateMode(editingMode.id, {
+    const saved = await attempt(() => editingMode
+      ? updateMode(editingMode.id, {
         name: modeName.trim(),
         score_format: modeFormat,
         score_direction: modeDirection,
         score_unit: modeUnit.trim() || null,
       })
-    } else {
-      await createMode(
+      : createMode(
         selectedGame.id,
         modeName.trim(),
         modeFormat,
         modeDirection,
         modeUnit.trim() || null,
         null
-      )
-    }
+      ))
+    if (!saved) return
     setShowModeForm(false)
     setModeName('')
     setEditingMode(null)
@@ -360,7 +376,7 @@ export function Manage() {
     if (!deletingMode) return
     const modeToDelete = deletingMode
     requirePin(async () => {
-      await deleteMode(modeToDelete.id)
+      await attempt(() => deleteMode(modeToDelete.id))
       setDeletingMode(null)
     })
   }
@@ -394,24 +410,23 @@ export function Manage() {
   const handleSaveDetail = async () => {
     if (!detailName.trim() || !detailsGameId) return
     
-    if (editingDetail) {
-      await updateDetail(editingDetail.id, {
+    const saved = await attempt(() => editingDetail
+      ? updateDetail(editingDetail.id, {
         name: detailName.trim(),
         mode_id: detailModeScope,
         score_format: detailOverrideScore ? detailFormat : null,
         score_direction: detailOverrideScore ? detailDirection : null,
         score_unit: detailOverrideScore ? (detailUnit.trim() || null) : null,
       })
-    } else {
-      await createDetail(
+      : createDetail(
         detailsGameId,
         detailName.trim(),
         detailModeScope,
         detailOverrideScore ? detailFormat : null,
         detailOverrideScore ? detailDirection : null,
         detailOverrideScore ? (detailUnit.trim() || null) : null
-      )
-    }
+      ))
+    if (!saved) return
     setShowDetailForm(false)
     setDetailName('')
     setEditingDetail(null)
@@ -421,7 +436,7 @@ export function Manage() {
     if (!deletingDetail) return
     const detailToDelete = deletingDetail
     requirePin(async () => {
-      await deleteDetail(detailToDelete.id)
+      await attempt(() => deleteDetail(detailToDelete.id))
       setDeletingDetail(null)
     })
   }
@@ -434,7 +449,7 @@ export function Manage() {
     if (!deletingScore) return
     const scoreToDelete = deletingScore
     requirePin(async () => {
-      await deleteScore(scoreToDelete.id)
+      await attempt(() => deleteScore(scoreToDelete.id))
       setDeletingScore(null)
     })
   }
@@ -1202,6 +1217,27 @@ export function Manage() {
         message={`Delete ${deletingScore?.player_name}'s score of ${deletingScore ? formatScore(deletingScore.score, deletingScore.score_format, deletingScore.score_unit) : ''}?`}
         confirmLabel="Delete"
       />
+
+      {/* Failed saves and loads */}
+      {bannerError && (
+        <div
+          role="alert"
+          className="fixed top-2 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-32px)] max-w-[480px] px-md py-2 flex items-center gap-3 bg-red-900 text-white text-sm rounded-lg"
+          style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)' }}
+        >
+          <p className="flex-1">{bannerError}</p>
+          <button
+            onClick={() => {
+              setActionError(null)
+              setDismissedLoadError(loadError)
+            }}
+            aria-label="Dismiss"
+            className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg active:bg-white/10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* PIN Modal */}
       <PinModal

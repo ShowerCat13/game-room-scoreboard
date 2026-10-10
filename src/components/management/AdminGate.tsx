@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ShieldCheck } from 'lucide-react'
 import { KioskLayout } from '@/components/layout'
 import { supabase } from '@/lib/supabase'
+import { describeDbError } from '@/lib/dbErrors'
 
+/** Throws if the check itself fails, so a missing is_admin() isn't read as "not an admin" */
 async function checkIsAdmin(): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc('is_admin')
-  return !error && data === true
+  if (error) throw error
+  return data === true
 }
 
 /**
@@ -29,10 +32,12 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true
-    supabase.auth.getSession().then(async ({ data }) => {
-      const ok = data.session ? await checkIsAdmin() : false
-      if (active) setState(ok ? 'admin' : 'signed-out')
-    })
+    supabase.auth.getSession()
+      .then(async ({ data }) => (data.session ? await checkIsAdmin() : false))
+      .catch(() => false)
+      .then((ok) => {
+        if (active) setState(ok ? 'admin' : 'signed-out')
+      })
     return () => {
       active = false
       void supabase.auth.signOut()
@@ -45,7 +50,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (signInError) {
-        setError('Email or password is incorrect')
+        setError(/invalid login credentials/i.test(signInError.message)
+          ? 'Email or password is incorrect'
+          : describeDbError(signInError))
         return
       }
       if (await checkIsAdmin()) {
@@ -55,8 +62,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
         await supabase.auth.signOut()
         setError("That account isn't an admin for this scoreboard")
       }
-    } catch {
-      setError("Couldn't reach the scoreboard")
+    } catch (err) {
+      await supabase.auth.signOut()
+      setError(describeDbError(err))
     } finally {
       setBusy(false)
     }

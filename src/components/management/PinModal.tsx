@@ -6,7 +6,8 @@ import { Lock, X, Delete } from 'lucide-react'
 interface PinModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (pin: string) => void
+  /** May return a promise; the entered digits clear once it settles */
+  onSubmit: (pin: string) => void | Promise<void>
   mode: 'verify' | 'setup' | 'change'
   error?: string | null
   /** Override the default title/subtitle (e.g. for player profile PINs) */
@@ -34,6 +35,10 @@ export function PinModal({
   const [confirmPin, setConfirmPin] = useState('')
   const [stage, setStage] = useState<'enter' | 'confirm'>('enter')
   const [localError, setLocalError] = useState<string | null>(null)
+  // The parent's error hides while digits are typed and shows again after each
+  // submit, even when it's the same text as last time (which no effect would see)
+  const [showError, setShowError] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -42,20 +47,43 @@ export function PinModal({
       setConfirmPin('')
       setStage('enter')
       setLocalError(null)
+      setShowError(false)
+      setSubmitting(false)
     }
   }, [isOpen])
 
-  // Clear local error when external error changes
+  // Show a new external error
   useEffect(() => {
     if (error) {
-      setLocalError(error)
+      setShowError(true)
       setPin('')
     }
   }, [error])
 
+  // Clear the digits once the parent has handled them, so the keypad never
+  // stays full and dead after a failed attempt
+  const submit = (value: string, clear: () => void) => {
+    setSubmitting(true)
+    let result: void | Promise<void>
+    try {
+      result = onSubmit(value)
+    } catch {
+      result = undefined
+    }
+    Promise.resolve(result)
+      .catch(() => {})
+      .finally(() => {
+        clear()
+        setShowError(true)
+        setSubmitting(false)
+      })
+  }
+
   const handleDigit = (digit: string) => {
+    if (submitting) return
     setLocalError(null)
-    
+    setShowError(false)
+
     if (stage === 'enter') {
       if (pin.length < 4) {
         const newPin = pin + digit
@@ -63,7 +91,7 @@ export function PinModal({
         
         // Auto-submit on 4 digits for verify mode
         if (newPin.length === 4 && mode === 'verify') {
-          onSubmit(newPin)
+          submit(newPin, () => setPin(''))
         }
       }
     } else {
@@ -74,7 +102,7 @@ export function PinModal({
         // Check match on 4 digits
         if (newConfirm.length === 4) {
           if (newConfirm === pin) {
-            onSubmit(pin)
+            submit(pin, () => setConfirmPin(''))
           } else {
             setLocalError('PINs do not match')
             setConfirmPin('')
@@ -85,12 +113,14 @@ export function PinModal({
   }
 
   const handleDelete = () => {
+    if (submitting) return
     if (stage === 'enter') {
       setPin(pin.slice(0, -1))
     } else {
       setConfirmPin(confirmPin.slice(0, -1))
     }
     setLocalError(null)
+    setShowError(false)
   }
 
   const handleContinue = () => {
@@ -100,6 +130,7 @@ export function PinModal({
   }
 
   const currentPin = stage === 'enter' ? pin : confirmPin
+  const shownError = localError ?? (showError ? error : null)
   const showContinue = mode !== 'verify' && stage === 'enter' && pin.length === 4
 
   const title = titleOverride ?? (mode === 'verify' 
@@ -172,8 +203,8 @@ export function PinModal({
               </div>
               
               {/* Error message */}
-              {localError && (
-                <p className="text-center text-sm text-red-500 mt-2">{localError}</p>
+              {shownError && (
+                <p className="text-center text-sm text-red-500 mt-2">{shownError}</p>
               )}
             </div>
 

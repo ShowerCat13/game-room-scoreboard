@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { dbError, NOT_SAVED } from '@/lib/dbErrors'
 import type { GameMode, ScoreDirection, ScoreFormat } from '@/lib/types'
 
 interface UseManageGameModesResult {
@@ -31,6 +32,7 @@ interface UseManageGameModesResult {
 
 /**
  * useManageGameModes - Full CRUD operations for game modes
+ * Saves and deletes throw an Error with a readable message when they fail.
  * Uses soft delete (is_active = false) to preserve score history
  */
 export function useManageGameModes(): UseManageGameModesResult {
@@ -54,7 +56,7 @@ export function useManageGameModes(): UseManageGameModesResult {
       if (queryError) throw queryError
       setModes(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch game modes'))
+      setError(dbError(err))
     } finally {
       setLoading(false)
     }
@@ -92,7 +94,7 @@ export function useManageGameModes(): UseManageGameModesResult {
       return data
     } catch (err) {
       console.error('Failed to create game mode:', err)
-      return null
+      throw dbError(err)
     }
   }, [])
 
@@ -108,12 +110,14 @@ export function useManageGameModes(): UseManageGameModesResult {
   ): Promise<boolean> => {
   
     try {
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('game_modes')
         .update(updates)
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Update local state
       setModes(prev => 
@@ -122,26 +126,28 @@ export function useManageGameModes(): UseManageGameModesResult {
       return true
     } catch (err) {
       console.error('Failed to update game mode:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 
   const deleteMode = useCallback(async (id: string): Promise<boolean> => {
     try {
       // Soft delete - keeps score history intact
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('game_modes')
         .update({ is_active: false })
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Remove from local state
       setModes(prev => prev.filter(m => m.id !== id))
       return true
     } catch (err) {
       console.error('Failed to delete game mode:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 

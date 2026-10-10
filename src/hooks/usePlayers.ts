@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { dbError } from '@/lib/dbErrors'
 import type { Player } from '@/lib/types'
 
 interface UsePlayersResult {
   players: Player[]
   loading: boolean
   error: Error | null
-  createPlayer: (name: string, avatarUrl?: string | null, pin?: string | null) => Promise<Player | null>
+  /** Throws an Error with a readable message if the player can't be created */
+  createPlayer: (name: string, avatarUrl?: string | null, pin?: string | null) => Promise<Player>
   refetch: () => void
 }
 
@@ -78,26 +80,24 @@ export function usePlayers(): UsePlayersResult {
     name: string,
     avatarUrl?: string | null,
     pin?: string | null
-  ): Promise<Player | null> => {
-    try {
-      // Guests create players through the create_player RPC (see supabase/security.sql),
-      // which validates input and stores the optional profile PIN server-side
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: insertError } = await (supabase as any).rpc('create_player', {
-        p_name: name,
-        p_avatar_url: avatarUrl || null,
-        p_pin: pin || null,
-      })
+  ): Promise<Player> => {
+    // Guests create players through the create_player RPC (see supabase/security.sql),
+    // which validates input and stores the optional profile PIN server-side
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: insertError } = await (supabase as any).rpc('create_player', {
+      p_name: name,
+      p_avatar_url: avatarUrl || null,
+      p_pin: pin || null,
+    })
 
-      if (insertError) throw insertError
-
-      const newPlayer = data as Player
-      setPlayers((prev) => [...prev, newPlayer].sort((a, b) => a.name.localeCompare(b.name)))
-      return newPlayer
-    } catch (err) {
-      console.error('Failed to create player:', err)
-      return null
+    if (insertError) {
+      console.error('Failed to create player:', insertError)
+      throw dbError(insertError)
     }
+
+    const newPlayer = data as Player
+    setPlayers((prev) => [...prev, newPlayer].sort((a, b) => a.name.localeCompare(b.name)))
+    return newPlayer
   }, [])
 
   return { players, loading, error, createPlayer, refetch }

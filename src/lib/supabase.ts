@@ -12,8 +12,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false, // Kiosk mode - no user sessions
-    autoRefreshToken: false,
+    persistSession: false, // Kiosk mode: the host's Manage sign-in lives in memory only
+    autoRefreshToken: true, // Without this the host sign-in lapses after an hour and saves fail
   },
   realtime: {
     params: {

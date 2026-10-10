@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { dbError, NOT_SAVED } from '@/lib/dbErrors'
 import type { ScoreFormat } from '@/lib/types'
 
 export interface ScoreWithDetails {
@@ -44,6 +45,7 @@ interface ScoreJoinRow {
 
 /**
  * useManageScores - Fetch, update, and delete scores
+ * Saves and deletes throw an Error with a readable message when they fail.
  * Fetches from high_scores with joins for full context
  */
 export function useManageScores(): UseManageScoresResult {
@@ -111,7 +113,7 @@ export function useManageScores(): UseManageScoresResult {
       
       setScores(formatted)
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch scores'))
+      setError(dbError(err))
     } finally {
       setLoading(false)
     }
@@ -121,12 +123,14 @@ export function useManageScores(): UseManageScoresResult {
     try {
       // Type assertion needed because Supabase client types don't match our schema
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('high_scores')
         .update({ score: newScore })
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Update local state
       setScores(prev => 
@@ -135,25 +139,27 @@ export function useManageScores(): UseManageScoresResult {
       return true
     } catch (err) {
       console.error('Failed to update score:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 
   const deleteScore = useCallback(async (id: string): Promise<boolean> => {
     try {
-      const { error: deleteError } = await supabase
+      const { data: changed, error: deleteError } = await supabase
         .from('high_scores')
         .delete()
         .eq('id', id)
+        .select('id')
 
       if (deleteError) throw deleteError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Remove from local state
       setScores(prev => prev.filter(s => s.id !== id))
       return true
     } catch (err) {
       console.error('Failed to delete score:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 

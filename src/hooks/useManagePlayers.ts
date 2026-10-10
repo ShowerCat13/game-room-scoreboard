@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { dbError, NOT_SAVED } from '@/lib/dbErrors'
 import type { Player } from '@/lib/types'
 
 interface UseManagePlayersResult {
@@ -14,6 +15,7 @@ interface UseManagePlayersResult {
 
 /**
  * useManagePlayers - Full CRUD operations for players
+ * Saves and deletes throw an Error with a readable message when they fail.
  */
 export function useManagePlayers(): UseManagePlayersResult {
   const [players, setPlayers] = useState<Player[]>([])
@@ -33,7 +35,7 @@ export function useManagePlayers(): UseManagePlayersResult {
       if (queryError) throw queryError
       setPlayers(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch players'))
+      setError(dbError(err))
     } finally {
       setLoading(false)
     }
@@ -57,7 +59,7 @@ export function useManagePlayers(): UseManagePlayersResult {
       return data
     } catch (err) {
       console.error('Failed to create player:', err)
-      return null
+      throw dbError(err)
     }
   }, [])
 
@@ -67,12 +69,14 @@ export function useManagePlayers(): UseManagePlayersResult {
     avatarUrl?: string | null
   ): Promise<boolean> => {
     try {
-      const { error: updateError } = await (supabase as any)
+      const { data: changed, error: updateError } = await (supabase as any)
         .from('players')
         .update({ name, avatar_url: avatarUrl })
         .eq('id', id)
+        .select('id')
 
       if (updateError) throw updateError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Update local state
       setPlayers(prev => 
@@ -82,25 +86,27 @@ export function useManagePlayers(): UseManagePlayersResult {
       return true
     } catch (err) {
       console.error('Failed to update player:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 
   const deletePlayer = useCallback(async (id: string): Promise<boolean> => {
     try {
-      const { error: deleteError } = await supabase
+      const { data: changed, error: deleteError } = await supabase
         .from('players')
         .delete()
         .eq('id', id)
+        .select('id')
 
       if (deleteError) throw deleteError
+      if (!changed?.length) throw new Error(NOT_SAVED)
       
       // Update local state
       setPlayers(prev => prev.filter(p => p.id !== id))
       return true
     } catch (err) {
       console.error('Failed to delete player:', err)
-      return false
+      throw dbError(err)
     }
   }, [])
 
