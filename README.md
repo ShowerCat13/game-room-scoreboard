@@ -182,7 +182,7 @@ glitches the victim's name to DECEASED if it's on screen, 3 the jump scare
 stand-in database fakes these functions):
 
 ```bash
-npm run check-db    # tables, functions, and which players still need a PIN
+npm run check-db    # tables, functions, and which profiles have no PIN (open to edit)
 ```
 
 ---
