@@ -109,6 +109,34 @@ test.describe('guest on a phone', () => {
 })
 
 test.describe('kiosk', () => {
+  test('edits a profile that has no PIN without asking for one, and can lock it', async ({ page, request }) => {
+    await page.goto('/')
+    const name = unique('Open')
+    const player = await createPlayer(request, name, null)
+
+    // Straight into the editor: no keypad, no "ask the host"
+    await page.getByRole('button', { name: 'Edit profile' }).click()
+    await page.getByRole('button', { name, exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Save profile' })).toBeVisible()
+    await expect(page.getByText("Enter this profile's 4-digit PIN")).toBeHidden()
+
+    const renamed = unique('Fixed')
+    await page.getByLabel('Player name').fill(renamed)
+    await page.getByLabel('Optional 4-digit PIN').fill('4321')
+    await page.getByRole('button', { name: 'Save profile' }).click()
+    await expect(page.getByRole('button', { name: 'Save profile' })).toBeHidden()
+
+    const rows = await (await request.get(`${DB}/players?select=name&id=eq.${player.id}`)).json()
+    expect(rows[0].name).toBe(renamed)
+    expect(await hasPin(request, player.id)).toBe(true)
+
+    // Now it's locked: the kiosk asks for the PIN it was given
+    await openEditProfile(page, renamed)
+    await pressPin(page, '4321')
+    await expect(page.getByRole('button', { name: 'Save profile' })).toBeVisible()
+    await expect(page.getByLabel('Optional 4-digit PIN')).toBeHidden()
+  })
+
   test('lists a profile made on a phone and edits it with its PIN', async ({ page, request }) => {
     await page.goto('/') // the profile list loads here, before the phone signs up
     const name = unique('Phoney')

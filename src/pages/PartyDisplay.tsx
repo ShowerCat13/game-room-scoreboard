@@ -53,7 +53,7 @@ export function PartyDisplay() {
   const { entries, loading, error, refetch } = useBestTimesLeaderboard(gameId, modeId, detailId)
   const isSpooky = useKioskStore((state) => state.themeId === 'spooky')
 
-  // Edit profile (PIN-protected, see EditProfileFlow)
+  // Edit profile (open unless the profile has a PIN, see EditProfileFlow)
   const { players, refetch: refetchPlayers } = usePlayers()
   const [pickingProfile, setPickingProfile] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)

@@ -12,24 +12,28 @@ import type { Player } from '@/lib/types'
 
 interface ProfileResult {
   ok: boolean
-  error?: 'no_pin' | 'wrong_pin' | 'locked'
+  error?: 'no_pin' | 'not_found' | 'wrong_pin' | 'locked'
   attempts_left?: number
   locked_until?: string
   player?: Player
 }
 
-/** Calls update_player_profile (supabase/security.sql). Name/avatar omitted = PIN check only. */
+/**
+ * Calls update_player_profile (supabase/security.sql). Name/avatar omitted = PIN check only.
+ * A profile with no PIN takes any pin value; newPin locks (or re-locks) the profile.
+ */
 async function updateProfile(
   playerId: string,
   pin: string,
-  changes: { name?: string; avatarUrl?: string } = {}
+  changes: { name?: string; avatarUrl?: string; newPin?: string } = {}
 ): Promise<ProfileResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc('update_player_profile', {
     p_player_id: playerId,
-    p_pin: pin,
+    p_pin: pin || null,
     p_name: changes.name ?? null,
     p_avatar_url: changes.avatarUrl ?? null,
+    p_new_pin: changes.newPin ?? null,
   })
   if (error) throw error
   return data as ProfileResult
@@ -38,7 +42,10 @@ async function updateProfile(
 function describeError(result: ProfileResult): string {
   switch (result.error) {
     case 'no_pin':
-      return "This profile has no PIN. Ask the host to change it."
+      // Only the 2026-09-30 version of the database function says this
+      return 'The scoreboard database needs its latest setup (security.sql). Ask the host.'
+    case 'not_found':
+      return 'This profile no longer exists.'
     case 'locked': {
       const minutes = result.locked_until
         ? Math.max(1, Math.ceil((new Date(result.locked_until).getTime() - Date.now()) / 60000))
@@ -59,25 +66,33 @@ interface EditProfileFlowProps {
 }
 
 /**
- * EditProfileFlow - PIN check, then edit name + spookicon
+ * EditProfileFlow - edit name + spookicon, with a PIN check only when the profile has one
  *
- * The PIN is verified by the database, so guests can only edit profiles
- * whose PIN they know. On a guest's own phone the PIN is remembered.
+ * A profile without a PIN opens straight into editing (anyone at the kiosk can
+ * fix a typo or swap a spookicon) and offers to add a PIN. Once a profile has a
+ * PIN, the database verifies it, so only its owner can edit it. On a guest's
+ * own phone the PIN is remembered.
  */
 export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowProps) {
   const [stage, setStage] = useState<'checking' | 'pin' | 'edit' | 'blocked'>('checking')
+  const [hasPin, setHasPin] = useState(true)
   const [pin, setPin] = useState('')
+  const [newPin, setNewPin] = useState('')
   const [pinError, setPinError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [spookiconId, setSpookiconId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const newPinValid = newPin === '' || /^\d{4}$/.test(newPin)
 
-  // Start: no PIN -> explain; remembered PIN (phones only) -> straight in; else ask
+  // Start: no PIN -> straight in; remembered PIN (phones only) -> straight in; else ask
   useEffect(() => {
     if (!player) return
     setName(player.name)
     setSpookiconId(getSpookicon(player.avatar_url)?.id ?? null)
+    setHasPin(true)
+    setPin('')
+    setNewPin('')
     setPinError(null)
     setMessage(null)
     setStage('checking')
@@ -96,8 +111,8 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
         return
       }
       if (hasPin === false) {
-        setMessage(describeError({ ok: false, error: 'no_pin' }))
-        setStage('blocked')
+        setHasPin(false)
+        setStage('edit')
         return
       }
       const remembered = getRememberedPin(player.id)
@@ -150,6 +165,10 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
       setMessage('Please enter a name')
       return
     }
+    if (!newPinValid) {
+      setMessage('PIN must be 4 digits (or leave it blank)')
+      return
+    }
     setSaving(true)
     setMessage(null)
     try {
@@ -157,8 +176,10 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
       const result = await updateProfile(player.id, pin, {
         name: trimmed !== player.name ? trimmed : undefined,
         avatarUrl: spookiconId && spookiconId !== currentIcon ? toSpookiconUrl(spookiconId) : undefined,
+        newPin: newPin || undefined,
       })
       if (result.ok && result.player) {
+        if (newPin) rememberPin(player.id, newPin)
         onSaved(result.player)
         onClose()
       } else {
@@ -237,6 +258,33 @@ export function EditProfileFlow({ player, onClose, onSaved }: EditProfileFlowPro
                 </div>
 
                 <SpookiconPicker value={spookiconId} onChange={setSpookiconId} />
+
+                {/* An open profile can be locked here; a locked one is reset by the host in Manage */}
+                {!hasPin && (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={newPin}
+                      onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !saving) handleSave() }}
+                      placeholder="PIN"
+                      aria-label="Optional 4-digit PIN"
+                      className={`
+                        w-[76px] h-[56px] px-2 text-center font-mono shrink-0
+                        bg-background-card rounded-lg
+                        text-base text-text-primary tracking-[0.3em]
+                        placeholder:text-text-muted placeholder:tracking-normal
+                        focus:outline-none focus:ring-2 focus:ring-category-darts
+                        ${newPinValid ? '' : 'ring-2 ring-red-500'}
+                      `}
+                    />
+                    <p className="text-xs text-text-muted">
+                      Optional PIN: after this, only you can edit this profile
+                    </p>
+                  </div>
+                )}
 
                 {message && <p className="text-sm text-red-400 text-center">{message}</p>}
 

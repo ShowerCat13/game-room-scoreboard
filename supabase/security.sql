@@ -6,7 +6,9 @@
 --
 --   Everyone (anon key)   view everything, submit times,
 --                         create a player profile (via create_player),
---                         edit THEIR OWN profile with its PIN (via update_player_profile)
+--                         edit a profile (via update_player_profile): a profile
+--                         with no PIN is open to everyone; one with a PIN
+--                         needs that PIN, so only its owner can touch it
 --   Admin (signed in)     everything: edit/delete scores, players, games, modes, tracks
 --
 -- The anon key ships in the web app, so these rules are the real protection;
@@ -210,7 +212,7 @@ grant execute on function public.create_player(text, text, text) to anon, authen
 
 
 -- ============================================================================
--- player_has_pin: lets the app say "no PIN, ask the host" before asking for one
+-- player_has_pin: lets the app skip the PIN keypad for a profile that has none
 -- ============================================================================
 
 create or replace function public.player_has_pin(p_player_id uuid)
@@ -227,19 +229,27 @@ grant execute on function public.player_has_pin(uuid) to anon, authenticated;
 
 
 -- ============================================================================
--- update_player_profile: edit your own profile with its PIN
+-- update_player_profile: edit a profile
 --
+-- A profile with no PIN is open: anyone can rename it or change its spookicon,
+-- and whoever edits it may lock it by passing p_new_pin. A profile with a PIN
+-- needs that PIN in p_pin; p_new_pin then replaces it.
 -- Pass only p_player_id + p_pin to just check the PIN.
 -- Returns jsonb { ok, error?, attempts_left?, locked_until?, player? }
 -- instead of raising, so failed attempts are counted (a raise would roll back).
 -- 5 wrong PINs lock the profile for 15 minutes.
 -- ============================================================================
 
+-- The first version (2026-09-30) had no p_new_pin and treated a profile without
+-- a PIN as locked. PostgREST can't choose between two overloads, so drop it.
+drop function if exists public.update_player_profile(uuid, text, text, text);
+
 create or replace function public.update_player_profile(
   p_player_id uuid,
-  p_pin text,
+  p_pin text default null,
   p_name text default null,
-  p_avatar_url text default null
+  p_avatar_url text default null,
+  p_new_pin text default null
 )
 returns jsonb
 language plpgsql
@@ -252,32 +262,46 @@ declare
   v_player public.players;
   max_attempts constant integer := 5;
 begin
+  if p_new_pin is not null and p_new_pin !~ '^[0-9]{4}$' then
+    raise exception 'PIN must be 4 digits' using errcode = '22023';
+  end if;
+
+  select * into v_player from public.players where id = p_player_id;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'not_found');
+  end if;
+
   select * into v_secret from public.player_secrets where player_id = p_player_id for update;
 
-  if not found then
-    return jsonb_build_object('ok', false, 'error', 'no_pin');
-  end if;
-
-  if v_secret.locked_until is not null and v_secret.locked_until > now() then
-    return jsonb_build_object('ok', false, 'error', 'locked', 'locked_until', v_secret.locked_until);
-  end if;
-
-  if p_pin is null or v_secret.pin_hash <> extensions.crypt(p_pin, v_secret.pin_hash) then
-    if v_secret.failed_attempts + 1 >= max_attempts then
-      update public.player_secrets
-        set failed_attempts = 0, locked_until = now() + interval '15 minutes'
-        where player_id = p_player_id;
-      return jsonb_build_object('ok', false, 'error', 'locked', 'locked_until', now() + interval '15 minutes');
+  if found then
+    if v_secret.locked_until is not null and v_secret.locked_until > now() then
+      return jsonb_build_object('ok', false, 'error', 'locked', 'locked_until', v_secret.locked_until);
     end if;
 
-    update public.player_secrets
-      set failed_attempts = v_secret.failed_attempts + 1
-      where player_id = p_player_id;
-    return jsonb_build_object('ok', false, 'error', 'wrong_pin',
-      'attempts_left', max_attempts - v_secret.failed_attempts - 1);
+    if p_pin is null or v_secret.pin_hash <> extensions.crypt(p_pin, v_secret.pin_hash) then
+      if v_secret.failed_attempts + 1 >= max_attempts then
+        update public.player_secrets
+          set failed_attempts = 0, locked_until = now() + interval '15 minutes'
+          where player_id = p_player_id;
+        return jsonb_build_object('ok', false, 'error', 'locked', 'locked_until', now() + interval '15 minutes');
+      end if;
+
+      update public.player_secrets
+        set failed_attempts = v_secret.failed_attempts + 1
+        where player_id = p_player_id;
+      return jsonb_build_object('ok', false, 'error', 'wrong_pin',
+        'attempts_left', max_attempts - v_secret.failed_attempts - 1);
+    end if;
+
+    update public.player_secrets set failed_attempts = 0, locked_until = null where player_id = p_player_id;
   end if;
 
-  update public.player_secrets set failed_attempts = 0, locked_until = null where player_id = p_player_id;
+  if p_new_pin is not null then
+    insert into public.player_secrets (player_id, pin_hash)
+    values (p_player_id, extensions.crypt(p_new_pin, extensions.gen_salt('bf')))
+    on conflict (player_id) do update
+      set pin_hash = excluded.pin_hash, failed_attempts = 0, locked_until = null;
+  end if;
 
   update public.players
     set name = case when p_name is null then name else public.clean_player_name(p_name) end,
@@ -289,7 +313,7 @@ begin
 end;
 $$;
 
-grant execute on function public.update_player_profile(uuid, text, text, text) to anon, authenticated;
+grant execute on function public.update_player_profile(uuid, text, text, text, text) to anon, authenticated;
 
 
 -- ============================================================================

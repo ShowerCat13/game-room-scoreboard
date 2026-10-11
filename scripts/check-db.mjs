@@ -1,7 +1,7 @@
 // Check that the real Supabase database (from .env) has everything the party
 // screens need: the tables and functions from supabase/security.sql, and which
-// players still have no PIN. The dry run can't tell you this: its stand-in
-// database fakes these functions.
+// profiles have no PIN (so anyone at the kiosk can edit them). The dry run
+// can't tell you this: its stand-in database fakes these functions.
 //
 //   npm run check-db
 //
@@ -51,8 +51,9 @@ const checks = [
   ['get_leaderboard()', () => call('rpc/get_leaderboard', { p_game_id: PARTY_GAME, p_limit: 1 }), (r) => r.status === 200],
   ['is_admin()', () => call('rpc/is_admin', {}), (r) => r.status === 200 && r.data === false],
   ['player_has_pin()', () => call('rpc/player_has_pin', { p_player_id: NOBODY }), (r) => r.status === 200 && r.data === false],
+  // 'no_pin' is the 2026-09-30 version, which locked every profile without a PIN
   ['update_player_profile()', () => call('rpc/update_player_profile', { p_player_id: NOBODY, p_pin: '0000' }),
-    (r) => r.status === 200 && r.data?.error === 'no_pin'],
+    (r) => r.status === 200 && r.data?.error === 'not_found'],
   // Rejected for the PIN before anything is inserted
   ['create_player()', () => call('rpc/create_player', { p_name: 'check-db', p_pin: 'not-a-pin' }),
     (r) => r.status === 400 && /PIN must be 4 digits/.test(r.data?.message ?? '')],
@@ -84,7 +85,7 @@ for (const [name, run, ok] of checks) {
   }
 }
 
-// Players who can't edit their own profile until the host sets a PIN in Manage
+// Profiles anyone at the kiosk can edit (their owner can add a PIN from Edit profile)
 const players = await call('players?select=id,name&order=name')
 if (players.status === 200 && Array.isArray(players.data)) {
   const noPin = []
@@ -94,8 +95,8 @@ if (players.status === 200 && Array.isArray(players.data)) {
     if (r.data === false) noPin.push(p.name)
   }
   console.log(`\n${players.data.length} players.` + (noPin.length
-    ? ` No PIN yet (host sets one in Manage): ${noPin.join(', ')}`
-    : ''))
+    ? ` Open to edit by anyone, no PIN: ${noPin.join(', ')}`
+    : ' All have PINs.'))
 }
 
 if (failures) {

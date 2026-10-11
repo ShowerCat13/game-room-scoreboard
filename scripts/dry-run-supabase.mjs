@@ -143,16 +143,21 @@ const server = http.createServer(async (req, res) => {
         return send(200, p)
       }
       if (rpc[1] === 'update_player_profile') {
-        const sec = secrets.get(args.p_player_id)
-        if (!sec) return send(200, { ok: false, error: 'no_pin' })
-        if (sec.lockedUntil > Date.now()) return send(200, { ok: false, error: 'locked', locked_until: new Date(sec.lockedUntil).toISOString() })
-        if (args.p_pin !== sec.pin) {
-          if (sec.failed + 1 >= 5) { sec.failed = 0; sec.lockedUntil = Date.now() + 15 * 60000; return send(200, { ok: false, error: 'locked', locked_until: new Date(sec.lockedUntil).toISOString() }) }
-          sec.failed++
-          return send(200, { ok: false, error: 'wrong_pin', attempts_left: 5 - sec.failed })
-        }
-        sec.failed = 0; sec.lockedUntil = 0
+        // No PIN = open to everyone (and may be locked with p_new_pin); a PIN must match
+        if (args.p_new_pin != null && !/^\d{4}$/.test(args.p_new_pin)) throw new Error('PIN must be 4 digits')
         const p = db.players.find((x) => x.id === args.p_player_id)
+        if (!p) return send(200, { ok: false, error: 'not_found' })
+        const sec = secrets.get(args.p_player_id)
+        if (sec) {
+          if (sec.lockedUntil > Date.now()) return send(200, { ok: false, error: 'locked', locked_until: new Date(sec.lockedUntil).toISOString() })
+          if (args.p_pin !== sec.pin) {
+            if (sec.failed + 1 >= 5) { sec.failed = 0; sec.lockedUntil = Date.now() + 15 * 60000; return send(200, { ok: false, error: 'locked', locked_until: new Date(sec.lockedUntil).toISOString() }) }
+            sec.failed++
+            return send(200, { ok: false, error: 'wrong_pin', attempts_left: 5 - sec.failed })
+          }
+          sec.failed = 0; sec.lockedUntil = 0
+        }
+        if (args.p_new_pin) secrets.set(args.p_player_id, { pin: args.p_new_pin, failed: 0, lockedUntil: 0 })
         if (args.p_name != null) p.name = cleanName(args.p_name)
         if (args.p_avatar_url != null) p.avatar_url = guestAvatar(args.p_avatar_url)
         return send(200, { ok: true, player: p })
